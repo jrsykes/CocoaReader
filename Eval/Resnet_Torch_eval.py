@@ -5,9 +5,9 @@ from torch import nn
 from sklearn import metrics
 
 
-model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models/ResNet18_model.pth'
-#data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
-data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/split"
+model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models/model.pth'
+data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
+#data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/split"
 
 model = torch.load(model_path)
 model.eval()
@@ -45,6 +45,8 @@ dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size
 
 phase_list = ['train', 'val']
 
+lables_list = []
+peds_list = []
 
 for i in phase_list:
 
@@ -59,16 +61,26 @@ for i in phase_list:
 		labels = labels.to(device)
 		outputs = model(inputs)
 		loss = criterion(outputs, labels)
-		_, preds = torch.max(outputs, 1)#	
+		_, preds = torch.max(outputs, 1)	
 
+		#Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
+		#running totals for these metrics by the total number of training or test samples. This controls for 
+		#the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
+		
 		running_loss += loss.item() * inputs.size(0)
 		running_corrects += torch.sum(preds == labels.data)	
 
 		stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-		stats_out = stats['weighted avg']
+		stats_out = stats['macro avg']
 		running_precision += stats_out['precision']* inputs.size(0)
 		running_recall += stats_out['recall']* inputs.size(0)
 		running_f1 += stats_out['f1-score']* inputs.size(0)
+
+
+		for i in labels.data.tolist():
+			lables_list.append(i)
+		for i in preds.tolist():
+			preds_list.append(i)
 
 	n = len(dataloaders_dict[i].dataset)
 	epoch_loss = float(running_loss / n)
@@ -83,4 +95,6 @@ for i in phase_list:
 	print('Precision: ' + str(round(precision,3)))
 	print('Recall: ' + str(round(recall,3)))
 	print('F1: ' + str(round(f1,3)))
+	print('\n' + '-'*10 + '\nConfusion matrix:')
 
+print(metrics.classification_report(lables_list, preds_list.append(i), digits=4,))

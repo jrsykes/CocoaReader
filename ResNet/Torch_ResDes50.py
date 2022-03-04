@@ -19,7 +19,7 @@ from sklearn import metrics
 #   to the ImageFolder structure
 data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
 
-# Models to choose from [resnet, alexnet, vgg, squeezenet, densenet, inception]
+# Models to choose from [resnet, alexnet, vgg, squeezenet, densenet]
 model_name = "resnet"
 
 # Number of classes in the dataset
@@ -29,28 +29,29 @@ num_classes = 53
 batch_size = 42
 
 # Number of epochs to train for
-num_epochs = 500
 min_epocs = 10
 #Earley stopping
 patience = 50 #epochs
-beta = 1.01 ##1%
+beta = 1.005 ## % improvment in validation loss
+
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
 feature_extract = False
 
 writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_ResNet18')
 
-def train_model(model, dataloaders, criterion, optimizer, num_epochs=num_epochs, is_inception=False):
+def train_model(model, dataloaders, criterion, optimizer, patience):
     since = time.time()
     
     val_loss_history = []
     best_recall = 0.0
     best_recall_acc = 0.0
     
-    #Save Imagenet weights as best weights
+    #Save Imagenet weights as 'best_model_wts' variable. 
+    #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
 
-    ### Calculate and set bias for final layer
+    ### Calculate and set bias for final layer based on imbalance in dataset classes
     dir_ = data_dir + '/train/'
     list_cats = []
     for i in sorted(os.listdir(dir_)):
@@ -66,17 +67,17 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=num_epochs,
     #######################################################################
     
     epoch = 0
-    patience_ = patience
-    while patience_ > 0: # Run untill validation loss has not improved for n epochs equal to patience variable
+    initial_patience = patience
+    while patience > 0: # Run untill validation loss has not improved for n epochs equal to patience variable
         print('\nEpoch {}'.format(epoch))
         print('-' * 10)
 
         if len(val_loss_history) > min_epocs:
             if val_loss_history[-1] > min(val_loss_history)*beta:
-                patience_ -= 1
+                patience -= 1
             else:
-                patience_ = patience
-        print('Patience: ' + str(patience_) + '/' + str(patience))
+                patience = initial_patience
+        print('Patience: ' + str(patience) + '/' + str(initial_patience))
         
         # Each epoch has a training and validation phase
         
@@ -107,9 +108,8 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=num_epochs,
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     # Get model outputs and calculate loss
-                    # Special case for inception because in training it has an auxiliary output. In train
-                    #   mode we calculate the loss by summing the final output and the auxiliary output
-                    #   but in testing we only consider the final output.
+                    # In train mode we calculate the loss by summing the final output and the auxiliary output
+                    # but in testing we only consider the final output.
                     outputs = model(inputs)
                     loss = criterion(outputs, labels)
 
@@ -120,7 +120,10 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=num_epochs,
                         loss.backward()
                         optimizer.step()
 
-                # statistics
+                #Calculate statistics
+                #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
+                #running totals for these metrics by the total number of training or test samples. This controls for 
+                #the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
 
@@ -143,17 +146,17 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=num_epochs,
  
             # Save loss and acc to tensorboard log
             if phase == 'train':
-                writer.add_scalar("Loss/train", epoch_loss, num_epochs-epoch+1)
-                writer.add_scalar("Accuracy/train", epoch_acc, num_epochs-epoch+1)
-                writer.add_scalar("Precision/train", epoch_precision , num_epochs-epoch+1)
-                writer.add_scalar("Recall/train", epoch_recall, num_epochs-epoch+1)
-                writer.add_scalar("F1/train", epoch_f1, num_epochs-epoch+1)
+                writer.add_scalar("Loss/train", epoch_loss, epoch)
+                writer.add_scalar("Accuracy/train", epoch_acc, epoch)
+                writer.add_scalar("Precision/train", epoch_precision , epoch)
+                writer.add_scalar("Recall/train", epoch_recall, epoch)
+                writer.add_scalar("F1/train", epoch_f1, epoch)
             else:
-                writer.add_scalar("Loss/val", epoch_loss, num_epochs-epoch+1)
-                writer.add_scalar("Accuracy/val", epoch_acc, num_epochs-epoch+1)
-                writer.add_scalar("Precision/val", epoch_precision , num_epochs-epoch+1)
-                writer.add_scalar("Recall/val", epoch_recall, num_epochs-epoch+1)
-                writer.add_scalar("F1/val", epoch_f1, num_epochs-epoch+1)
+                writer.add_scalar("Loss/val", epoch_loss, epoch)
+                writer.add_scalar("Accuracy/val", epoch_acc, epoch)
+                writer.add_scalar("Precision/val", epoch_precision , epoch)
+                writer.add_scalar("Recall/val", epoch_recall, epoch)
+                writer.add_scalar("F1/val", epoch_f1, epoch)
               
             
             # Save model only if accuracy has improved
@@ -290,6 +293,7 @@ criterion = nn.CrossEntropyLoss()
 # Train and evaluate
 
 
-model, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, num_epochs=num_epochs, is_inception=False)
-
+model, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience)
+print('Val loss history:')
+print(val_loss_history)
 
