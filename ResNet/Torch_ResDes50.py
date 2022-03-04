@@ -31,7 +31,9 @@ batch_size = 42
 # Number of epochs to train for
 num_epochs = 500
 min_epocs = 10
+#Earley stopping
 patience = 50 #epochs
+beta = 1.01 ##1%
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
 feature_extract = False
@@ -70,7 +72,7 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=num_epochs,
         print('-' * 10)
 
         if len(val_loss_history) > min_epocs:
-            if val_loss_history[-1] > min(val_loss_history)*1.01:
+            if val_loss_history[-1] > min(val_loss_history)*beta:
                 patience_ -= 1
             else:
                 patience_ = patience
