@@ -17,16 +17,16 @@ from sklearn import metrics
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
+data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/split" #even_split"
 
-# Models to choose from [resnet, alexnet, vgg, squeezenet, densenet]
-model_name = "ResNet18"
+# File name for model
+model_name = "CocoaNet50_1kdim"
 
 # Number of classes in the dataset
-num_classes = 53
+num_classes = 4
 
 # Batch size for training (change depending on how much memory you have)
-batch_size = 42
+batch_size = 10
 
 # Number of epochs to train for
 min_epocs = 10
@@ -34,13 +34,14 @@ min_epocs = 10
 patience = 50 #epochs
 beta = 1.005 ## % improvment in validation loss
 
+input_size = 1000
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
 feature_extract = False
 
 writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
 
-def train_model(model, dataloaders, criterion, optimizer, patience):
+def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     since = time.time()
     
     val_loss_history = []
@@ -49,21 +50,27 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
     
     #Save Imagenet weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
-    best_model_wts = copy.deepcopy(model.state_dict())
+    #best_model_wts = copy.deepcopy(model.state_dict())
+
+    # load pretrained weights from ResDesNet50 
+    pretrained_model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models/ResDes50_1kdim.pkl'
+    pretrained_model_wts = pickle.load(open(pretrained_model_path, "rb"))
+    best_model_wts = copy.deepcopy(pretrained_model_wts['model'])
 
     ### Calculate and set bias for final layer based on imbalance in dataset classes
-    dir_ = data_dir + '/train/'
-    list_cats = []
-    for i in sorted(os.listdir(dir_)):
-        path, dirs, files = next(os.walk(dir_ + i))
-        list_cats.append(len(files))
+    if feature_extract == False:
+        dir_ = data_dir + '/train/'
+        list_cats = []
+        for i in sorted(os.listdir(dir_)):
+            path, dirs, files = next(os.walk(dir_ + i))
+            list_cats.append(len(files))
     
-    weights = []
-    for i in list_cats:
-        weights.append(np.log((max(list_cats)/i)))
+        weights = []
+        for i in list_cats:
+            weights.append(np.log((max(list_cats)/i)))
 
-    initial_bias = torch.FloatTensor(weights)
-    best_model_wts['module.fc.bias'] = initial_bias
+        initial_bias = torch.FloatTensor(weights)
+        best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
     
     epoch = 0
@@ -159,7 +166,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
                 writer.add_scalar("F1/val", epoch_f1, epoch)
               
             
-            # Save model and update best weights only if recall has improved
+            # Save model only if accuracy has improved
             if phase == 'val' and epoch_recall > best_recall:
                 best_recall = epoch_recall
                 best_recall_acc = epoch_acc
@@ -182,7 +189,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
 
                 # Save in onnx format to be converted to TF-lite
                 input_names = os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset/val')
-                dummy_input = torch.randn(10, 3, 224, 224, device="cuda")
+                dummy_input = torch.randn(10, 3, input_size, input_size, device="cuda")
                 output_names = ['AauberginesDiseased']
                 torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
                 verbose=False, input_names=input_names, output_names=output_names)
@@ -205,7 +212,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
 
     writer.flush()
     writer.close()
-    return model, val_loss_history
+    return model #, val_loss_history
 
 
 
@@ -225,16 +232,16 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
 
     """ Resnet18
     """
-    model_ft = models.resnet18(pretrained=use_pretrained)
+    model_ft = models.resnet50(pretrained=use_pretrained)
     set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, num_classes)
-    input_size = 224
+    #input_size = 224
 
-    return model_ft, input_size
+    return model_ft #, input_size
 
 # Initialize the model for this run
-model_ft, input_size = initialize_model(num_classes, feature_extract, use_pretrained=True)
+model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
 
 # Print the model we just instantiated
 #print(model_ft)
@@ -302,4 +309,4 @@ criterion = nn.CrossEntropyLoss()
 # Train and evaluate
 
 
-model, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience)
+model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size)

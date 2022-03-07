@@ -20,7 +20,7 @@ from sklearn import metrics
 data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
 
 # Models to choose from [resnet, alexnet, vgg, squeezenet, densenet]
-model_name = "ResNet18"
+model_name = "resnet"
 
 # Number of classes in the dataset
 num_classes = 53
@@ -38,7 +38,7 @@ beta = 1.005 ## % improvment in validation loss
 #   when True we only update the reshaped layer params
 feature_extract = False
 
-writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
+writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_ResNet18_500dim')
 
 def train_model(model, dataloaders, criterion, optimizer, patience):
     since = time.time()
@@ -159,33 +159,24 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
                 writer.add_scalar("F1/val", epoch_f1, epoch)
               
             
-            # Save model and update best weights only if recall has improved
+            # Save model only if accuracy has improved
             if phase == 'val' and epoch_recall > best_recall:
                 best_recall = epoch_recall
                 best_recall_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
-                PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
-
                 # Save only the model weights for easy loading into a new model
                 final_out = {
                     'model': best_model_wts,
                     '__author__': 'Jamie R. Sykes'                    
-                    }    
-                 
-                model_path = PATH + model_name + '.pkl'
+                    }
+
+                model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models/ResNet18_500dim_model.pkl'
                 with open(model_path, 'wb') as f:
                     pickle.dump(final_out, f)
 
                 # Save the whole model with pytorch save function
-                torch.save(model, PATH + model_name + '.pth')
-
-                # Save in onnx format to be converted to TF-lite
-                input_names = os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset/val')
-                dummy_input = torch.randn(10, 3, 224, 224, device="cuda")
-                output_names = ['AauberginesDiseased']
-                torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
-                verbose=False, input_names=input_names, output_names=output_names)
+                torch.save(model, '/local/scratch/jrs596/ResNetFung50_Torch/models/ResNet18_500dim_model.pth')
 
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -202,7 +193,6 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
     model.load_state_dict(best_model_wts)
     
 
-
     writer.flush()
     writer.close()
     return model, val_loss_history
@@ -217,24 +207,25 @@ def set_parameter_requires_grad(model, feature_extracting):
 
 
 #Initialize and Reshape the Networks
-def initialize_model(num_classes, feature_extract, use_pretrained=True):
+def initialize_model(model_name, num_classes, feature_extract, use_pretrained=True):
     # Initialize these variables which will be set in this if statement. Each of these
     #   variables is model specific.
     model_ft = None
-    #input_size = 0
+    input_size = 0
 
-    """ Resnet18
-    """
-    model_ft = models.resnet18(pretrained=use_pretrained)
-    set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
-    num_ftrs = model_ft.fc.in_features
-    model_ft.fc = nn.Linear(num_ftrs, num_classes)
-    input_size = 224
+    if model_name == "resnet":
+        """ Resnet18
+        """
+        model_ft = models.resnet18(pretrained=use_pretrained)
+        set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        input_size = 500
 
     return model_ft, input_size
 
 # Initialize the model for this run
-model_ft, input_size = initialize_model(num_classes, feature_extract, use_pretrained=True)
+model_ft, input_size = initialize_model(model_name, num_classes, feature_extract, use_pretrained=True)
 
 # Print the model we just instantiated
 #print(model_ft)
@@ -303,3 +294,6 @@ criterion = nn.CrossEntropyLoss()
 
 
 model, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience)
+print('Val loss history:')
+print(val_loss_history)
+

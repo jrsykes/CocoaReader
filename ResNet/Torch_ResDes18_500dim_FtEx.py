@@ -20,11 +20,11 @@ from sklearn import metrics
 data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
 
 # Models to choose from [resnet, alexnet, vgg, squeezenet, densenet]
-model_name = "ResNet18"
+model_name = "ResNet18_500dim_FtEx"
 
 # Number of classes in the dataset
 num_classes = 53
-
+input_size = 500
 # Batch size for training (change depending on how much memory you have)
 batch_size = 42
 
@@ -36,11 +36,11 @@ beta = 1.005 ## % improvment in validation loss
 
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
-feature_extract = False
+feature_extract = True
 
 writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
 
-def train_model(model, dataloaders, criterion, optimizer, patience):
+def train_model(model, dataloaders, criterion, optimizer, patience, input_size=input_size):
     since = time.time()
     
     val_loss_history = []
@@ -159,7 +159,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
                 writer.add_scalar("F1/val", epoch_f1, epoch)
               
             
-            # Save model and update best weights only if recall has improved
+            # Save model only if accuracy has improved
             if phase == 'val' and epoch_recall > best_recall:
                 best_recall = epoch_recall
                 best_recall_acc = epoch_acc
@@ -182,7 +182,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
 
                 # Save in onnx format to be converted to TF-lite
                 input_names = os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset/val')
-                dummy_input = torch.randn(10, 3, 224, 224, device="cuda")
+                dummy_input = torch.randn(10, 3, input_size, input_size, device="cuda")
                 output_names = ['AauberginesDiseased']
                 torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
                 verbose=False, input_names=input_names, output_names=output_names)
@@ -229,12 +229,12 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
     set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, num_classes)
-    input_size = 224
+    #input_size = 500
 
-    return model_ft, input_size
+    return model_ft#, input_size
 
 # Initialize the model for this run
-model_ft, input_size = initialize_model(num_classes, feature_extract, use_pretrained=True)
+model_ft= initialize_model(num_classes, feature_extract, use_pretrained=True)
 
 # Print the model we just instantiated
 #print(model_ft)
@@ -303,3 +303,6 @@ criterion = nn.CrossEntropyLoss()
 
 
 model, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience)
+
+
+
