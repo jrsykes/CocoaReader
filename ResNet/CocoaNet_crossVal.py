@@ -18,16 +18,17 @@ import pandas as pd
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = " /local/scratch/jrs596/dat/compiled_cocoa_images/CrossVal/"
+#data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/CrossVal/"
+data_dir '/local/scratch/jrs596/dat/compiled_cocoa_images/test_CrossVal/'
 
 # File name for model
 model_name = "CocoaNet50_CrossVal"
 
 # Number of classes in the dataset
-num_classes = 53
+num_classes = 4
 
 # Batch size for training (change depending on how much memory you have)
-batch_size = 10
+batch_size = 100
 
 # Number of epochs to train for
 min_epocs = 10
@@ -35,21 +36,21 @@ min_epocs = 10
 patience = 50 #epochs
 beta = 1.005 ## % improvment in validation loss
 
-input_size = 1000
+input_size = 224
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
 feature_extract = False
 
-writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
+writer = SummaryWriter(log_dir='/local/scratch/jrs596/CocoaNet50_pretrained/logs_' + model_name)
 
 results = pd.DataFrame(data=None, columns=['Acc', 'F1', 'Precision', 'Recall', 'Latency'])
 
 
 
-def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
+def train_model(model, dataloaders, criterion, optimizer, patience, input_size, k):
     since = time.time()
     
-    loss_history = []
+    val_loss_history = []
     best_recall = 0.0
     best_acc = 0.0
     best_loss = 100.0
@@ -83,8 +84,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         print('\nEpoch {}'.format(epoch))
         print('-' * 10)
 
-        if len(loss_history) > min_epocs:
-            if loss_history[-1] > min(loss_history)*beta:
+        if len(val_loss_history) > min_epocs:
+            if val_loss_history[-1] > min(val_loss_history)*beta:
                 patience -= 1
             else:
                 patience = initial_patience
@@ -92,8 +93,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         
         # Each epoch has a training and validation phase
         
-        for phase in ['train']:
-            count = 0
+        for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
@@ -108,7 +108,6 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
             # Iterate over data.
             
             for inputs, labels in dataloaders[phase]:
-                count += 1
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -158,21 +157,29 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
             epoch_f1 = (running_f1) / n
             epoch_latencey = running_latencey / n
             
-            loss_history.append(epoch_loss)
+            
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
  
             # Save loss and acc to tensorboard log
-            writer.add_scalar(K + "/Loss", epoch_loss, epoch)
-            writer.add_scalar(K + "/Accuracy", epoch_acc, epoch)
-            writer.add_scalar(K + "/Precision", epoch_precision , epoch)
-            writer.add_scalar(K + "/Recall", epoch_recall, epoch)
-            writer.add_scalar(K + "/F1", epoch_f1, epoch)
+            k = str(k)
+            if phase == 'train':
+                writer.add_scalar(k + "_Loss/train", epoch_loss, epoch)
+                writer.add_scalar(k + "_Accuracy/train", epoch_acc, epoch)
+                writer.add_scalar(k + "_Precision/train", epoch_precision , epoch)
+                writer.add_scalar(k + "_Recall/train", epoch_recall, epoch)
+                writer.add_scalar(k + "_F1/train", epoch_f1, epoch)
+            else:
+                writer.add_scalar(k + "_Loss/val", epoch_loss, epoch)
+                writer.add_scalar(k + "_Accuracy/val", epoch_acc, epoch)
+                writer.add_scalar(k + "_Precision/val", epoch_precision , epoch)
+                writer.add_scalar(k + "_Recall/val", epoch_recall, epoch)
+                writer.add_scalar(k + "_F1/val", epoch_f1, epoch)
               
             
             # Update best weights only if recall has improved
-            if epoch_loss < best_loss:
+            if phase == 'val' and epoch_recall > best_recall:
                 best_recall = epoch_recall
                 best_acc = epoch_acc
                 best_loss = epoch_loss
@@ -183,13 +190,11 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
 
                 best_model_wts = copy.deepcopy(model.state_dict())
 
+                val_loss_history.append(epoch_loss)
 
-    output = [best_acc, best_f1, best_precision, best_recall, best_latencey]        
-
-    
         epoch += 1
         
-
+    output = [best_acc, best_f1, best_precision, best_recall, best_latencey]
     writer.flush()
     writer.close()
     return output
@@ -306,7 +311,7 @@ def resample_data(temp_dir, k, split):
             os.makedirs(temp_dir + j + '/' + i, exist_ok = True)
             if j == 'val':
 
-                sample = image_list[:int(len(image_list)*split)]  #fist 10, 20, 30
+                sample = image_list[:int(len(image_list)*split)]  
                 if split > 0.1:
                     sample = sample[int(len(image_list)*(split-0.1)):]
                 for s in sample:
@@ -332,9 +337,8 @@ for k in range(10):
     split += 0.1
     dataloaders_dict = randomise_data(temp_dir, k, split)
 
-    out = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size)
+    out = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size, k)
     results.loc[len(results)] = out
-
-results.to_csv('/local/scratch/jrs596/CrossVal/' + model_name)
+    results.to_csv('/local/scratch/jrs596/CrossVal/' + model_name + '_results.csv')
 
 

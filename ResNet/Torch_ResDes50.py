@@ -159,7 +159,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
                 writer.add_scalar("F1/val", epoch_f1, epoch)
               
             
-            # Save model and update best weights only if recall has improved
+            # Save model only if accuracy has improved
             if phase == 'val' and epoch_recall > best_recall:
                 best_recall = epoch_recall
                 best_recall_acc = epoch_acc
@@ -221,7 +221,7 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
     # Initialize these variables which will be set in this if statement. Each of these
     #   variables is model specific.
     model_ft = None
-    #input_size = 0
+    input_size = 0
 
     """ Resnet18
     """

@@ -20,13 +20,13 @@ from sklearn import metrics
 data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
 
 # File name for model
-model_name = "ResDes50_1kdim"
+model_name = "ResDes18_1kdim"
 
 # Number of classes in the dataset
 num_classes = 53
 
 # Batch size for training (change depending on how much memory you have)
-batch_size = 10
+batch_size = 42
 
 # Number of epochs to train for
 min_epocs = 10
@@ -83,7 +83,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         # Each epoch has a training and validation phase
         
         for phase in ['train', 'val']:
-            count = 0
+            #count = 0
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
@@ -98,7 +98,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
             # Iterate over data.
             
             for inputs, labels in dataloaders[phase]:
-                count += 1
+                #count += 1
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -223,7 +223,7 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
     #   variables is model specific.
     model_ft = None
 
-    model_ft = models.resnet50(pretrained=use_pretrained)
+    model_ft = models.resnet18(pretrained=use_pretrained)
     set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, num_classes)

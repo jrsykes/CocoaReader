@@ -6,7 +6,7 @@ from sklearn import metrics
 import pandas as pd
 
 model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models'
-model = '/ResDes18_750dim.pth'
+model = '/ResDes50_1kdim.pth'
 data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
 #data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/split"
 
@@ -17,7 +17,7 @@ device = torch.device("cuda:0")# if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
 
-input_size = 750
+input_size = 1000
 batch_size = 1
 criterion = nn.CrossEntropyLoss()
 
