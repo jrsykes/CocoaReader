@@ -12,16 +12,8 @@ import numpy as np
 import copy
 import pickle
 
-import matplotlib.pyplot as plt
-import numpy as np
-import random
-
-"""
-Determine if any GPUs are available
-"""
-
-
-
+import socket
+from mpi4py import MPI
 
 model_name = 'VAE'
 """
@@ -30,17 +22,18 @@ Initialize Hyperparameters
 batch_size = 2
 learning_rate = 1e-3
 num_epochs = 10
-input_size = 124 #max input size for GPU 0 is 122
+input_size = 124 #max input size for GPU 0 is 122, max input size for GPU 1 is 124. i.e. 2,349MiB / 24,576MiB
 imgChannels = 3
 n_filters = 5
 imsize2 = input_size - (n_filters-1) * 2
 convdim1 = 16
 convdim2 = 32
 zDim = 156
+
+
 """
 Create dataloaders
 """
-
 
 data_transforms = {
     'train': transforms.Compose([
@@ -118,20 +111,19 @@ class VAE(nn.Module):
         out = self.decoder(z)
         return out, mu, logVar
 
-"""
-GPU stuff
-"""
-model = VAE()
-#Run model on all GPUs
 
-import socket
-from mpi4py import MPI
+model = VAE()
+
+"""
+Allow model to train on all GPUs 
+"""
+
 
 host = socket.gethostname()
 address = socket.gethostbyname(host)
 
 comm = MPI.COMM_WORLD
-world_size = 2#comm.Get_size()
+world_size = comm.Get_size()
 rank = comm.Get_rank()
 info = dict()
 info = comm.bcast(info, root=0)
@@ -149,14 +141,8 @@ torch.distributed.init_process_group(backend='nccl', rank=rank,
 model = nn.parallel.DistributedDataParallel(model, device_ids=[device])
 
 
-
-
-
-
-
 """
-Training the network for a given number of epochs
-The loss after every epoch is printed
+Training 
 """
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 import sys
@@ -173,7 +159,7 @@ for epoch in range(num_epochs):
         loss = F.binary_cross_entropy(out, imgs, size_average=False) + kl_divergence
 
 
-        # Backpropagation based on the loss
+        # Backpropagation
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
