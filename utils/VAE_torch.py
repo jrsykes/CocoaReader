@@ -22,7 +22,7 @@ Initialize Hyperparameters
 batch_size = 2
 learning_rate = 1e-3
 num_epochs = 10
-input_size = 124 #max input size for GPU 0 is 122, max input size for GPU 1 is 124. i.e. 2,349MiB / 24,576MiB
+input_size = 130 
 imgChannels = 3
 n_filters = 5
 imsize2 = input_size - (n_filters-1) * 2
@@ -130,7 +130,7 @@ info = comm.bcast(info, root=0)
 info.update(dict(MASTER_ADDR=address, MASTER_PORT='1234'))
 os.environ.update(info)
 
-device = torch.device(f"cuda:{0}")
+device = torch.device(f"cuda:{1}")
 
 model.to(device)
 model.train()
