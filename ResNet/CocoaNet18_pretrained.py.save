@@ -19,14 +19,14 @@ from sklearn import metrics
 #   to the ImageFolder structure
 data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/split" #even_split"
 
-# File name for model
-model_name = "CocoaNet50_1kdim"
+# Models to choose from [resnet, alexnet, vgg, squeezenet, densenet]
+model_name = "CocoaNet18_750dim_FtEx"
 
 # Number of classes in the dataset
 num_classes = 4
 
 # Batch size for training (change depending on how much memory you have)
-batch_size = 10
+batch_size = 42
 
 # Number of epochs to train for
 min_epocs = 10
@@ -34,10 +34,10 @@ min_epocs = 10
 patience = 50 #epochs
 beta = 1.005 ## % improvment in validation loss
 
-input_size = 1000
+input_size = 750
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
-feature_extract = False
+feature_extract = True
 
 writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
 
@@ -53,25 +53,24 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     #best_model_wts = copy.deepcopy(model.state_dict())
 
     # load pretrained weights from ResDesNet50 
-    pretrained_model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models/ResDes50_1kdim.pkl'
+    pretrained_model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models/ResDes18_750dim.pkl'
     pretrained_model_wts = pickle.load(open(pretrained_model_path, "rb"))
     best_model_wts = copy.deepcopy(pretrained_model_wts['model'])
-    model.load_state_dict(best_model_wts)
 
     ### Calculate and set bias for final layer based on imbalance in dataset classes
-    if feature_extract == False:
-        dir_ = data_dir + '/train/'
-        list_cats = []
-        for i in sorted(os.listdir(dir_)):
-            path, dirs, files = next(os.walk(dir_ + i))
-            list_cats.append(len(files))
+	if feature_extract == False:
+	dir_ = data_dir + '/train/'
+    	list_cats = []
+    	for i in sorted(os.listdir(dir_)):
+        	path, dirs, files = next(os.walk(dir_ + i))
+        	list_cats.append(len(files))
     
-        weights = []
-        for i in list_cats:
-            weights.append(np.log((max(list_cats)/i)))
+    	weights = []
+    	for i in list_cats:
+        	weights.append(np.log((max(list_cats)/i)))
 
-        initial_bias = torch.FloatTensor(weights)
-        best_model_wts['module.fc.bias'] = initial_bias
+    	initial_bias = torch.FloatTensor(weights)
+    	best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
     
     epoch = 0
@@ -233,7 +232,7 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
 
     """ Resnet18
     """
-    model_ft = models.resnet50(pretrained=use_pretrained)
+    model_ft = models.resnet18(pretrained=use_pretrained)
     set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, num_classes)
@@ -257,7 +256,8 @@ data_transforms = {
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
     'val': transforms.Compose([
-        transforms.Resize((input_size,input_size)),
+        transforms.Resize(input_size),
+        transforms.CenterCrop(input_size),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
