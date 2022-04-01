@@ -22,16 +22,16 @@ model_name = 'VAE'
 """
 Initialize Hyperparameters
 """
-batch_size = 3
+batch_size = 5
 learning_rate = 1e-4
-num_epochs = 50
-input_size = 198
+num_epochs = 2
+input_size = 168
 imgChannels = 3
 n_filters = 5
 imsize2 = input_size - (n_filters-1) * 2
 convdim1 = 16
 convdim2 = 32
-zDim = 190
+zDim = 160
 
 writer = SummaryWriter(log_dir='/local/scratch/jrs596/VAE/logs')
 
@@ -58,9 +58,13 @@ for idx, data in enumerate(train_loader):
     running_mean += data[0].mean() * batch_size
     running_var += data[0].var() * batch_size
 
-mean = running_mean/len(train_loader.dataset)
-var = running_var/len(train_loader.dataset)
+n = len(train_loader.dataset)
+mean = running_mean/n
+var = running_var/n
 
+if n%batch_size != 0:
+    print('Total N samples must be divisable by batch size')
+    exit(0)
 
 """
 A Convolutional Variational Autoencoder
@@ -138,10 +142,10 @@ for epoch in range(num_epochs):
     running_ELBO = 0.0
     running_CE = 0.0
     running_KL = 0.0
-    n = len(train_loader.dataset)
     
-    with Bar('Processing batch', max=n/batch_size) as bar:
-        for idx, data in enumerate(train_loader):
+    
+    with Bar('Learning...', max=n/batch_size) as bar:
+          for idx, data in enumerate(train_loader):
                     
             imgs = data[0]
             labels = imgs.to('cuda:0')
@@ -180,7 +184,7 @@ for epoch in range(num_epochs):
             optimizer.step()  
 
             bar.next()
-
+            
     epoch_loss = round(float(running_ELBO / n),4)
     epoch_CE = round(float(running_CE / n),4)
     epoch_KL = round(float(running_KL / n),4)
@@ -190,7 +194,7 @@ for epoch in range(num_epochs):
     writer.add_scalar("KL divergence/train", epoch_KL, epoch)
 
     PATH = '/local/scratch/jrs596/VAE/models'
-    torch.save(model.state_dict(), os.path.join(PATH, model_name + '.pth'))
+    torch.save(model.state_dict(), os.path.join(PATH, model_name + '.pth'))#
 
     print('Epoch {}: ELBO loss {}'.format(epoch, epoch_loss))
     print('KL divergence {}: Binary Cross Entropy {}'.format(epoch_KL, epoch_CE))
