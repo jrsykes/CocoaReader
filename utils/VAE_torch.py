@@ -22,16 +22,16 @@ model_name = 'VAE'
 """
 Initialize Hyperparameters
 """
-batch_size = 5
+batch_size = 4
 learning_rate = 1e-4
-num_epochs = 2
-input_size = 168
+num_epochs = 50
+input_size = 177
 imgChannels = 3
 n_filters = 5
 imsize2 = input_size - (n_filters-1) * 2
 convdim1 = 16
 convdim2 = 32
-zDim = 160
+zDim = 180
 
 writer = SummaryWriter(log_dir='/local/scratch/jrs596/VAE/logs')
 
@@ -64,11 +64,10 @@ var = running_var/n
 
 if n%batch_size != 0:
     print('Total N samples must be divisable by batch size')
+    print('N = ' + str(n))
     exit(0)
 
-"""
-A Convolutional Variational Autoencoder
-"""
+
 class VAE(nn.Module):
     def __init__(self, imgChannels=imgChannels, featureDim=batch_size*convdim2*imsize2*imsize2, zDim=zDim):
         super(VAE, self).__init__()
@@ -128,15 +127,11 @@ class VAE(nn.Module):
 
 
 model = VAE()
-#device = torch.device("cuda")
-#model.to(device)
-
 
 """
 Training 
 """
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-#kl_loss = nn.KLDivLoss(reduction="batchmean", log_target=True)
 
 for epoch in range(num_epochs):
     running_ELBO = 0.0
@@ -153,25 +148,12 @@ for epoch in range(num_epochs):
 
             out, mu, logVar = model(imgs)   
 
-            #input_ = torch.cat((mu,logVar))    
-
-             # The loss is the BCE loss combined with the KL divergence to ensure the distribution is learnt
-            #kl_divergence = -0.5 * torch.sum(1 + logVar - mu.pow(2) - logVar.exp())
-            #print(kl_divergence)   
-
-            #################
             """
             My KL divergence definition
             """
             kl_divergence = torch.mean(-mean * (var.log() + logVar - mu**2 - logVar.exp()))
-            # Check this isn't just checking aganst abribrary normal distribution
-            # Definifition above found here:
-            #https://keras.io/examples/generative/vae/
-            #kl_divergence = kl_loss(input_, target)
-            #print('KL divergene: ' + str(kl_divergence.item()))
             
             binary_cross_entropy = F.binary_cross_entropy(out, labels)  
-
             loss = binary_cross_entropy + kl_divergence 
 
             running_ELBO += loss.item() * imgs.shape[0]
@@ -193,8 +175,9 @@ for epoch in range(num_epochs):
     writer.add_scalar("Cross entropy/train", epoch_CE, epoch)
     writer.add_scalar("KL divergence/train", epoch_KL, epoch)
 
+    print('Saving checkpoint')
     PATH = '/local/scratch/jrs596/VAE/models'
-    torch.save(model.state_dict(), os.path.join(PATH, model_name + '.pth'))#
+    torch.save(model.state_dict(), os.path.join(PATH, model_name + '.pth'))
 
     print('Epoch {}: ELBO loss {}'.format(epoch, epoch_loss))
     print('KL divergence {}: Binary Cross Entropy {}'.format(epoch_KL, epoch_CE))

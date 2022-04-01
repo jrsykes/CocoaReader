@@ -12,16 +12,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-torch.multiprocessing.set_sharing_strategy('file_system')
 
-batch_size = 1#7
-learning_rate = 1e-3
-num_epochs = 10
-input_size = 30
+batch_size = 1
+#learning_rate = 1e-4
+#num_epochs = 50
+input_size = 177
 imgChannels = 3
-imsize2 = input_size-8
+n_filters = 5
+imsize2 = input_size - (n_filters-1) * 2
 convdim1 = 16
 convdim2 = 32
+zDim = 180
 
 """
 The following part takes a random image from test loader to feed into the VAE.
@@ -31,49 +32,46 @@ data_transforms = {
     'test': transforms.Compose([
         transforms.Resize((input_size,input_size)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
+    ])
 }
 
-test_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised'
+test_dir = '/home/jamiesykes/Downloads/ResNetFung50+_images_unorganised_test'
 #test_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean_unorganised'
 test_dataset = datasets.ImageFolder(test_dir, data_transforms['test'])
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-##################
 
 
-##################
+
 class VAE(nn.Module):
-    def __init__(self, imgChannels=imgChannels, featureDim=imgChannels*batch_size*input_size*input_size, zDim=256):
+    def __init__(self, imgChannels=imgChannels, featureDim=batch_size*convdim2*imsize2*imsize2, zDim=zDim):
         super(VAE, self).__init__()
 
         # Initializing the 2 convolutional layers and 2 full-connected layers for the encoder
         
-        self.encConv1 = nn.Conv2d(imgChannels, convdim1, 5)
-        self.encConv2 = nn.Conv2d(convdim1, convdim2, 5)
-        n_nodes = batch_size*convdim2*imsize2*imsize2
-        self.encFC1 = nn.Linear(n_nodes, zDim)
-        self.encFC2 = nn.Linear(n_nodes, zDim) # > 46080
+        self.encConv1 = nn.Conv2d(imgChannels, convdim1, n_filters)
+        self.encConv2 = nn.Conv2d(convdim1, convdim2, n_filters)
+        self.encFC1 = nn.Linear(featureDim, zDim)
+        self.encFC2 = nn.Linear(featureDim, zDim)
 
         # Initializing the fully-connected layer and 2 convolutional layers for decoder
-        self.decFC1 = nn.Linear(zDim, n_nodes)
-        self.decConv1 = nn.ConvTranspose2d(convdim2, convdim1, 5)
-        self.decConv2 = nn.ConvTranspose2d(convdim1, imgChannels, 5)
-
-
+        self.decFC1 = nn.Linear(zDim, featureDim)
+        self.decConv1 = nn.ConvTranspose2d(convdim2, convdim1, n_filters)
+        self.decConv2 = nn.ConvTranspose2d(convdim1, imgChannels, n_filters)
+   
 
     def encoder(self, x):
 
         # Input is fed into 2 convolutional layers sequentially
         # The output feature map are fed into 2 fully-connected layers to predict mean (mu) and variance (logVar)
         # Mu and logVar are used for generating middle representation z and KL divergence loss
-        x = F.relu(self.encConv1(x))    # output 10 * 16 * 16 * 16
-        x = F.relu(self.encConv2(x))    # output 10 * 32 * 12 * 12
+        x = F.relu(self.encConv1(x)) 
+        x = F.relu(self.encConv2(x))
         x_dim = np.prod(list(x.shape))
         x = x.view(-1, x_dim)
         mu = self.encFC1(x)
         logVar = self.encFC2(x)
         return mu, logVar
+
 
     def reparameterize(self, mu, logVar):
 
@@ -101,13 +99,17 @@ class VAE(nn.Module):
         out = self.decoder(z)
         return out, mu, logVar
 
-
+device = torch.device('cpu')
 model = VAE()
-model.load_state_dict(torch.load('/local/scratch/jrs596/VAE/models/VAE.pth'))
+model.to(device)
 
+
+model.load_state_dict(torch.load('/home/jamiesykes/Downloads/VAE.pth'))
+print('here')
+exit(0)
 model.eval()
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 
 #with torch.no_grad():
