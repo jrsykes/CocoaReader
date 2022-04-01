@@ -193,8 +193,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience):
     model.load_state_dict(best_model_wts)
     
 
-    writer.flush()
-    writer.close()
+
     return model, val_loss_history
 
 

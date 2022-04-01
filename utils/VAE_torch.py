@@ -11,25 +11,29 @@ import os
 import numpy as np
 import copy
 import pickle
+from torch.utils.tensorboard import SummaryWriter
+from progress.bar import Bar
 
 import socket
 from mpi4py import MPI
+import time
 
 model_name = 'VAE'
 """
 Initialize Hyperparameters
 """
-batch_size = 2
-learning_rate = 1e-3
-num_epochs = 3
-input_size = 190
+batch_size = 3
+learning_rate = 1e-4
+num_epochs = 50
+input_size = 198
 imgChannels = 3
 n_filters = 5
 imsize2 = input_size - (n_filters-1) * 2
 convdim1 = 16
 convdim2 = 32
-zDim = 156
+zDim = 190
 
+writer = SummaryWriter(log_dir='/local/scratch/jrs596/VAE/logs')
 
 """
 Create dataloaders
@@ -43,11 +47,19 @@ data_transforms = {
     ])
 }
 
-#train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised'
-train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised_test'
+train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised'
+#train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised_test'
 train_dataset = datasets.ImageFolder(train_dir, data_transforms['train'])
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
+running_mean = 0.0
+running_var = 0.0
+for idx, data in enumerate(train_loader):
+    running_mean += data[0].mean() * batch_size
+    running_var += data[0].var() * batch_size
+
+mean = running_mean/len(train_loader.dataset)
+var = running_var/len(train_loader.dataset)
 
 
 """
@@ -59,31 +71,30 @@ class VAE(nn.Module):
 
         # Initializing the 2 convolutional layers and 2 full-connected layers for the encoder
         
-        self.encConv1 = nn.Conv2d(imgChannels, convdim1, n_filters)
-        self.encConv2 = nn.Conv2d(convdim1, convdim2, n_filters)
-        
-        self.encFC1 = nn.Linear(featureDim, zDim)
-        self.encFC2 = nn.Linear(featureDim, zDim) 
+        self.encConv1 = nn.Conv2d(imgChannels, convdim1, n_filters).to('cuda:0')
+        self.encConv2 = nn.Conv2d(convdim1, convdim2, n_filters).to('cuda:0')
+        self.encFC1 = nn.Linear(featureDim, zDim).to('cuda:0')
+        self.encFC2 = nn.Linear(featureDim, zDim).to('cuda:0')
 
         # Initializing the fully-connected layer and 2 convolutional layers for decoder
-        self.decFC1 = nn.Linear(zDim, featureDim)
-        self.decConv1 = nn.ConvTranspose2d(convdim2, convdim1, n_filters)
-        self.decConv2 = nn.ConvTranspose2d(convdim1, imgChannels, n_filters)
-
-
+        self.decFC1 = nn.Linear(zDim, featureDim).to('cuda:1')
+        self.decConv1 = nn.ConvTranspose2d(convdim2, convdim1, n_filters).to('cuda:0')
+        self.decConv2 = nn.ConvTranspose2d(convdim1, imgChannels, n_filters).to('cuda:0')
+   
 
     def encoder(self, x):
 
         # Input is fed into 2 convolutional layers sequentially
         # The output feature map are fed into 2 fully-connected layers to predict mean (mu) and variance (logVar)
         # Mu and logVar are used for generating middle representation z and KL divergence loss
-        x = F.relu(self.encConv1(x)) 
+        x = F.relu(self.encConv1(x.to('cuda:0'))) 
         x = F.relu(self.encConv2(x))
         x_dim = np.prod(list(x.shape))
         x = x.view(-1, x_dim)
         mu = self.encFC1(x)
         logVar = self.encFC2(x)
         return mu, logVar
+
 
     def reparameterize(self, mu, logVar):
 
@@ -96,9 +107,9 @@ class VAE(nn.Module):
 
         # z is fed back into a fully-connected layers and then into two transpose convolutional layers
         # The generated output is the same size of the original input
-        x = F.relu(self.decFC1(z))
+        x = F.relu(self.decFC1(z.to('cuda:1')))
         x = x.view(batch_size, convdim2, imsize2 ,imsize2)
-        x = F.relu(self.decConv1(x))
+        x = F.relu(self.decConv1(x.to('cuda:0')))
         x = torch.sigmoid(self.decConv2(x))
         return x
 
@@ -113,64 +124,77 @@ class VAE(nn.Module):
 
 
 model = VAE()
-device = torch.device(f"cuda:{0}")
-model.to(device)
-
-"""
-Allow model to train on all GPUs 
-"""
-
-
-
-
-#host = socket.gethostname()
-#address = socket.gethostbyname(host)#
-
-#comm = MPI.COMM_WORLD
-#world_size = comm.Get_size()
-#rank = comm.Get_rank()
-#info = dict()
-#info = comm.bcast(info, root=0)
-#info.update(dict(MASTER_ADDR=address, MASTER_PORT='1234'))
-#os.environ.update(info)#
-#
-#
-
-#torch.distributed.init_process_group(backend='nccl', rank=rank, 
-#    world_size=world_size, store=None)
-
-#model = nn.parallel.DistributedDataParallel(model, device_ids=[device])
+#device = torch.device("cuda")
+#model.to(device)
 
 
 """
 Training 
 """
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+#kl_loss = nn.KLDivLoss(reduction="batchmean", log_target=True)
 
 for epoch in range(num_epochs):
-    for idx, data in enumerate(train_loader):
-        imgs = data[0]
-        imgs = imgs.to(device)
-        # Feeding a batch of images into the network to obtain the output image, mu, and logVar
+    running_ELBO = 0.0
+    running_CE = 0.0
+    running_KL = 0.0
+    n = len(train_loader.dataset)
+    
+    with Bar('Processing batch', max=n/batch_size) as bar:
+        for idx, data in enumerate(train_loader):
+                    
+            imgs = data[0]
+            labels = imgs.to('cuda:0')
+            # Feeding a batch of images into the network to obtain the output image, mu, and logVar 
 
+            out, mu, logVar = model(imgs)   
 
-        out, mu, logVar = model(imgs)
+            #input_ = torch.cat((mu,logVar))    
 
-         # The loss is the BCE loss combined with the KL divergence to ensure the distribution is learnt
-        kl_divergence = -0.5 * torch.sum(1 + logVar - mu.pow(2) - logVar.exp())
-        loss = F.binary_cross_entropy(out, imgs) + kl_divergence
+             # The loss is the BCE loss combined with the KL divergence to ensure the distribution is learnt
+            #kl_divergence = -0.5 * torch.sum(1 + logVar - mu.pow(2) - logVar.exp())
+            #print(kl_divergence)   
 
+            #################
+            """
+            My KL divergence definition
+            """
+            kl_divergence = torch.mean(-mean * (var.log() + logVar - mu**2 - logVar.exp()))
+            # Check this isn't just checking aganst abribrary normal distribution
+            # Definifition above found here:
+            #https://keras.io/examples/generative/vae/
+            #kl_divergence = kl_loss(input_, target)
+            #print('KL divergene: ' + str(kl_divergence.item()))
+            
+            binary_cross_entropy = F.binary_cross_entropy(out, labels)  
 
-        # Backpropagation
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            loss = binary_cross_entropy + kl_divergence 
+
+            running_ELBO += loss.item() * imgs.shape[0]
+            running_CE += binary_cross_entropy.item() * imgs.shape[0]
+            running_KL += kl_divergence.item() * imgs.shape[0]  
+
+            # Backpropagation
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()  
+
+            bar.next()
+
+    epoch_loss = round(float(running_ELBO / n),4)
+    epoch_CE = round(float(running_CE / n),4)
+    epoch_KL = round(float(running_KL / n),4)
+
+    writer.add_scalar("ELBO/train", epoch_loss, epoch)
+    writer.add_scalar("Cross entropy/train", epoch_CE, epoch)
+    writer.add_scalar("KL divergence/train", epoch_KL, epoch)
 
     PATH = '/local/scratch/jrs596/VAE/models'
     torch.save(model.state_dict(), os.path.join(PATH, model_name + '.pth'))
 
-    print('Epoch {}: Loss {}'.format(epoch, loss))
+    print('Epoch {}: ELBO loss {}'.format(epoch, epoch_loss))
+    print('KL divergence {}: Binary Cross Entropy {}'.format(epoch_KL, epoch_CE))
 
-
+writer.flush()
+writer.close()
 
