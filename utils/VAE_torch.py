@@ -13,20 +13,20 @@ import copy
 import pickle
 from torch.utils.tensorboard import SummaryWriter
 from progress.bar import Bar
-
+import torchvision
 import socket
 from mpi4py import MPI
 import time
 
-model_name = 'VAE'
+model_name = 'VAE_MNIST'
 """
 Initialize Hyperparameters
 """
-batch_size = 2
+batch_size = 2#2
 learning_rate = 1e-4
 num_epochs = 50
-input_size = 82
-imgChannels = 3
+input_size = 20#82
+imgChannels = 1#3
 n_filters = 5
 imsize2 = input_size - (n_filters-1) * 3
 convdim1 = 8
@@ -40,18 +40,22 @@ writer = SummaryWriter(log_dir='/local/scratch/jrs596/VAE/logs')
 Create dataloaders
 """
 
-data_transforms = {
-    'train': transforms.Compose([
+data_transforms = transforms.Compose([
         transforms.Resize((input_size,input_size)),
         transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-    ])
-}
+        transforms.ToTensor()])
 
-train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised'
+
+#train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised'
 #train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_unorganised_test'
-train_dataset = datasets.ImageFolder(train_dir, data_transforms['train'])
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+#train_dataset = datasets.ImageFolder(train_dir, data_transforms['train'])
+#train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+
+mnist_data = torchvision.datasets.MNIST('/local/scratch/jrs596/dat/mnist', transform=data_transforms)
+train_loader = torch.utils.data.DataLoader(mnist_data,
+                                          batch_size=2,
+                                          shuffle=True,
+                                          num_workers=4)
 
 n = len(train_loader.dataset)
 if n%batch_size != 0:
