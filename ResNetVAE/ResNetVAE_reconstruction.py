@@ -34,11 +34,11 @@ exp = 'cifar10'
 
 # use same ResNet Encoder saved earlier!
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
-CNN_embed_dim = 356
-res_size = 448        # ResNet image size
+CNN_embed_dim = 1000
+res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
-epoch = 2
+epoch = 12
 
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
 device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
@@ -77,7 +77,7 @@ def validation(model, device, optimizer, test_loader):
 
 # reload ResNetVAE model and weights
 resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, 
-    CNN_embed_dim=CNN_embed_dim)#, img_size=res_size)
+    CNN_embed_dim=CNN_embed_dim, img_size=res_size)
 weights = torch.load(os.path.join(saved_model_path, 'model_epoch{}.pth'.format(epoch)))#, map_location=torch.device('cpu'))
 resnet_vae.to(device)
 
@@ -96,7 +96,7 @@ resnet_vae.load_state_dict(weights)
 print('ResNetVAE epoch {} model reloaded!'.format(epoch))
 
 
-val_transform = transforms.Compose([transforms.Resize([448, 448]),
+val_transform = transforms.Compose([transforms.Resize([res_size, res_size]),
                                 #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                 transforms.ToTensor()])
 

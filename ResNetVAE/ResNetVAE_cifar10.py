@@ -22,14 +22,14 @@ import numpy as np
 
 # EncoderCNN architecture
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
-CNN_embed_dim = 356     # latent dim extracted by 2D CNN
+CNN_embed_dim = 1000     # latent dim extracted by 2D CNN
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
 
 # training parameters
 epochs = 200        # training epochs
-batch_size = 84
+batch_size = 20
 learning_rate = 1e-3
 log_interval = 10   # interval for displaying training info
 
@@ -141,8 +141,8 @@ train_transform = transforms.Compose([transforms.Resize([int(res_size*1.15), int
 #                                transforms.ToTensor()])
 
 
-train_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train'
-#train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/val'
+#train_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train'
+train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/train'
 train_dataset = torchvision.datasets.ImageFolder(train_dir, transform=train_transform)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=6)
 
