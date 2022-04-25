@@ -10,50 +10,51 @@ from torch.autograd import Variable
 import torchvision.transforms as transforms
 
 
-class Dataset(data.Dataset):
-    "Characterizes a dataset for PyTorch"
-    def __init__(self, filenames, labels, transform=None):
-        "Initialization"
-        self.filenames = filenames
-        self.labels = labels
-        self.transform = transform
+#class Dataset(data.Dataset):
+#    "Characterizes a dataset for PyTorch"
+#    def __init__(self, filenames, labels, transform=None):
+#        "Initialization"
+#        self.filenames = filenames
+#        self.labels = labels
+#        self.transform = transform#
 
-    def __len__(self):
-        "Denotes the total number of samples"
-        return len(self.filenames)
+#    def __len__(self):
+#        "Denotes the total number of samples"
+#        return len(self.filenames)#
+#
+
+#    def __getitem__(self, index):
+#        "Generates one sample of data"
+#        # Select sample
+#        filename = self.filenames[index]
+#        X = Image.open(filename)#
+
+#        if self.transform:
+#            X = self.transform(X)     # transform#
+
+#        y = torch.LongTensor([self.labels[index]])
+#        return X, y#
+
+### ---------------------- end of Dataloaders ---------------------- ###
+
+#def conv2D_output_size(img_size, padding, kernel_size, stride):
+#    # compute output shape of conv2D
+#    outshape = (np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
+#                np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int))
+#    return outshape#
+
+#def convtrans2D_output_size(img_size, padding, kernel_size, stride):
+#    # compute output shape of conv2D
+#    outshape = ((img_size[0] - 1) * stride[0] - 2 * padding[0] + kernel_size[0],
+#                (img_size[1] - 1) * stride[1] - 2 * padding[1] + kernel_size[1])
+#    return outshape
 
 
-    def __getitem__(self, index):
-        "Generates one sample of data"
-        # Select sample
-        filename = self.filenames[index]
-        X = Image.open(filename)
+## ---------------------- ConvNeXt VAE ---------------------- ##
 
-        if self.transform:
-            X = self.transform(X)     # transform
-
-        y = torch.LongTensor([self.labels[index]])
-        return X, y
-
-## ---------------------- end of Dataloaders ---------------------- ##
-
-def conv2D_output_size(img_size, padding, kernel_size, stride):
-    # compute output shape of conv2D
-    outshape = (np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
-                np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int))
-    return outshape
-
-def convtrans2D_output_size(img_size, padding, kernel_size, stride):
-    # compute output shape of conv2D
-    outshape = ((img_size[0] - 1) * stride[0] - 2 * padding[0] + kernel_size[0],
-                (img_size[1] - 1) * stride[1] - 2 * padding[1] + kernel_size[1])
-    return outshape
-
-## ---------------------- ResNet VAE ---------------------- ##
-
-class ResNet_VAE(nn.Module):
-    def __init__(self, fc_hidden1=1024, fc_hidden2=768, drop_p=0.3, CNN_embed_dim=256, img_size=224):
-        super(ResNet_VAE, self).__init__()
+class ConvNeXt_VAE(nn.Module):
+    def __init__(self, fc_hidden1=1024, fc_hidden2=768, drop_p=0.3, CNN_embed_dim=356):
+        super(ConvNeXt_VAE, self).__init__()
 
         self.fc_hidden1, self.fc_hidden2, self.CNN_embed_dim = fc_hidden1, fc_hidden2, CNN_embed_dim
 
@@ -64,9 +65,13 @@ class ResNet_VAE(nn.Module):
         self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2d padding
 
         # encoding components
-        resnet = models.resnet152(pretrained=True)
-        modules = list(resnet.children())[:-1]      # delete the last fc layer.
-        self.resnet = nn.Sequential(*modules)
+        convnext = models.convnext_tiny(pretrained=True)
+        modules = list(convnext.children())[:-1]      # delete the last fc layer.
+        self.convnext = nn.Sequential(*modules)
+        x = list(convnext.children())[2][2].in_features#.fc.in_features)
+        print(x)
+
+        exit(0)
         self.fc1 = nn.Linear(resnet.fc.in_features, self.fc_hidden1)
         self.bn1 = nn.BatchNorm1d(self.fc_hidden1, momentum=0.01)
         self.fc2 = nn.Linear(self.fc_hidden1, self.fc_hidden2)
@@ -125,21 +130,28 @@ class ResNet_VAE(nn.Module):
         else:
             return mu
 
-    def decode(self, z, img_size=224):
+    def decode(self, z):
         x = self.relu(self.fc_bn4(self.fc4(z)))
         x = self.relu(self.fc_bn5(self.fc5(x))).view(-1, 64, 4, 4)
         x = self.convTrans6(x)
         x = self.convTrans7(x)
         x = self.convTrans8(x)
-        x = F.interpolate(x, size=(img_size, img_size), mode='bilinear')
+        x = F.interpolate(x, size=(448, 448), mode='bilinear')
         return x
 
-    def forward(self, x, img_size=224):
+    def forward(self, x):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
-        x_reconst = self.decode(z, img_size)
+        x_reconst = self.decode(z)
 
         return x_reconst, z, mu, logvar
 
 
 
+
+CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
+CNN_embed_dim = 356     # latent dim extracted by 2D CNN
+#res_size = 448        # ResNet image size
+dropout_p = 0.2       # dropout probability
+
+concnext_vae = ConvNeXt_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, CNN_embed_dim=CNN_embed_dim).to(device)

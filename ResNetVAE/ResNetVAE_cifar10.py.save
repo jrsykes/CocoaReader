@@ -23,29 +23,28 @@ import numpy as np
 # EncoderCNN architecture
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
 CNN_embed_dim = 356     # latent dim extracted by 2D CNN
-res_size = 224        # ResNet image size
+#res_size = 448        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
 
 # training parameters
 epochs = 200        # training epochs
-batch_size = 84
+batch_size = 23
 learning_rate = 1e-3
 log_interval = 10   # interval for displaying training info
 
 # save model
-save_model_path = '/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_356_LatentDim'
+save_model_path = '/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_456_LatentDim'
 
 def check_mkdir(dir_name):
     if not os.path.exists(dir_name):
         os.mkdir(dir_name)
 
 
-
 def loss_function(recon_x, x, mu, logvar):
     #BCE = F.mse_loss(recon_x, x, reduction='sum')
     BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.ex3())
     return BCE + KLD
 
 def train(log_interval, model, device, dataloader, optimizer, epoch):
@@ -130,29 +129,27 @@ device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
 # Data loading parameters
 params = {'batch_size': batch_size, 'shuffle': True, 'num_workers': 2, 'pin_memory': True} if use_cuda else {}
 
-train_transform = transforms.Compose([transforms.Resize([int(res_size*1.15), int(res_size*1.15)]),
-                                transforms.RandomCrop(size=res_size),
+train_transform = transforms.Compose([transforms.Resize([500, 500]),
+                                transforms.RandomCrop(size=448),
                                 transforms.RandomHorizontalFlip(),
                                 #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                 transforms.ToTensor()])
 
-#val_transform = transforms.Compose([transforms.Resize([448, 448]),
-#                                #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-#                                transforms.ToTensor()])
+val_transform = transforms.Compose([transforms.Resize([448, 448]),
+                                #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                                transforms.ToTensor()])
 
 
-train_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train'
-#train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/val'
+train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/train'
 train_dataset = torchvision.datasets.ImageFolder(train_dir, transform=train_transform)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=6)
 
-#val_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/val'
-#val_dataset = torchvision.datasets.ImageFolder(val_dir, transform=val_transform)
-#valid_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=6)
+val_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/val'
+val_dataset = torchvision.datasets.ImageFolder(val_dir, transform=val_transform)
+valid_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=6)
 
 # Create model
-resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, 
-    CNN_embed_dim=CNN_embed_dim, img_size=res_size).to(device)
+resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, CNN_embed_dim=CNN_embed_dim).to(device)
 
 resnet_vae = nn.DataParallel(resnet_vae)
 
@@ -167,22 +164,22 @@ epoch_train_losses = []
 epoch_test_losses = []
 check_mkdir(save_model_path)
 
-writer = SummaryWriter(log_dir=os.path.join(save_model_path, 'logs'))
+writer = SummaryWriter(log_dir=os.path.join(save_model_path, 'logs')
 
 
 # start training
 for epoch in range(epochs):
     # train, test model
     X_reconst_train, y_train, z_train, mu_train, logvar_train, train_losses = train(log_interval, resnet_vae, device, train_loader, optimizer, epoch)
-    #X_reconst_test, y_test, z_test, mu_test, logvar_test, epoch_test_loss = validation(resnet_vae, device, optimizer, valid_loader)
+    #X_reconst_test, y_test, z_test, mu_test, logvar_test, test_loss = validation(resnet_vae, device, optimizer, valid_loader)
 
     writer.add_scalar("Loss/train", mean(train_losses), epoch)
-#    #writer.add_scalar("Loss/test", test_loss, epoch)#
+    writer.add_scalar("Loss/test", test_loss, epoch)
 
     np.save(os.path.join(save_model_path, 'y_cifar10_train_epoch{}.npy'.format(epoch + 1)), y_train)
-    np.save(os.path.join(save_model_path, 'z_cifar10_train_epoch{}.npy'.format(epoch + 1)), z_train)#
+    np.save(os.path.join(save_model_path, 'z_cifar10_train_epoch{}.npy'.format(epoch + 1)), z_train)
 
-#    writer.flush()
+    writer.flush()
 
 
 writer.close()

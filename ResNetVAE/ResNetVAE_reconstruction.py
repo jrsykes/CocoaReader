@@ -26,34 +26,26 @@ import pickle
 from sklearn.datasets import fetch_olivetti_faces
 from torch.utils.data import Dataset, DataLoader, TensorDataset, Subset
 import pandas as pd
-#from skimage.transform import resize
-#
+import time
 
-#def decoder(model, device, z):
-#    model.eval()
-#    z = Variable(torch.FloatTensor(z)).to(device)
-#    new_images = model.decode(z).squeeze_().data.cpu().numpy().transpose((1, 2, 0))
-#    return new_images
-
-saved_model_path = '/local/scratch/jrs596/ResNetVAE/results'
-#saved_model_path = './results_Olivetti_face'
-# saved_model_path = './results_MNIST'
+saved_model_path = '/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_356_LatentDim'
 
 exp = 'cifar10'
-#exp = 'Olivetti'
-# exp = 'MNIST'
 
 # use same ResNet Encoder saved earlier!
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
-CNN_embed_dim = 256
-res_size = 224        # ResNet image size
+CNN_embed_dim = 356
+res_size = 448        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
-epoch = 200
+epoch = 2
 
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
 device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
 #device = torch.device("cpu")
+
+
+from torchvision.utils import make_grid
 
 
 def validation(model, device, optimizer, test_loader):
@@ -65,6 +57,18 @@ def validation(model, device, optimizer, test_loader):
             # distribute data to device
             X, y = X.to(device), y.to(device).view(-1, )
             X_reconst, z, mu, logvar = model(X)
+            im = X_reconst[0].cpu()
+            im1 = im.permute(1, 2, 0)
+            im = X[0].cpu()
+            im2 = im.permute(1, 2, 0)
+            
+            f, axarr =  plt.subplots(2, sharex=True)
+            axarr[0].imshow(im1)
+            axarr[1].imshow(im2)
+            
+            plt.show()
+            time.sleep(3)
+ 
             BCE = F.binary_cross_entropy(X_reconst, X, reduction='sum')
             loss.append(BCE)
     return loss
@@ -72,7 +76,8 @@ def validation(model, device, optimizer, test_loader):
 
 
 # reload ResNetVAE model and weights
-resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, CNN_embed_dim=CNN_embed_dim)
+resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, 
+    CNN_embed_dim=CNN_embed_dim)#, img_size=res_size)
 weights = torch.load(os.path.join(saved_model_path, 'model_epoch{}.pth'.format(epoch)))#, map_location=torch.device('cpu'))
 resnet_vae.to(device)
 
@@ -91,7 +96,7 @@ resnet_vae.load_state_dict(weights)
 print('ResNetVAE epoch {} model reloaded!'.format(epoch))
 
 
-val_transform = transforms.Compose([transforms.Resize([224, 224]),
+val_transform = transforms.Compose([transforms.Resize([448, 448]),
                                 #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                 transforms.ToTensor()])
 
@@ -121,75 +126,5 @@ for key, value in val_dataset.class_to_idx.items():
 
 df.to_csv('/local/scratch/jrs596/ResNetVAE/results/losses.csv', index=False)
 
-
-
-
-exit(0)
-
-# ## Reconstruction 
-
-# In[ ]:
-
-
-z_train = np.load(os.path.join(saved_model_path, 'z_{}_train_epoch{}.npy').format(exp, epoch))
-X_train = np.load(os.path.join(saved_model_path, 'X_{}_train_epoch{}.npy').format(exp, epoch))
-
-ind = 1
-zz = torch.from_numpy(z_train[ind]).view(1, -1)
-X = np.transpose(X_train[ind], (1, 2, 0))
-
-new_imgs = decoder(resnet_vae, device, zz)
-
-fig = plt.figure(figsize=(10, 10))
-
-plt.subplot(1, 2, 1)
-plt.imshow(X)
-plt.title('original')
-plt.axis('off')
-
-plt.subplot(1, 2, 2)
-plt.imshow(new_imgs)
-plt.title('reconstructed')
-plt.axis('off')
-plt.savefig("./reconstruction_{}.png".format(exp), bbox_inches='tight', dpi=600)
-plt.show()
-
-exit(0)
-# ## Generate new images from latent points
-
-# In[ ]:
-
-
-# choose two original images
-sample1, sample2 = 0, 1
-w = 0.4 # weight for fusing two images
-
-X1 = np.transpose(X_train[-sample1], (1, 2, 0))
-X2 = np.transpose(X_train[-sample2], (1, 2, 0))
-
-# generate image using decoder
-z_train = np.load(os.path.join(saved_model_path, 'z_{}_train_epoch{}.npy').format(exp, epoch))
-z = z_train[-sample1] * w + z_train[-sample2] * (1 - w)
-new_imgs = decoder(resnet_vae, device, torch.from_numpy(z).view(1, -1))
-
-fig = plt.figure(figsize=(15, 15))
-
-plt.subplot(1, 3, 1)
-plt.imshow(X1)
-plt.title('original 1')
-plt.axis('off')
-
-plt.subplot(1, 3, 2)
-plt.imshow(X2)
-plt.title('original 2')
-plt.axis('off')
-
-
-plt.subplot(1, 3, 3)
-plt.imshow(new_imgs)
-plt.title('new image')
-plt.axis('off')
-plt.savefig("./generated_{}.png".format(exp), bbox_inches='tight', dpi=600)
-plt.show()
 
 
