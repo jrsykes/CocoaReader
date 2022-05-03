@@ -15,17 +15,17 @@ import os
 import time
 
       
-epoch = 3
+epoch = 44
 exp = 'cifar10'
 # exp = 'MNIST'
 
 N = 87197 # image number
 
-y_train = np.load('/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData/y_{}_train_epoch{}.npy'.format(exp, epoch))
-z_train = np.load('/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData/z_{}_train_epoch{}.npy'.format(exp, epoch))
+y_train = np.load('/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_356_LatentDim/y_{}_train_epoch{}.npy'.format(exp, epoch))
+z_train = np.load('/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_356_LatentDim/z_{}_train_epoch{}.npy'.format(exp, epoch))
 #classes = ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']  # cifar10
 # classes = np.arange(10) #MNIST
-classes = tuple(os.listdir('/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train'))
+classes = tuple(os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised/train'))
 #classes = ['PotatoesDiseased', 'PeachesHealthy', 'TomatoesHealthy']
 # ## Direct projection of latent space
 
