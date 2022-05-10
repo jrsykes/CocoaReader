@@ -2,26 +2,26 @@ import shutil
 import os
 import random
 
-dir_ = '/local/scratch/jrs596/dat/compiled_cocoa_images/'
+#dir_ = '/local/scratch/jrs596/dat/PlantNotPlant'
+dir_ = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Filtered'
 
-classes = ['FPR', 'Healthy', 'BPR', 'WBD']
+classes = os.listdir(dir_)
+
 
 for i in classes:
-	images = os.listdir(dir_ + i)
+	images = os.listdir(os.path.join(dir_, i))
 	random.shuffle(images)
-	train_set = images[:int(len(images)*0.9)]
-	test_set = images[int(len(images)*0.9):]
-	
-	os.makedirs(dir_ + 'CrossVal_split/train/' + i, exist_ok = True)
-	os.makedirs(dir_ + 'CrossVal_split/test/' + i, exist_ok = True)
-	
-	for j in train_set:
-		source = dir_ + i + '/' + j
-		dest = dir_ + 'CrossVal_split/train/' + i + '/' + j
-		shutil.copy(source, dest)
-		
-	for j in test_set:
-		source = dir_ + i + '/' + j
-		dest = dir_ + 'CrossVal_split/test/' + i + '/' + j
-		shutil.copy(source, dest)
+	dat_dict = {'train': images[:int(len(images)*0.8)], 
+		'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
+		'val': images[int(len(images)*0.9):]}
+
+
+	for key, value in dat_dict.items():
+		dest_path = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_filtered_split'
+		os.makedirs(os.path.join(dest_path , key, i), exist_ok = True)
+		for j in value:
+			source = os.path.join(dir_, i, j)
+			dest = os.path.join(dest_path, key, i, j)
+			shutil.copy(source, dest)
+
 

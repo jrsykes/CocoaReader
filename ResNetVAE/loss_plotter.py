@@ -10,9 +10,9 @@ import torchvision.transforms as transforms
 import torch
 import shutil
 
-print('Fix bug. Scrap images in wrong class folder')
-exit(0)
+
 img_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/'
+#img_dir = '/local/scratch/jrs596/dat/test'
 
 df = pd.read_csv('/local/scratch/jrs596/ResNetVAE/results/losses.csv', header=0)
 
@@ -21,18 +21,25 @@ classes = tuple(os.listdir(img_dir))
 dataset = torchvision.datasets.ImageFolder(img_dir)
 
 
+try:
+	shutil.rmtree('/local/scratch/jrs596/dat/scrap_imgs')
+except:
+	pass
 
-shutil.rmtree('/local/scratch/jrs596/dat/scrap_imgs')
 key_list = list(dataset.class_to_idx.keys())
 val_list = list(dataset.class_to_idx.values())
 
-arr = df['loss'].to_numpy()
-ci = norm(*norm.fit(arr)).interval(0.90)
+
 
 for j in classes:
 	print(j)
-	
-	dat = df[df['class'] == j]
+
+
+	arr = df.where(df['Class']==j)['lossR'].to_numpy()
+	arr = arr[~np.isnan(arr)]
+	ci = norm(*norm.fit(arr)).interval(0.90)
+
+	dat = df[df['Class'] == j]
 
 	#arr = np.random.normal(size=500)
 #	arr = dat['loss'].to_numpy()
@@ -41,7 +48,9 @@ for j in classes:
 #	plt.fill_betweenx([0, height.max()], ci[0], ci[1], color='g', alpha=0.1)  # Mark between 0 and the highest bar in the histogram
 #	plt.show()
 
-	outliers = dat.loc[dat['loss'] > ci[1]]
+	outliers_up = dat.loc[dat['lossR'] > ci[1]]
+	outliers_dwn = dat.loc[dat['lossR'] < ci[0]]
+	outliers = pd.concat([outliers_up, outliers_dwn])
 
 	if len(outliers) > 0:
 		os.makedirs(os.path.join('/local/scratch/jrs596/dat/scrap_imgs', j), exist_ok = True)

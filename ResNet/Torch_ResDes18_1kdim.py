@@ -14,16 +14,19 @@ from torch.utils.tensorboard import SummaryWriter
 import pickle
 import numpy as np
 from sklearn import metrics
+from progress.bar import Bar
+
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
+data_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_filtered_split'
 
 # File name for model
-model_name = "ResDes18_1kdim"
+model_name = "ResDes18_1kdim_HighRes_TinyIN_Filtered"
 
 # Number of classes in the dataset
-num_classes = 53
+num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
+
 
 # Batch size for training (change depending on how much memory you have)
 batch_size = 42
@@ -53,10 +56,10 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     best_model_wts = copy.deepcopy(model.state_dict())
 
     ### Calculate and set bias for final layer based on imbalance in dataset classes
-    dir_ = data_dir + '/train/'
+    dir_ = os.path.join(data_dir, 'train')
     list_cats = []
     for i in sorted(os.listdir(dir_)):
-        path, dirs, files = next(os.walk(dir_ + i))
+        path, dirs, files = next(os.walk(os.path.join(dir_, i)))
         list_cats.append(len(files))
     
     weights = []
@@ -96,43 +99,47 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
             running_f1 = 0
 
             # Iterate over data.
-            
-            for inputs, labels in dataloaders[phase]:
-                #count += 1
-                inputs = inputs.to(device)
-                labels = labels.to(device)
+            n = len(dataloaders_dict[phase].dataset)
+            with Bar(phase + '\nLearning...', max=n/batch_size) as bar:
+                print()
+                for inputs, labels in dataloaders[phase]:
+                    #count += 1
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)  
 
-                # zero the parameter gradients
-                optimizer.zero_grad()
+                    # zero the parameter gradients
+                    optimizer.zero_grad()   
 
-                # forward
-                # track history if only in train
-                with torch.set_grad_enabled(phase == 'train'):
-                    # Get model outputs and calculate loss
-                    # In train mode we calculate the loss by summing the final output and the auxiliary output
-                    # but in testing we only consider the final output.
-                    outputs = model(inputs)
-                    loss = criterion(outputs, labels)
+                    # forward
+                    # track history if only in train
+                    with torch.set_grad_enabled(phase == 'train'):
+                        # Get model outputs and calculate loss
+                        # In train mode we calculate the loss by summing the final output and the auxiliary output
+                        # but in testing we only consider the final output.
+                        outputs = model(inputs)
+                        loss = criterion(outputs, labels)   
 
-                    _, preds = torch.max(outputs, 1)
+                        _, preds = torch.max(outputs, 1)    
 
-                    # backward + optimize only if in training phase
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
+                        # backward + optimize only if in training phase
+                        if phase == 'train':
+                            loss.backward()
+                            optimizer.step()    
 
-                #Calculate statistics
-                #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
-                #running totals for these metrics by the total number of training or test samples. This controls for 
-                #the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                    #Calculate statistics
+                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
+                    #running totals for these metrics by the total number of training or test samples. This controls for 
+                    #the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
+                    running_loss += loss.item() * inputs.size(0)
+                    running_corrects += torch.sum(preds == labels.data) 
 
-                stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-                stats_out = stats['weighted avg']
-                running_precision += stats_out['precision'] * inputs.size(0)
-                running_recall += stats_out['recall'] * inputs.size(0)
-                running_f1 += stats_out['f1-score'] * inputs.size(0)
+                    stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
+                    stats_out = stats['weighted avg']
+                    running_precision += stats_out['precision'] * inputs.size(0)
+                    running_recall += stats_out['recall'] * inputs.size(0)
+                    running_f1 += stats_out['f1-score'] * inputs.size(0)
+
+                    bar.next()
 
             n = len(dataloaders_dict[phase].dataset)
             epoch_loss = float(running_loss / n)
@@ -244,7 +251,7 @@ data_transforms = {
     ]),
     'val': transforms.Compose([
         transforms.Resize(input_size),
-        transforms.CenterCrop(input_size),
+        #transforms.CenterCrop(input_size),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
@@ -279,10 +286,10 @@ if feature_extract:
         if param.requires_grad == True:
             params_to_update.append(param)
             print("\t",name)
-else:
-    for name,param in model_ft.named_parameters():
-        if param.requires_grad == True:
-            print("\t",name)
+#else:
+ #   for name,param in model_ft.named_parameters():
+        #if param.requires_grad == True:
+            #print("\t",name)
 
 # Observe that all parameters are being optimized
 optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)

@@ -1,31 +1,11 @@
-import os
-import glob
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision.models as models
-import torchvision.transforms as transforms
-import torch.utils.data as data
-import torchvision
-from torch.autograd import Variable
-import matplotlib.pyplot as plt
-from modules import *
-from sklearn.model_selection import train_test_split
-import pickle
-from torch.utils.tensorboard import SummaryWriter
-from statistics import mean
-import time
-from matplotlib import pyplot as plt
-import numpy as np
 
 
 
-# EncoderCNN architecture
-CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
-CNN_embed_dim = 356     # latent dim extracted by 2D CNN
-#res_size = 448        # ResNet image size
-dropout_p = 0.2       # dropout probability
+search_key = 'witches broom disease Theobroma cacao witches broom disease Moniliophthora perniciosa'
+url = "https://www.google.com/search?q=%s&source=lnms&tbm=isch&sa=X&ved=2ahUKEwie44_AnqLpAhUhBWMBHUFGD90Q_AUoAXoECBUQAw&biw=1920&bih=947"%(search_key)
 
+print(url)
 
-convnext_vae = ConvNeXt_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, CNN_embed_dim=CNN_embed_dim)
+https://www.google.com/search?q=%s&source=lnms&tbm=isch&sa=X&ved=2ahUKEwie44_AnqLpAhUhBWMBHUFGD90Q_AUoAXoECBUQAw&biw=1920&bih=947
+"https://www.google.com/search?q=%s&tbm=isch&tbs=il:cl&hl=en-GB&sa=X&ved=0CAAQ1vwEahcKEwjotd3vlsj3AhUAAAAAHQAAAAAQAg&biw=1412&bih=1257"%(search_key)
+https://www.google.com/search?q=%s&tbm=isch&hl=en-GB&tbs=il:ol&sa=X&ved=0CAAQ1vwEahcKEwiI2LL9lsj3AhUAAAAAHQAAAAAQAg&biw=1405&bih=1272

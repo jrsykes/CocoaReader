@@ -9,55 +9,57 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 import numpy as np
 import pickle
 import os
 import time
 
       
-epoch = 44
-exp = 'cifar10'
-# exp = 'MNIST'
+y_train = np.load('/local/scratch/jrs596/ResNetVAE/ForesArabData_Random_PredictedZ/y_cifar10_train_epoch.npy')
+z_train = np.load('/local/scratch/jrs596/ResNetVAE/ForesArabData_Random_PredictedZ/z_cifar10_train_epoch.npy')
 
-N = 87197 # image number
+classes = tuple(os.listdir('/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_VAE_filtered_unsplit'))
 
-y_train = np.load('/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_356_LatentDim/y_{}_train_epoch{}.npy'.format(exp, epoch))
-z_train = np.load('/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_356_LatentDim/z_{}_train_epoch{}.npy'.format(exp, epoch))
-#classes = ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']  # cifar10
-# classes = np.arange(10) #MNIST
-classes = tuple(os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised/train'))
-#classes = ['PotatoesDiseased', 'PeachesHealthy', 'TomatoesHealthy']
-# ## Direct projection of latent space
+#classes = tuple(os.listdir('/local/scratch/jrs596/dat/test2/images'))
 
 # In[ ]:
-
-
-y_train = y_train[:N]
-z_train = z_train[:N]
-
-fig = plt.figure(figsize=(12, 10))
-plots = []
-#markers = ['o', ',', 'x', '+', 'v', '^', '<', '>', 's', 'd']
-
-for i, c in enumerate(classes):
-    ind = (y_train == i).tolist() or ([j < N // len(classes) for j in range(len(y_train))])
-    color = cm.jet([i / len(classes)] * sum(ind))
-    plots.append(plt.scatter(z_train[ind, 1], z_train[ind, 2], c=color, s=8, label=i))
-
-plt.axis('off')
-plt.legend(plots, classes, fontsize=14, loc='upper right')
-plt.title('{} (direct projection: {}-dim -> 2-dim)'.format(exp, z_train.shape[1]), fontsize=14)
-plt.savefig("./ResNetVAE_{}_direct_plot.png".format(exp), bbox_inches='tight', dpi=600)
-plt.show()
 
 # ## Use t-SNE for dimension reduction
 
 # ### compressed to 2-dimension
 
+# first reduce dimensionality before feeding to t-sne
+print('Running PCA')
+pca = PCA(n_components=100)
+X_pca = pca.fit_transform(z_train) 
+
+exp_var_pca = pca.explained_variance_ratio_
+#
+# Cumulative sum of eigenvalues; This will be used to create step plot
+# for visualizing the variance explained by each principal component.
+#
+cum_sum_eigenvalues = np.cumsum(exp_var_pca)
+#
+# Create the visualization plot
+#
+plt.bar(range(0,len(exp_var_pca)), exp_var_pca, alpha=0.5, align='center', label='Individual explained variance')
+plt.step(range(0,len(cum_sum_eigenvalues)), cum_sum_eigenvalues, where='mid',label='Cumulative explained variance')
+plt.ylabel('Explained variance ratio')
+plt.xlabel('Principal component index')
+plt.legend(loc='best')
+plt.tight_layout()
+plt.show()
+
+#plt.plot(np.cumsum(pca.explained_variance_ratio_))
+#plt.xlabel('number of components')
+#plt.ylabel('cumulative explained variance')
+#plt.show()
+
 # In[ ]:
-
-
-z_embed = TSNE(n_components=2, n_iter=12000).fit_transform(z_train[:N])
+print('Running t-NSE')
+tsne = TSNE(n_components=2, verbose=1, perplexity=50, n_iter=10000, learning_rate='auto')
+z_embed = tsne.fit_transform(X_pca)
 
 
 # In[ ]:
@@ -67,7 +69,7 @@ fig = plt.figure(figsize=(12, 10))
 plots = []
 markers = ['o', ',', 'x', '+', 'v', '^', '<', '>', 's', 'd']  # select different markers
 for i, c in enumerate(classes):
-    ind = (y_train[:N] == i).tolist()
+    ind = (y_train == i).tolist()
     color = cm.jet([i / len(classes)] * sum(ind))
     # plot each category one at a time 
     plots.append(plt.scatter(z_embed[ind, 0], z_embed[ind, 1], c=color, s=8, label=i))
@@ -76,46 +78,7 @@ plt.axis('off')
 plt.xlim(-150, 150)
 plt.ylim(-150, 150)
 plt.legend(plots, classes, fontsize=14, loc='upper right')
-plt.title('{} (t-SNE: {}-dim -> 2-dim)'.format(exp, z_train.shape[1]), fontsize=14)
-plt.savefig("./ResNetVAE_{}_embedded_plot.png".format(exp), bbox_inches='tight', dpi=600)
-plt.show()
-
-
-# ### compressed to 3-dimension
-
-# In[ ]:
-
-
-z_embed3D = TSNE(n_components=3, n_iter=12000).fit_transform(z_train[:N])
-
-
-# In[ ]:
-
-
-fig = plt.figure(figsize=(12, 10))
-ax = fig.add_subplot(111, projection='3d')
-
-plots = []
-markers = ['o', ',', 'x', '+', 'v', '^', '<', '>', 's', 'd']  # select different markers
-for i, c in enumerate(classes):
-    ind = (y_train[:N] == i).tolist()
-    color = cm.jet([i / len(classes)] * sum(ind))
-    # plot each category one at a time 
-    ax.scatter(z_embed3D[ind, 0], z_embed3D[ind, 1], c=color, s=8, label=i)
-
-ax.axis('on')
-
-r_max = 20
-r_min = -r_max
-
-ax.set_xlim(r_min, r_max)
-ax.set_ylim(r_min, r_max)
-ax.set_zlim(r_min, r_max)
-ax.set_xlabel('z-dim 1')
-ax.set_ylabel('z-dim 2')
-ax.set_zlabel('z-dim 3')
-ax.set_title('{} (t-SNE: {}-dim -> 3-dim)'.format(exp, z_train.shape[1]), fontsize=14)
-ax.legend(plots, classes, fontsize=14, loc='upper right')
-plt.savefig("./ResNetVAE_{}_embedded_3Dplot.png".format(exp), bbox_inches='tight', dpi=600)
-plt.show()
+plt.title('{} (t-SNE: -dim -> 2-dim)', fontsize=14)
+plt.savefig("./ResNetVAE__embedded_plot.png", bbox_inches='tight', dpi=600)
+#plt.show()
 

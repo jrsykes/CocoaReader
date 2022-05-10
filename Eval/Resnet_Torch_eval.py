@@ -6,9 +6,9 @@ from sklearn import metrics
 import pandas as pd
 
 model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models'
-model = '/ResDes50_1kdim.pth'
-data_dir = "/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset"
-#data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/split"
+model = '/ResDes18_1kdim_HighRes_TinyIN_Filtered.pth'
+data_dir = "/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_filtered_split"
+
 
 model = torch.load(model_path + model)
 model.eval()
@@ -30,7 +30,7 @@ data_transforms = {
     ]),
     'val': transforms.Compose([
         transforms.Resize(input_size),
-        transforms.CenterCrop(input_size),
+        #transforms.CenterCrop(input_size),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
