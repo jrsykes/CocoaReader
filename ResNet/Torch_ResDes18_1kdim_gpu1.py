@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import torchvision
+#import torchvision
 from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import time
 import os
 import copy
@@ -19,11 +19,10 @@ from progress.bar import Bar
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Sig_filtered_split'
-#data_dir = '/local/scratch/jrs596/dat/test'
-
+data_dir = '/scratch/staff/jrs596/dat/PlantNotPlant_TinyIM+VAE_Filtered_split'
+#data_dir = '/scratch/staff/jrs596/dat/test'
 # File name for model
-model_name = "ResDes18_1kdim_HighRes_TinyIN_Sig_Filtered_WeightedLoss"
+model_name = "ResDes18_1kdim_HighRes_TinyIM+VAE_Filtered"
 
 # Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
@@ -43,9 +42,9 @@ input_size = 1000
 #   when True we only update the reshaped layer params
 feature_extract = False
 
-writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
+writer = SummaryWriter(log_dir='/scratch/staff/jrs596/logs/logs_' + model_name)
 
-def train_model(model, dataloaders, criterion, optimizer, patience, input_size, initial_bias):
+def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     since = time.time()
     
     val_loss_history = []
@@ -56,7 +55,18 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
 
+    ### Calculate and set bias for final layer based on imbalance in dataset classes
+    dir_ = os.path.join(data_dir, 'train')
+    list_cats = []
+    for i in sorted(os.listdir(dir_)):
+        path, dirs, files = next(os.walk(os.path.join(dir_, i)))
+        list_cats.append(len(files))
+    
+    weights = []
+    for i in list_cats:
+        weights.append(np.log((max(list_cats)/i)))
 
+    initial_bias = torch.FloatTensor(weights)
     best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
     
@@ -91,7 +101,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
             # Iterate over data.
             n = len(dataloaders_dict[phase].dataset)
             print(phase)
-            with Bar('Learning...', max=n/batch_size+1) as bar:
+            with Bar('Learning...', max=n/batch_size) as bar:
                 
                 for inputs, labels in dataloaders[phase]:
                     #count += 1
@@ -164,7 +174,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                 best_recall_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
-                PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
+                PATH = '/scratch/staff/jrs596/models/'
 
                 # Save only the model weights for easy loading into a new model
                 final_out = {
@@ -180,11 +190,11 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                 torch.save(model, PATH + model_name + '.pth')
 
                 # Save in onnx format to be converted to TF-lite
-                input_names = os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset/val')
-                dummy_input = torch.randn(10, 3, input_size, input_size, device="cuda")
-                output_names = ['AauberginesDiseased']
-                torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
-                verbose=False, input_names=input_names, output_names=output_names)
+#                input_names = os.listdir(os.path.join(data_dir, 'val'))
+#                dummy_input = torch.randn(10, 3, input_size, input_size, device="cuda")
+#                output_names = ['AauberginesDiseased']
+#                torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
+#                verbose=False, input_names=input_names, output_names=output_names)
 
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -259,7 +269,7 @@ dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size
 device = torch.device("cuda")
 
 #Run model on all GPUs
-model_ft = nn.DataParallel(model_ft)
+model_ft = nn.DataParallel(model_ft)#, device_ids=[1,3,4,5])
 
 #Create the Optimizer
 model_ft = model_ft.to(device)
@@ -285,22 +295,13 @@ if feature_extract:
 # Observe that all parameters are being optimized
 optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
 
-### Calculate and set bias for final layer based on imbalance in dataset classes
-dir_ = os.path.join(data_dir, 'train')
-list_cats = []
-for i in sorted(os.listdir(dir_)):
-    path, dirs, files = next(os.walk(os.path.join(dir_, i)))
-    list_cats.append(len(files))
 
-weights = []
-for i in list_cats:
-    weights.append(np.log((max(list_cats)/i)))
 
-initial_bias = torch.FloatTensor(weights).to(device)
-
-criterion = nn.CrossEntropyLoss(weight=initial_bias)
+#Run Training and Validation Step
+# Setup the loss fxn
+criterion = nn.CrossEntropyLoss()
 
 # Train and evaluate
 
 
-model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size, initial_bias=initial_bias)
+model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size)

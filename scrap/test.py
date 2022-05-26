@@ -1,11 +1,19 @@
+from scipy.special import gamma, factorial
+import numpy as np
+import matplotlib.pyplot as plt
+import math 
+
+gamma = np.random.gamma(7.5,1,1000)
 
 
+df = 224*224-1
 
-search_key = 'witches broom disease Theobroma cacao witches broom disease Moniliophthora perniciosa'
-url = "https://www.google.com/search?q=%s&source=lnms&tbm=isch&sa=X&ved=2ahUKEwie44_AnqLpAhUhBWMBHUFGD90Q_AUoAXoECBUQAw&biw=1920&bih=947"%(search_key)
+chi = np.random.chisquare(df, size=1000)
 
-print(url)
+gau = np.random.normal(0.5, 1, size=1000)
 
-https://www.google.com/search?q=%s&source=lnms&tbm=isch&sa=X&ved=2ahUKEwie44_AnqLpAhUhBWMBHUFGD90Q_AUoAXoECBUQAw&biw=1920&bih=947
-"https://www.google.com/search?q=%s&tbm=isch&tbs=il:cl&hl=en-GB&sa=X&ved=0CAAQ1vwEahcKEwjotd3vlsj3AhUAAAAAHQAAAAAQAg&biw=1412&bih=1257"%(search_key)
-https://www.google.com/search?q=%s&tbm=isch&hl=en-GB&tbs=il:ol&sa=X&ved=0CAAQ1vwEahcKEwiI2LL9lsj3AhUAAAAAHQAAAAAQAg&biw=1405&bih=1272
+
+t = np.divide(gau,np.sqrt(chi/df))
+
+plt.hist(gau, 50)
+plt.show()

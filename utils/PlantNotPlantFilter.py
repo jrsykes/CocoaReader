@@ -33,7 +33,8 @@ from progress.bar import Bar
 #   to the ImageFolder structure
 #data_dir = "/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean_unorganised/"
 #data_dir = '/local/scratch/jrs596/dat/test3'
-data_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train/'
+#data_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train/'
+data_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM/train'
 
 input_size = 64
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
@@ -101,16 +102,16 @@ index = 0
 
 
 for inputs, labels in loader:
+
 	class_ = dataset.classes[int(labels[0])]
 	source = val_dataset.imgs[index][0]
+
 	inputs = inputs.to(device)
 	outputs = model(inputs)
-	_, preds = torch.max(outputs, 1)
-	
-	os.makedirs(os.path.join('/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Filtered/', class_), exist_ok=True)
-	if preds.item() == 1:
-		dest = os.path.join('/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Filtered/', class_, str(index) + '.jpg')
+	#_, preds = torch.max(outputs, 1)
+	#os.makedirs(os.path.join('/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Filtered_Sigmoid/', class_), exist_ok=True)
+	if torch.sigmoid(outputs)[0][1].item() > 0.9:#
+		dest = os.path.join('/local/scratch/jrs596/dat/PlantNotPlant_Filtered_TinyIM_plants', class_, str(index) + '.jpg')
 		shutil.copy(source,dest)
-		
 	print(source)
 	index += 1

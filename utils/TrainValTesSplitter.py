@@ -2,8 +2,8 @@ import shutil
 import os
 import random
 
-#dir_ = '/local/scratch/jrs596/dat/PlantNotPlant'
-dir_ = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Filtered'
+
+dir_ = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM+VAE_Filtered'
 
 classes = os.listdir(dir_)
 
@@ -17,7 +17,7 @@ for i in classes:
 
 
 	for key, value in dat_dict.items():
-		dest_path = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_filtered_split'
+		dest_path = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM+VAE_Filtered_split'
 		os.makedirs(os.path.join(dest_path , key, i), exist_ok = True)
 		for j in value:
 			source = os.path.join(dir_, i, j)

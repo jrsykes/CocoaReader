@@ -8,6 +8,8 @@ import torch.nn.functional as F
 import torchvision.models as models
 from torch.autograd import Variable
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+import math
 
 
 class Dataset(data.Dataset):
@@ -64,7 +66,7 @@ class ResNet_VAE(nn.Module):
         self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2d padding
 
         # encoding components
-        resnet = models.resnet152(pretrained=False)
+        resnet = models.resnet152(pretrained=True)
         modules = list(resnet.children())[:-1]      # delete the last fc layer.
         self.resnet = nn.Sequential(*modules)
         self.fc1 = nn.Linear(resnet.fc.in_features, self.fc_hidden1)
@@ -73,7 +75,7 @@ class ResNet_VAE(nn.Module):
         self.bn2 = nn.BatchNorm1d(self.fc_hidden2, momentum=0.01)
         # Latent vectors mu and sigma
         self.fc3_mu = nn.Linear(self.fc_hidden2, self.CNN_embed_dim)      # output = CNN embedding latent variables
-        self.fc3_logvar = nn.Linear(self.fc_hidden2, self.CNN_embed_dim)  # output = CNN embedding latent variables
+        self.fc3_var = nn.Linear(self.fc_hidden2, self.CNN_embed_dim)  # output = CNN embedding latent variables
 
         # Sampling vector
         self.fc4 = nn.Linear(self.CNN_embed_dim, self.fc_hidden2)
@@ -114,16 +116,32 @@ class ResNet_VAE(nn.Module):
         x = self.bn2(self.fc2(x))
         x = self.relu(x)
         # x = F.dropout(x, p=self.drop_p, training=self.training)
-        mu, logvar = self.fc3_mu(x), self.fc3_logvar(x)
-        return mu, logvar 
+        mu, var = self.fc3_mu(x), self.fc3_var(x)
+        return mu, abs(var) 
 
-    def reparameterize(self, mu, logvar):
+    def reparameterize(self, mu, var, CNN_embed_dim, img_size):
+    
+        batch_size = 37
+        #sample tensor of 1,000 gausian distributions from above mean and vars
+        gausian = torch.empty((batch_size,CNN_embed_dim, 255))
+
+        for j in range(batch_size):
+            for i in range(CNN_embed_dim):
+                mean = abs(mu[j][i].item())*255
+                std = math.sqrt(abs(var[j][i].item()))*255
+                gausian[j][i] = np.random.normal(mean,std)
+        
+        df = 255-1
+        chi = torch.from_numpy(np.random.chisquare(df, size=255))
+        t = torch.div(gausian,torch.sqrt(chi/df)).to(torch.int32).to(torch.device("cuda"))
+
+        ##################################################################
         if self.training:
-            std = logvar.mul(0.5).exp_()
+            std = torch.sqrt(var) #var.mul(0.5).exp_()
             eps = Variable(std.data.new(std.size()).normal_())
-            return eps.mul(std).add_(mu)
+            return eps.mul(std).add_(mu), t
         else:
-            return mu
+            return mu, t
 
     def decode(self, z, img_size=224):
         x = self.relu(self.fc_bn4(self.fc4(z)))
@@ -134,12 +152,12 @@ class ResNet_VAE(nn.Module):
         x = F.interpolate(x, size=(img_size, img_size), mode='bilinear')
         return x
 
-    def forward(self, x, img_size=224):
-        mu, logvar = self.encode(x)
-        z = self.reparameterize(mu, logvar)
+    def forward(self, x, img_size=224, CNN_embed_dim=200):
+        mu, var = self.encode(x)
+        z, t = self.reparameterize(mu, var, CNN_embed_dim, img_size)
         x_reconst = self.decode(z, img_size)
 
-        return x_reconst, z, mu, logvar
+        return x_reconst, z, mu, var, t
 
 
 

@@ -6,11 +6,11 @@ from sklearn import metrics
 import pandas as pd
 
 model_path = '/local/scratch/jrs596/ResNetFung50_Torch/models'
-model = '/ResDes18_1kdim_HighRes_TinyIN_Filtered.pth'
+model = 'ResDes18_1kdim_HighRes_TinyIN_Sig_Filtered.pth'
 data_dir = "/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_filtered_split"
 
 
-model = torch.load(model_path + model)
+model = torch.load(os.path.join(model_path, model))
 model.eval()
 
 device = torch.device("cuda:0")# if torch.cuda.is_available() else "cpu")
@@ -39,8 +39,13 @@ data_transforms = {
 # Create training and validation datasets
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
 
+print(list(image_datasets['val'].class_to_idx.keys()))
+exit()
+
 # Create training and validation dataloaders
 dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}#
+
+
 
 
 lables_list = []

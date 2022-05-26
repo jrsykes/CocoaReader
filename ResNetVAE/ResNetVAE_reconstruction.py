@@ -31,9 +31,6 @@ from scipy.stats import norm
 import shutil
 
 
-#saved_model_path = '/local/scratch/jrs596/ResNetVAE/results_152_ForesArabData_RandomWeights'
-
-exp = 'cifar10'
 
 # use same ResNet Encoder saved earlier!
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
@@ -41,7 +38,7 @@ CNN_embed_dim = 1000
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
-epoch = 400
+epoch = 5
 
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
 device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
@@ -73,6 +70,15 @@ def validation(device, test_loader, indices, Class):
 
                 BCE = F.binary_cross_entropy(X_reconst, X, reduction='sum')
                 loss.append(BCE.item())
+
+                print(BCE)
+                plt.imshow(X[0].to('cpu').permute(1,2,0))
+                plt.axis('off')
+                plt.show()
+                plt.imshow(X_reconst[0].to('cpu').permute(1,2,0))
+                plt.axis('off')
+                plt.show()
+                
 
         losses[key] = loss
 
@@ -137,23 +143,18 @@ print('ResNetVAE epoch {} model reloaded!'.format(epoch))
 
 
 val_transform = transforms.Compose([transforms.Resize([res_size, res_size]),
-                                #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                 transforms.ToTensor()])
 
 
-val_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_VAE_filtered/train/'
-#val_dir = '/local/scratch/jrs596/dat/test'
+#val_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM+VAE_Filtered'
+val_dir = '/local/scratch/jrs596/dat/VAE_test'
+
 val_dataset = torchvision.datasets.ImageFolder(val_dir, transform=val_transform)
 
-#df = pd.DataFrame(columns=['IDX', 'Class', 'R', 'IN'])
+
 df = pd.DataFrame(columns=['IDX', 'Class', 'R'])
 
 weights = 'R'
-
-#try:
-#    shutil.rmtree(os.path,joint('/local/scratch/jrs596/dat/scrap_imgs', weights))
-#except:
-#    pass
 
 for key, value in val_dataset.class_to_idx.items():
 
@@ -168,35 +169,29 @@ for key, value in val_dataset.class_to_idx.items():
 
     losses = validation(device, valid_loader, indices, key)
 
-    #df = pd.concat([df, losses])
 
+#    arr = losses[weights].to_numpy()
+#    ci = norm(*norm.fit(arr)).interval(0.90)#
+#
 
-    arr = losses[weights].to_numpy()
-    ci = norm(*norm.fit(arr)).interval(0.90)
+#    outliers_up = losses.loc[losses[weights] > ci[1]]
+#    outliers_dwn = losses.loc[losses[weights] < ci[0]]
+#    outliers = pd.concat([outliers_up, outliers_dwn])#
+#
 
+#    name = 0#
 
-    outliers_up = losses.loc[losses[weights] > ci[1]]
-    outliers_dwn = losses.loc[losses[weights] < ci[0]]
-    outliers = pd.concat([outliers_up, outliers_dwn])
+#    for i in outliers['IDX'].tolist():
+#        source = val_dataset.imgs[i][0]
+#        #dest = os.path.join('/local/scratch/jrs596/dat/PNP_filtered_scrap_imgs', weights, key, key + str(name) + '.jpg')
+#        #shutil.copy(source, dest)
+#        os.remove(source)
+#        name += 1#
 
-    if len(outliers) > 0:
-        os.makedirs(os.path.join('/local/scratch/jrs596/dat/scrap_imgs', weights, key), exist_ok = True)
+#    
+#    del outliers
+#    print(key, 'done!')#
 
-    name = 0
-
-    for i in outliers['IDX'].tolist():
-        source = val_dataset.imgs[i][0]
-        dest = os.path.join('/local/scratch/jrs596/dat/scrap_imgs', weights, key, key + str(name) + '.jpg')
-        #shutil.copy(source, dest)
-        os.remove(source)
-        name += 1
-#   for idx, j in enumerate(losses['R'].tolist()):
-#        df.loc[len(df)] = [indices[idx], key, float(j), float(losses['IN'].tolist()[idx])]
-    
-    del outliers
-    print(key, 'done!')#
-
-#df.to_csv('/local/scratch/jrs596/ResNetVAE/results/losses.csv', index=False)
 
 
 
