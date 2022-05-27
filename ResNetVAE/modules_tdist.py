@@ -78,7 +78,7 @@ class ResNet_VAE(nn.Module):
         self.fc3_var = nn.Linear(self.fc_hidden2, self.CNN_embed_dim)  # output = CNN embedding latent variables
 
         # Sampling vector
-        self.fc4 = nn.Linear(self.CNN_embed_dim, self.fc_hidden2)
+        self.fc4 = nn.Linear(self.CNN_embed_dim*255, self.fc_hidden2)
         self.fc_bn4 = nn.BatchNorm1d(self.fc_hidden2)
         self.fc5 = nn.Linear(self.fc_hidden2, 64 * 4 * 4)
         self.fc_bn5 = nn.BatchNorm1d(64 * 4 * 4)
@@ -121,27 +121,37 @@ class ResNet_VAE(nn.Module):
 
     def reparameterize(self, mu, var, CNN_embed_dim, img_size):
     
-        batch_size = 37
-        #sample tensor of 1,000 gausian distributions from above mean and vars
+        batch_size = 42
+        #Define a empty tensor to hold the Gausian distributions of pixel values sampled from the
+        #predicted vectors of mean and variance
         gausian = torch.empty((batch_size,CNN_embed_dim, 255))
 
+        #Populate the above tensor with n=CNN_embed_dim normal distributions
+        #Here the absolute values of the predicted means and variances are used as these aren't
+        #always positive at the begining of training.
+        #Pixel values are multiplied by 255 to convert them from 0-1 scale back to original 
+        #image scale for KL divergence calculation.
         for j in range(batch_size):
             for i in range(CNN_embed_dim):
                 mean = abs(mu[j][i].item())*255
                 std = math.sqrt(abs(var[j][i].item()))*255
                 gausian[j][i] = np.random.normal(mean,std)
         
+        #Sample a chi-square distribution with df = n posible pixel values -1 
         df = 255-1
         chi = torch.from_numpy(np.random.chisquare(df, size=255))
+        
+        #Calculate t-distributions from the above gausian and chi-square distributions and convert values to intergers.
+        #This will be used to calculate KL divergence
+        #As opposed to sampleing from a t distribution with scipy.stats.t, using the gausian and chi suqare distribution allows
+        #us to use the mean and variance that we have generated above
         t = torch.div(gausian,torch.sqrt(chi/df)).to(torch.int32).to(torch.device("cuda"))
-
-        ##################################################################
-        if self.training:
-            std = torch.sqrt(var) #var.mul(0.5).exp_()
-            eps = Variable(std.data.new(std.size()).normal_())
-            return eps.mul(std).add_(mu), t
-        else:
-            return mu, t
+        #Calculate the same t-distributions but return floating point values and reshape to give one vector of values per image.
+        #This will be used as the latent vector space and will be fed into the decoder
+        z = torch.div(gausian,torch.sqrt(chi/df)).view(batch_size,-1).to(torch.float32).to(torch.device("cuda"))
+        #Square values and divide by max to convert back to 0-1 scale for decoder network
+        z = torch.div(torch.square(z),torch.max(torch.square(z)))
+        return z, t
 
     def decode(self, z, img_size=224):
         x = self.relu(self.fc_bn4(self.fc4(z)))
@@ -152,7 +162,7 @@ class ResNet_VAE(nn.Module):
         x = F.interpolate(x, size=(img_size, img_size), mode='bilinear')
         return x
 
-    def forward(self, x, img_size=224, CNN_embed_dim=200):
+    def forward(self, x, img_size=224, CNN_embed_dim=50):
         mu, var = self.encode(x)
         z, t = self.reparameterize(mu, var, CNN_embed_dim, img_size)
         x_reconst = self.decode(z, img_size)

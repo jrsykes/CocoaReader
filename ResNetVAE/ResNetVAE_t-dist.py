@@ -22,14 +22,14 @@ import scipy.stats
 
 # EncoderCNN architecture
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
-CNN_embed_dim = 200     # latent dim extracted by 2D CNN
+CNN_embed_dim = 50     # latent dim extracted by 2D CNN
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
 
 # training parameters
 epochs = 400        # training epochs
-batch_size = 37
+batch_size = 42
 learning_rate = 1e-3
 log_interval = 10   # interval for displaying training info
 
@@ -46,20 +46,21 @@ def loss_function(recon_x, x, mu, var, z, t):
     kl_loss = nn.KLDivLoss(reduction = "mean")
     BCE = F.binary_cross_entropy(recon_x, x, reduction='sum').item()
 
-    #KLD = -0.5 * torch.sum(1 + var - mu.pow(2) - var.exp())
-    
+
     KLD = 0
-
     for i in range(batch_size):
-        x_ = (x[i]*225).to(torch.int32)        
+        #select singl image from bach and convert values to integers in 0-255 scale
+        x_ = (x[i]*225).to(torch.int32)
+        #Calculate frequencey of all possible pixel values
         x_freq = torch.bincount(x_.view(-1), minlength=255)
-
+        #For each latent vector sampled, calculate KL divergence between predicted t-distribution
+        #and original pixel values. i.e. expected posterior
         for j in range(CNN_embed_dim):
             target = x_freq
             input_ = t[i][j]
-
             KLD += kl_loss(target,input_)
 
+    #Add binary cross entropy loss between original and predicted image to the KL divergence fo the batch
     loss = torch.tensor(BCE+abs(KLD)).requires_grad_()
 
     return loss
