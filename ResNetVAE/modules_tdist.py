@@ -10,6 +10,7 @@ from torch.autograd import Variable
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import math
+from scipy.stats import t
 
 
 class Dataset(data.Dataset):
@@ -54,10 +55,11 @@ def convtrans2D_output_size(img_size, padding, kernel_size, stride):
 ## ---------------------- ResNet VAE ---------------------- ##
 
 class ResNet_VAE(nn.Module):
-    def __init__(self, fc_hidden1=1024, fc_hidden2=768, drop_p=0.3, CNN_embed_dim=256, img_size=224):
+    def __init__(self, fc_hidden1, fc_hidden2, drop_p, CNN_embed_dim, img_size, batch_size):
         super(ResNet_VAE, self).__init__()
 
         self.fc_hidden1, self.fc_hidden2, self.CNN_embed_dim = fc_hidden1, fc_hidden2, CNN_embed_dim
+        self.img_size, self.batch_size = img_size, batch_size
 
         # CNN architechtures
         self.ch1, self.ch2, self.ch3, self.ch4 = 16, 32, 64, 128
@@ -66,7 +68,7 @@ class ResNet_VAE(nn.Module):
         self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2d padding
 
         # encoding components
-        resnet = models.resnet152(pretrained=True)
+        resnet = models.resnet152(pretrained=False)
         modules = list(resnet.children())[:-1]      # delete the last fc layer.
         self.resnet = nn.Sequential(*modules)
         self.fc1 = nn.Linear(resnet.fc.in_features, self.fc_hidden1)
@@ -78,7 +80,7 @@ class ResNet_VAE(nn.Module):
         self.fc3_var = nn.Linear(self.fc_hidden2, self.CNN_embed_dim)  # output = CNN embedding latent variables
 
         # Sampling vector
-        self.fc4 = nn.Linear(self.CNN_embed_dim*255, self.fc_hidden2)
+        self.fc4 = nn.Linear(self.CNN_embed_dim, self.fc_hidden2)
         self.fc_bn4 = nn.BatchNorm1d(self.fc_hidden2)
         self.fc5 = nn.Linear(self.fc_hidden2, 64 * 4 * 4)
         self.fc_bn5 = nn.BatchNorm1d(64 * 4 * 4)
@@ -117,43 +119,25 @@ class ResNet_VAE(nn.Module):
         x = self.relu(x)
         # x = F.dropout(x, p=self.drop_p, training=self.training)
         mu, var = self.fc3_mu(x), self.fc3_var(x)
-        return mu, abs(var) 
+        return mu, var 
 
-    def reparameterize(self, mu, var, CNN_embed_dim, img_size):
-    
-        batch_size = 42
-        #Define a empty tensor to hold the Gausian distributions of pixel values sampled from the
-        #predicted vectors of mean and variance
-        gausian = torch.empty((batch_size,CNN_embed_dim, 255))
+    def reparameterize(self, mu, var, CNN_embed_dim, img_size, batch_size):
+                
+        std = torch.sqrt(var)
+        eps = Variable(var.data.new(var.size()).normal_())
+        z = eps.mul(std).add_(mu)
 
-        #Populate the above tensor with n=CNN_embed_dim normal distributions
-        #Here the absolute values of the predicted means and variances are used as these aren't
-        #always positive at the begining of training.
-        #Pixel values are multiplied by 255 to convert them from 0-1 scale back to original 
-        #image scale for KL divergence calculation.
-        for j in range(batch_size):
-            for i in range(CNN_embed_dim):
-                mean = abs(mu[j][i].item())*255
-                std = math.sqrt(abs(var[j][i].item()))*255
-                gausian[j][i] = np.random.normal(mean,std)
-        
-        #Sample a chi-square distribution with df = n posible pixel values -1 
-        df = 255-1
-        chi = torch.from_numpy(np.random.chisquare(df, size=255))
-        
-        #Calculate t-distributions from the above gausian and chi-square distributions and convert values to intergers.
-        #This will be used to calculate KL divergence
-        #As opposed to sampleing from a t distribution with scipy.stats.t, using the gausian and chi suqare distribution allows
-        #us to use the mean and variance that we have generated above
-        t = torch.div(gausian,torch.sqrt(chi/df)).to(torch.int32).to(torch.device("cuda"))
-        #Calculate the same t-distributions but return floating point values and reshape to give one vector of values per image.
-        #This will be used as the latent vector space and will be fed into the decoder
-        z = torch.div(gausian,torch.sqrt(chi/df)).view(batch_size,-1).to(torch.float32).to(torch.device("cuda"))
-        #Square values and divide by max to convert back to 0-1 scale for decoder network
-        z = torch.div(torch.square(z),torch.max(torch.square(z)))
+        df = CNN_embed_dim-1
+
+        #force mean and var to be greater than 0.0
+        mu = abs(mu).add_(0.1)
+        var = abs(var).add_(0.1)
+        #Sample from t-distribution with predicted mean and var
+        t = torch.distributions.studentT.StudentT(df=df, loc=mu, scale=var).sample()
+
         return z, t
 
-    def decode(self, z, img_size=224):
+    def decode(self, z, img_size):
         x = self.relu(self.fc_bn4(self.fc4(z)))
         x = self.relu(self.fc_bn5(self.fc5(x))).view(-1, 64, 4, 4)
         x = self.convTrans6(x)
@@ -162,10 +146,15 @@ class ResNet_VAE(nn.Module):
         x = F.interpolate(x, size=(img_size, img_size), mode='bilinear')
         return x
 
-    def forward(self, x, img_size=224, CNN_embed_dim=50):
+    def forward(self, x,):# batch_size=None, img_size=None, CNN_embed_dim=None):
         mu, var = self.encode(x)
-        z, t = self.reparameterize(mu, var, CNN_embed_dim, img_size)
-        x_reconst = self.decode(z, img_size)
+        
+        batch_size = self.batch_size
+        img_size = self.img_size
+        CNN_embed_dim = self.CNN_embed_dim
+        
+        z, t = self.reparameterize(mu, var, CNN_embed_dim, img_size, batch_size)
+        x_reconst = self.decode(t, img_size)
 
         return x_reconst, z, mu, var, t
 

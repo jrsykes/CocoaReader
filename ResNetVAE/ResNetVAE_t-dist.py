@@ -22,7 +22,7 @@ import scipy.stats
 
 # EncoderCNN architecture
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
-CNN_embed_dim = 50     # latent dim extracted by 2D CNN
+CNN_embed_dim = 1000     # latent dim extracted by 2D CNN
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
@@ -40,28 +40,37 @@ def check_mkdir(dir_name):
     if not os.path.exists(dir_name):
         os.mkdir(dir_name)
 
+def plot_dist(z, t, epoch):
+        #figure, axis = plt.subplots(2)
+        plt.hist(z.cpu().detach().numpy())
+        plt.title("Gausian")
+        plt.grid(axis='y')
+        plt.savefig(os.path.join(save_model_path, 'plots', str(epoch) + '_gausian.png'), format='png', dpi=200)
+
+        plt.cla()
+        plt.hist(t.cpu().detach().numpy())
+        plt.title("Students t")
+        plt.grid(axis='y')        
+        plt.savefig(os.path.join(save_model_path, 'plots', str(epoch) + '_students_t.png'), format='png', dpi=200)
 
 
-def loss_function(recon_x, x, mu, var, z, t):
-    kl_loss = nn.KLDivLoss(reduction = "mean")
+def loss_function(recon_x, x, t):
     BCE = F.binary_cross_entropy(recon_x, x, reduction='sum').item()
 
-
-    KLD = 0
+    x_sample = torch.empty((batch_size, CNN_embed_dim))
+    x_flat = x.view(42, -1)
+    
     for i in range(batch_size):
-        #select singl image from bach and convert values to integers in 0-255 scale
-        x_ = (x[i]*225).to(torch.int32)
-        #Calculate frequencey of all possible pixel values
-        x_freq = torch.bincount(x_.view(-1), minlength=255)
-        #For each latent vector sampled, calculate KL divergence between predicted t-distribution
-        #and original pixel values. i.e. expected posterior
-        for j in range(CNN_embed_dim):
-            target = x_freq
-            input_ = t[i][j]
-            KLD += kl_loss(target,input_)
+        perm = torch.randperm(x_flat[i].size(0))
+        idx = perm[:CNN_embed_dim]
+        x_sample[i] = x_flat[i][idx]
+
+    KLD = nn.KLDivLoss(reduction = "batchmean")
+    KLD_loss = abs(KLD(x_sample.to('cuda'),t))
+
 
     #Add binary cross entropy loss between original and predicted image to the KL divergence fo the batch
-    loss = torch.tensor(BCE+abs(KLD)).requires_grad_()
+    loss = (math.log(BCE)+torch.log(KLD_loss)).clone().detach().requires_grad_(True)
 
     return loss
 
@@ -82,7 +91,9 @@ def train(log_interval, model, device, dataloader, optimizer, epoch):
         optimizer.zero_grad()
         X_reconst, z, mu, var, t = model(X)  # VAE
 
-        loss = loss_function(X_reconst, X, mu, var, z, t)
+        #plot_dist(z, t, epoch)
+        
+        loss = loss_function(X_reconst, X, t)
         losses.append(loss.item())
         loss.backward()
         optimizer.step()
@@ -144,7 +155,7 @@ train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,
 
 # Create model
 resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, 
-    CNN_embed_dim=CNN_embed_dim, img_size=res_size).to(device)
+    CNN_embed_dim=CNN_embed_dim, img_size=res_size, batch_size=batch_size).to(device)
 
 #resnet_vae = nn.DataParallel(resnet_vae)
 

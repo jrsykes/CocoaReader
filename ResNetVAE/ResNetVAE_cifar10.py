@@ -22,7 +22,7 @@ import numpy as np
 
 # EncoderCNN architecture
 CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
-CNN_embed_dim = 2000     # latent dim extracted by 2D CNN
+CNN_embed_dim = 1000     # latent dim extracted by 2D CNN
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
@@ -34,7 +34,7 @@ learning_rate = 1e-3
 log_interval = 10   # interval for displaying training info
 
 # save model
-save_model_path = '/local/scratch/jrs596/ResNetVAE/results_152_2k'
+save_model_path = '/local/scratch/jrs596/ResNetVAE/results_test'
 
 def check_mkdir(dir_name):
     if not os.path.exists(dir_name):

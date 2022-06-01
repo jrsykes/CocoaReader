@@ -37,8 +37,9 @@ CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
 CNN_embed_dim = 1000
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
+batch_size = 1
+epoch = list(range(28,31))
 
-epoch = list(range(1,92))
 
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
 device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
@@ -53,8 +54,8 @@ def validation(device, test_loader, model, name):
     with torch.no_grad():
         for X, y in test_loader:
             X, y = X.to(device), y.to(device).view(-1, )
-            X_reconst, z, mu, logvar = model(X)
-
+            
+            X_reconst, z, mu, var, t = model(X)
             BCE = F.binary_cross_entropy(X_reconst[0], X.view(3, 224, 224), reduction='sum')
             print(BCE)
 
@@ -62,13 +63,13 @@ def validation(device, test_loader, model, name):
             #plt.imshow(X.view(3, 224, 224).to('cpu').permute(1,2,0))
             plt.axis('off')
             #plt.show()
-            plt.savefig(os.path.join('/local/scratch/jrs596/dat/gif_images_husky_t-dist_acer', str(name) + '.jpg'))
+            plt.savefig(os.path.join('/local/scratch/jrs596/dat/gif_images/egg_plant', str(name) + '.jpg'))
 
 
 def load_net(saved_model_path, epoch):
     # reload ResNetVAE model and weights
     resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, 
-        CNN_embed_dim=CNN_embed_dim, img_size=res_size)
+        CNN_embed_dim=CNN_embed_dim, img_size=res_size, batch_size=batch_size)
     weights = torch.load(os.path.join(saved_model_path, 'model_epoch{}.pth'.format(epoch)))#, map_location=torch.device('cpu'))
     resnet_vae.to(device)   
 
@@ -99,7 +100,7 @@ for i in epoch:
     model = load_net('/local/scratch/jrs596/ResNetVAE/results_t-dist2', epoch=i)
     model.eval()
 
-    valid_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, num_workers=6, drop_last=False)
+    valid_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=6)#, drop_last=False)
 
     validation(device, valid_loader, model, name=i)
 

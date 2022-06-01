@@ -121,6 +121,8 @@ class ResNet_VAE(nn.Module):
         if self.training:
             std = logvar.mul(0.5).exp_()
             eps = Variable(std.data.new(std.size()).normal_())
+            
+            z = eps.mul(std).add_(mu)
             return eps.mul(std).add_(mu)
         else:
             return mu
@@ -137,6 +139,8 @@ class ResNet_VAE(nn.Module):
     def forward(self, x, img_size=224):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
+        print(z.size())
+        exit()
         x_reconst = self.decode(z, img_size)
 
         return x_reconst, z, mu, logvar
