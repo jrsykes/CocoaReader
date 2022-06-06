@@ -19,7 +19,8 @@ import torch.utils.data as data
 import torchvision
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-from modules_tdist import *
+#from modules_tdist import *
+from modules_tdist_PlusLayer import *
 #from modules import ResNet_VAE
 from sklearn.model_selection import train_test_split
 import pickle
@@ -33,16 +34,16 @@ import shutil
 
 
 # use same ResNet Encoder saved earlier!
-CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
+CNN_fc_hidden1, CNN_fc_hidden2, CNN_fc_hidden3 = 1024, 1024, 1000
 CNN_embed_dim = 1000
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 batch_size = 1
-epoch = list(range(28,31))
+epoch = list(range(180,190))
 
 
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
-device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
+device = torch.device("cuda:1" if use_cuda else "cpu")   # use CPU or GPU
 #device = torch.device("cpu")
 
 
@@ -68,7 +69,7 @@ def validation(device, test_loader, model, name):
 
 def load_net(saved_model_path, epoch):
     # reload ResNetVAE model and weights
-    resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, 
+    resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, fc_hidden3=CNN_fc_hidden3, drop_p=dropout_p, 
         CNN_embed_dim=CNN_embed_dim, img_size=res_size, batch_size=batch_size)
     weights = torch.load(os.path.join(saved_model_path, 'model_epoch{}.pth'.format(epoch)))#, map_location=torch.device('cpu'))
     resnet_vae.to(device)   

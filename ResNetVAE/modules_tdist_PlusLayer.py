@@ -55,10 +55,10 @@ def convtrans2D_output_size(img_size, padding, kernel_size, stride):
 ## ---------------------- ResNet VAE ---------------------- ##
 
 class ResNet_VAE(nn.Module):
-    def __init__(self, fc_hidden1, fc_hidden2, drop_p, CNN_embed_dim, img_size, batch_size):
+    def __init__(self, fc_hidden1, fc_hidden2, fc_hidden3, drop_p, CNN_embed_dim, img_size, batch_size):
         super(ResNet_VAE, self).__init__()
 
-        self.fc_hidden1, self.fc_hidden2, self.CNN_embed_dim = fc_hidden1, fc_hidden2, CNN_embed_dim
+        self.fc_hidden1, self.fc_hidden2, self.fc_hidden3, self.CNN_embed_dim = fc_hidden1, fc_hidden2, fc_hidden3, CNN_embed_dim
         self.img_size, self.batch_size = img_size, batch_size
 
         # CNN architechtures
@@ -82,8 +82,12 @@ class ResNet_VAE(nn.Module):
         # Sampling vector
         self.fc4 = nn.Linear(self.CNN_embed_dim, self.fc_hidden2)
         self.fc_bn4 = nn.BatchNorm1d(self.fc_hidden2)
-        self.fc5 = nn.Linear(self.fc_hidden2, 64 * 4 * 4)
+
+        self.fc5 = nn.Linear(self.fc_hidden3, 64 * 4 * 4)
         self.fc_bn5 = nn.BatchNorm1d(64 * 4 * 4)
+
+        self.fc6 = nn.Linear(64 * 4 * 4, 64 * 4 * 4)
+        self.fc_bn6 = nn.BatchNorm1d(64 * 4 * 4)
         self.relu = nn.ReLU(inplace=True)
 
         # Decoder
@@ -139,7 +143,8 @@ class ResNet_VAE(nn.Module):
 
     def decode(self, z, img_size):
         x = self.relu(self.fc_bn4(self.fc4(z)))
-        x = self.relu(self.fc_bn5(self.fc5(x))).view(-1, 64, 4, 4)
+        x = self.relu(self.fc_bn5(self.fc5(z)))
+        x = self.relu(self.fc_bn6(self.fc6(x))).view(-1, 64, 4, 4)
         x = self.convTrans6(x)
         x = self.convTrans7(x)
         x = self.convTrans8(x)

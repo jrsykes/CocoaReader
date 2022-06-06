@@ -62,13 +62,15 @@ class ResNet_VAE(nn.Module):
         self.img_size, self.batch_size = img_size, batch_size
 
         # CNN architechtures
-        self.ch1, self.ch2, self.ch3, self.ch4 = 16, 32, 64, 128
-        self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (3, 3)      # 2d kernal size
-        self.s1, self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2), (2, 2)      # 2d strides
-        self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2d padding
+        self.k2, self.k3, self.k4 = (3, 3), (3, 3), (3, 3)      # 2d kernal size
+        self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2)      # 2d strides
+        self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0)  # 2d padding
 
         # encoding components
         resnet = models.resnet152(pretrained=False)
+ 
+        print(resnet.fc)
+        exit()
         modules = list(resnet.children())[:-1]      # delete the last fc layer.
         self.resnet = nn.Sequential(*modules)
         self.fc1 = nn.Linear(resnet.fc.in_features, self.fc_hidden1)
@@ -87,6 +89,7 @@ class ResNet_VAE(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
         # Decoder
+        self.resnetDecode = nn.Sequential(*modules)
         self.convTrans6 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=self.k4, stride=self.s4,
                                padding=self.pd4),
@@ -104,7 +107,7 @@ class ResNet_VAE(nn.Module):
             nn.ConvTranspose2d(in_channels=8, out_channels=3, kernel_size=self.k2, stride=self.s2,
                                padding=self.pd2),
             nn.BatchNorm2d(3, momentum=0.01),
-            nn.Sigmoid()    # y = (y1, y2, y3) \in [0 ,1]^3
+            nn.Sigmoid()   
         )
 
 
@@ -117,8 +120,7 @@ class ResNet_VAE(nn.Module):
         x = self.relu(x)
         x = self.bn2(self.fc2(x))
         x = self.relu(x)
-        # x = F.dropout(x, p=self.drop_p, training=self.training)
-        mu, var = self.relu(self.fc3_mu(x)), self.relu(self.fc3_var(x))
+        mu, var = self.fc3_mu(x), self.fc3_var(x)
         return mu, var 
 
     def reparameterize(self, mu, var, CNN_embed_dim, img_size, batch_size):
@@ -129,24 +131,28 @@ class ResNet_VAE(nn.Module):
 
         df = CNN_embed_dim-1
 
-        #Final relu function forces calues to be positive. + 0.1 force mean and var to be greater than 0.0
-        mu = mu.add_(0.1)
-        var = var.add_(0.1)
+        #force mean and var to be greater than 0.0
+        mu = abs(mu).add_(0.1)
+        var = abs(var).add_(0.1)
         #Sample from t-distribution with predicted mean and var
         t = torch.distributions.studentT.StudentT(df=df, loc=mu, scale=var).sample()
 
         return z, t
 
     def decode(self, z, img_size):
-        x = self.relu(self.fc_bn4(self.fc4(z)))
-        x = self.relu(self.fc_bn5(self.fc5(x))).view(-1, 64, 4, 4)
+        
+        #x = self.relu(self.fc_bn4(self.fc4(z)))
+        #x = self.relu(self.fc_bn5(self.fc5(x))).view(-1, 64, 4, 4)
+        print('here')
+        x = self.resnetDecode(z)
+        print('there')
         x = self.convTrans6(x)
         x = self.convTrans7(x)
         x = self.convTrans8(x)
         x = F.interpolate(x, size=(img_size, img_size), mode='bilinear')
         return x
 
-    def forward(self, x,):# batch_size=None, img_size=None, CNN_embed_dim=None):
+    def forward(self, x,):
         mu, var = self.encode(x)
         
         batch_size = self.batch_size

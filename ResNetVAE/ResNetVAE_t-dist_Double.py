@@ -9,7 +9,7 @@ import torchvision.transforms as transforms
 import torch.utils.data as data
 import torchvision
 from torch.autograd import Variable
-from modules_tdist_PlusLayer import *
+from modules_t_dist_DoubleResNet import *
 from sklearn.model_selection import train_test_split
 import pickle
 from torch.utils.tensorboard import SummaryWriter
@@ -21,20 +21,20 @@ import math
 import scipy.stats
 
 # EncoderCNN architecture
-CNN_fc_hidden1, CNN_fc_hidden2, CNN_fc_hidden3 = 1024, 1024, 1000
+CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 1024
 CNN_embed_dim = 1000     # latent dim extracted by 2D CNN
 res_size = 224        # ResNet image size
 dropout_p = 0.2       # dropout probability
 
 
 # training parameters
-epochs = 400        # training epochs
-batch_size = 42
+epochs = 2#400        # training epochs
+batch_size = 21#42
 learning_rate = 1e-3
 log_interval = 10   # interval for displaying training info
 
 # save model
-save_model_path = '/local/scratch/jrs596/ResNetVAE/results_t-dist2'
+save_model_path = '/local/scratch/jrs596/ResNetVAE/results_t-dist_double'
 
 def check_mkdir(dir_name):
     if not os.path.exists(dir_name):
@@ -128,7 +128,7 @@ def train(log_interval, model, device, dataloader, optimizer, epoch):
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
 #device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
 #use_cuda = False
-device = torch.device("cuda")   # use CPU or GPU
+device = torch.device("cuda:1")   # use CPU or GPU
 
 
 # Data loading parameters
@@ -142,10 +142,10 @@ train_transform = transforms.Compose([transforms.Resize([int(res_size*1.15), int
 
 
 #train_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train'
-train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/train'
+#train_dir = '/local/scratch/jrs596/dat/ResNetFung50+_images_organised/train'
 #train_dir = '/scratch/staff/jrs596/dat/ResNetFung50+_images_organised/train'
 
-#train_dir = '/local/scratch/jrs596/dat/test3'
+train_dir = '/local/scratch/jrs596/dat/test3'
 #train_dir = '/scratch/staff/jrs596/dat/test3'
 train_dataset = torchvision.datasets.ImageFolder(train_dir, transform=train_transform)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=6, drop_last=True)
@@ -155,7 +155,7 @@ train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,
 
 
 # Create model
-resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, fc_hidden3=CNN_fc_hidden3, drop_p=dropout_p, 
+resnet_vae = ResNet_VAE(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, 
     CNN_embed_dim=CNN_embed_dim, img_size=res_size, batch_size=batch_size).to(device)
 
 #resnet_vae = nn.DataParallel(resnet_vae)
