@@ -19,10 +19,10 @@ from progress.bar import Bar
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/PlantNotPlant_TinyIM"
+data_dir = "/local/scratch/jrs596/dat/PlantNotPlant_IN_split_filtered"
 
 # File name for model
-model_name = "PlantNotPlant_IMTiny"
+model_name = "PlantNotPlant_IM_PrecisionLoss_PreFiltered"
 
 # Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
@@ -32,12 +32,12 @@ num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
 batch_size = 42
 
 # Number of epochs to train for
-min_epocs = 3
+min_epocs = 10
 #Earley stopping
-patience = 5 #epochs
+patience = 20 #epochs
 beta = 1.005 ## % improvment in validation loss
 
-input_size = 64
+input_size = 224
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
 feature_extract = False
@@ -48,8 +48,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     since = time.time()
     
     val_loss_history = []
-    best_f1 = 0.0
-    best_f1_acc = 0.0
+    best_precision = 0.0
+    best_model_acc = 0.0
     
     #Save Imagenet weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
@@ -117,8 +117,14 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                         # but in testing we only consider the final output.
                         outputs = model(inputs)
                         loss = criterion(outputs, labels)   
-
-                        _, preds = torch.max(outputs, 1)    
+                        _, preds = torch.max(outputs, 1) 
+                        
+                        stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
+                        stats_out = stats['weighted avg']
+                      
+                        loss += (1-stats_out['precision'])*0.4
+   
+                                     
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -132,9 +138,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
 
-                    stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-                    stats_out = stats['weighted avg']
-                    running_precision += stats_out['precision'] * inputs.size(0)
+
+                    running_precision += stats_out['precision'] * inputs.size(0)                
                     running_recall += stats_out['recall'] * inputs.size(0)
                     running_f1 += stats_out['f1-score'] * inputs.size(0)
 
@@ -167,9 +172,9 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
               
             
             # Save model and update best weights only if recall has improved
-            if phase == 'val' and epoch_f1 > best_f1:
-                best_f1 = epoch_f1
-                best_f1_acc = epoch_acc
+            if phase == 'val' and epoch_precision > best_precision:
+                best_precision = epoch_precision
+                best_model_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
                 PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
@@ -187,13 +192,6 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                 # Save the whole model with pytorch save function
                 torch.save(model, PATH + model_name + '.pth')
 
-                # Save in onnx format to be converted to TF-lite
-#                input_names = os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset/val')
-#                dummy_input = torch.randn(10, 3, input_size, input_size, device="cuda")
-#                output_names = ['AauberginesDiseased']
-#                torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
-#                verbose=False, input_names=input_names, output_names=output_names)
-
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
                 
@@ -202,8 +200,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best model Acc: {:4f}'.format(best_f1_acc))
-    print('Best val F1: {:4f}'.format(best_f1))
+    print('Best model Acc: {:4f}'.format(best_model_acc))
+    print('Best val Precision: {:4f}'.format(best_precision))
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
@@ -298,7 +296,6 @@ optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
 #Run Training and Validation Step
 # Setup the loss fxn
 criterion = nn.CrossEntropyLoss()
-
 
 # Train and evaluate
 

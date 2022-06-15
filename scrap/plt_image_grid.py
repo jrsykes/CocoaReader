@@ -5,8 +5,9 @@ import os
 from PIL import Image
 from mpl_toolkits.axes_grid1 import ImageGrid
 import random
+import math
 
-dir_ = '/local/scratch/jrs596/dat/test_cocoa_imgen'
+dir_ = '/local/scratch/jrs596/dat/NonePlantIM'
 
 def img_reshape(img):
     img = Image.open(os.path.join(dir_,img)).convert('RGB')
@@ -15,9 +16,11 @@ def img_reshape(img):
     return img
 
 
+n_imgs = len(os.listdir(dir_))
+
 
 images = os.listdir(dir_)
-images = random.sample(images, 400)
+images = random.sample(images, n_imgs)
 
 img_arr = []
 
@@ -27,14 +30,12 @@ for image in images:
 #pil_im = img_reshape('WheatTriticum113.jpeg')
 #plt.imshow(np.asarray(pil_im))
 
-rows=20
-cols = 20
-
+rows = int(math.sqrt(n_imgs))
 
 fig = plt.figure(figsize=(20., 20.))
 
 grid = ImageGrid(fig, 111, 
-                 nrows_ncols=(rows, cols),  # creates 2x2 grid of axes
+                 nrows_ncols=(rows, rows),  # creates 2x2 grid of axes
                  axes_pad=0,  # pad between axes
                  )
 

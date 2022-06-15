@@ -27,21 +27,23 @@ import pickle
 import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
-
+from PIL import Image
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-#data_dir = "/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean_unorganised/"
-#data_dir = '/local/scratch/jrs596/dat/test3'
+#data_dir = "/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_NVAE_PNP_filtered/val"
+data_dir = '/local/scratch/jrs596/dat/ILSVRC/Data/CLS-LOC'
 #data_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train/'
-data_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM/train'
+#data_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM/train'
+#data_dir = '/local/scratch/jrs596/dat/NVAE/eval/outliers_combine'
 
-input_size = 64
+
+input_size = 224
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
 device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
 
 # File name for model
-model_name = "PlantNotPlant_IMTiny"
+model_name = "PlantNotPlant_IM_PrecisionLoss"
 
 # Number of classes in the dataset
 num_classes = 2
@@ -51,12 +53,6 @@ transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
-
-dataset = torchvision.datasets.ImageFolder(data_dir, transform=transform)
-loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=6, drop_last=False)
-
-
-val_dataset = torchvision.datasets.ImageFolder(data_dir, transform=transform)
 
 
 
@@ -97,21 +93,40 @@ model.to(device)
 
 
 ##############################################
+# Filter out non .JPEG and corrupt image files
+index = 33
+#for class_ in os.listdir(data_dir):
+#	for image in os.listdir(os.path.join(data_dir, class_)):
+#		file_path = os.path.join(data_dir,class_,image)
+#		try:
+#			im = Image.open(file_path, formats=['JPEG'])
+#		except:
+#			dest = os.path.join('/local/scratch/jrs596/dat/NVAE/filtered_out', str(index) + '.jpg')
+#			shutil.move(file_path,dest)
+#			index += 1
+#			print(file_path)
 
-index = 0
 
+dataset = torchvision.datasets.ImageFolder(data_dir, transform=transform)
+loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=6, drop_last=False)
 
-for inputs, labels in loader:
+# Filter out non-plant images
 
-	class_ = dataset.classes[int(labels[0])]
-	source = val_dataset.imgs[index][0]
+for i, (inputs, labels) in enumerate(loader, 0):
 
+	source, _ = loader.dataset.samples[i]
 	inputs = inputs.to(device)
 	outputs = model(inputs)
-	#_, preds = torch.max(outputs, 1)
-	#os.makedirs(os.path.join('/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Filtered_Sigmoid/', class_), exist_ok=True)
-	if torch.sigmoid(outputs)[0][1].item() > 0.9:#
-		dest = os.path.join('/local/scratch/jrs596/dat/PlantNotPlant_Filtered_TinyIM_plants', class_, str(index) + '.jpg')
-		shutil.copy(source,dest)
-	print(source)
-	index += 1
+
+
+	if torch.sigmoid(outputs)[0][1].item() > 0.6:
+#	if torch.sigmoid(outputs)[0][1].item() < 1e-16:
+	#if outputs[0][1].item() < -26:
+
+		dest = os.path.join('/local/scratch/jrs596/dat/NonePlantIM', str(index) + '.jpg')
+		shutil.move(source,dest)
+		print()
+		print(source)
+		print(torch.sigmoid(outputs)[0])
+
+		index += 1
