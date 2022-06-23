@@ -6,6 +6,7 @@ import torch.optim as optim
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
+
 #import matplotlib.pyplot as plt
 import time
 import os
@@ -16,13 +17,12 @@ import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
 
-
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
 data_dir = "/local/scratch/jrs596/dat/PlantNotPlant2"
 
 # File name for model
-model_name = "PlantNotPlant_2"
+model_name = "PlantNotPlant_2_ConvNext"
 
 # Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
@@ -221,21 +221,25 @@ def set_parameter_requires_grad(model, feature_extracting):
             param.requires_grad = False
 
 
-#Initialize and Reshape the Networks
-def initialize_model(num_classes, feature_extract, use_pretrained=True):
-    # Initialize these variables which will be set in this if statement. Each of these
-    #   variables is model specific.
-    model_ft = None
+##Initialize and Reshape the Networks
+#def initialize_model(num_classes, feature_extract, use_pretrained=True):
+#    # Initialize these variables which will be set in this if statement. Each of these
+#    #   variables is model specific.
+#    model_ft = None#
 
-    model_ft = models.resnet18(pretrained=use_pretrained)
-    set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
-    num_ftrs = model_ft.fc.in_features
-    model_ft.fc = nn.Linear(num_ftrs, num_classes)
-    #model_ft.fc[1] = torch.nn.Sigmoid(1)
-    return model_ft #, input_size
+#    #model_ft = models.resnet18(pretrained=use_pretrained)
+#    #
 
-# Initialize the model for this run
-model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
+#    set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
+#    num_ftrs = model_ft.fc.in_features
+#    model_ft.fc = nn.Linear(num_ftrs, num_classes)
+#    #model_ft.fc[1] = torch.nn.Sigmoid(1)
+#    return model_ft #, input_size#
+
+## Initialize the model for this run
+#model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
+
+model_ft = models.convnext.convnext_tiny(pretrained=True)
 
 # Data augmentation and normalization for training
 # Just normalization for validation
@@ -262,7 +266,7 @@ image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transf
 dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 
 # Detect if we have a GPU available
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda")
 
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)

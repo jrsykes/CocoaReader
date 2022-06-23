@@ -6,7 +6,7 @@ import torch.optim as optim
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import time
 import os
 import copy
@@ -19,10 +19,11 @@ from progress.bar import Bar
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/PlantNotPlant2"
+data_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_clean'
+#data_dir = '/local/scratch/jrs596/dat/test'
 
 # File name for model
-model_name = "PlantNotPlant_2"
+model_name = "ResDes18_750dim"
 
 # Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
@@ -34,39 +35,28 @@ batch_size = 42
 # Number of epochs to train for
 min_epocs = 10
 #Earley stopping
-patience = 20 #epochs
+patience = 50 #epochs
 beta = 1.005 ## % improvment in validation loss
 
-input_size = 224
+input_size = 750
 # Flag for feature extracting. When False, we finetune the whole model,
 #   when True we only update the reshaped layer params
 feature_extract = False
 
 writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
 
-def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
+def train_model(model, dataloaders, criterion, optimizer, patience, input_size, initial_bias):
     since = time.time()
     
     val_loss_history = []
-    best_precision = 0.0
-    best_model_acc = 0.0
+    best_recall = 0.0
+    best_recall_acc = 0.0
     
     #Save Imagenet weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
 
-    ### Calculate and set bias for final layer based on imbalance in dataset classes
-    dir_ = os.path.join(data_dir, 'train')
-    list_cats = []
-    for i in sorted(os.listdir(dir_)):
-        path, dirs, files = next(os.walk(os.path.join(dir_, i)))
-        list_cats.append(len(files))
-    
-    weights = []
-    for i in list_cats:
-        weights.append(np.log((max(list_cats)/i)))
 
-    initial_bias = torch.FloatTensor(weights)
     best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
     
@@ -100,12 +90,14 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
 
             # Iterate over data.
             n = len(dataloaders_dict[phase].dataset)
-            with Bar('Learning...', max=n/batch_size) as bar:
-                print()
+            print(phase)
+            with Bar('Learning...', max=n/batch_size+1) as bar:
+                
                 for inputs, labels in dataloaders[phase]:
                     #count += 1
                     inputs = inputs.to(device)
                     labels = labels.to(device)  
+
                     # zero the parameter gradients
                     optimizer.zero_grad()   
 
@@ -117,14 +109,12 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                         # but in testing we only consider the final output.
                         outputs = model(inputs)
                         loss = criterion(outputs, labels)   
-                        _, preds = torch.max(outputs, 1) 
-                        
+
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
-                      
-                        loss += (1-stats_out['precision'])*0.4
-   
-                                     
+                        loss += (1-stats_out['recall'])*0.4
+
+                        _, preds = torch.max(outputs, 1)    
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -138,8 +128,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
 
-
-                    running_precision += stats_out['precision'] * inputs.size(0)                
+                    running_precision += stats_out['precision'] * inputs.size(0)
                     running_recall += stats_out['recall'] * inputs.size(0)
                     running_f1 += stats_out['f1-score'] * inputs.size(0)
 
@@ -172,9 +161,9 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
               
             
             # Save model and update best weights only if recall has improved
-            if phase == 'val' and epoch_precision > best_precision:
-                best_precision = epoch_precision
-                best_model_acc = epoch_acc
+            if phase == 'val' and epoch_recall > best_recall:
+                best_recall = epoch_recall
+                best_recall_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
                 PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
@@ -192,6 +181,13 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                 # Save the whole model with pytorch save function
                 torch.save(model, PATH + model_name + '.pth')
 
+                # Save in onnx format to be converted to TF-lite
+                input_names = os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset/val')
+                dummy_input = torch.randn(10, 3, input_size, input_size, device="cuda")
+                output_names = ['AauberginesDiseased']
+                torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
+                verbose=False, input_names=input_names, output_names=output_names)
+
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
                 
@@ -200,8 +196,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best model Acc: {:4f}'.format(best_model_acc))
-    print('Best val Precision: {:4f}'.format(best_precision))
+    print('Best val recall_Acc: {:4f}'.format(best_recall_acc))
+    print('Best val recall: {:4f}'.format(best_recall))
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
@@ -231,7 +227,7 @@ def initialize_model(num_classes, feature_extract, use_pretrained=True):
     set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, num_classes)
-    #model_ft.fc[1] = torch.nn.Sigmoid(1)
+
     return model_ft #, input_size
 
 # Initialize the model for this run
@@ -259,10 +255,10 @@ print("Initializing Datasets and Dataloaders...")
 # Create training and validation datasets
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
 # Create training and validation dataloaders
-dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
+dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=6) for x in ['train', 'val']}
 
 # Detect if we have a GPU available
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda")
 
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)
@@ -291,13 +287,22 @@ if feature_extract:
 # Observe that all parameters are being optimized
 optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
 
+### Calculate and set bias for final layer based on imbalance in dataset classes
+dir_ = os.path.join(data_dir, 'train')
+list_cats = []
+for i in sorted(os.listdir(dir_)):
+    path, dirs, files = next(os.walk(os.path.join(dir_, i)))
+    list_cats.append(len(files))
 
+weights = []
+for i in list_cats:
+    weights.append(np.log((max(list_cats)/i)))
 
-#Run Training and Validation Step
-# Setup the loss fxn
-criterion = nn.CrossEntropyLoss()
+initial_bias = torch.FloatTensor(weights).to(device)
+
+criterion = nn.CrossEntropyLoss(weight=initial_bias)
 
 # Train and evaluate
 
 
-model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size)
+model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size, initial_bias=initial_bias)

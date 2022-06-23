@@ -28,22 +28,20 @@ import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
 from PIL import Image
+from difPy import dif
+
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-#data_dir = "/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_NVAE_PNP_filtered/val"
-data_dir = '/local/scratch/jrs596/dat/ILSVRC/Data/CLS-LOC'
-#data_dir = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_Licenced_clean/train/'
-#data_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM/train'
-#data_dir = '/local/scratch/jrs596/dat/NVAE/eval/outliers_combine'
-
+data_dir = "/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_clean"
+#data_dir = '/local/scratch/jrs596/dat/ILSVRC/Data/CLS-LOC'
 
 input_size = 224
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
-device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
+device = torch.device("cuda")   # use CPU or GPU
 
 # File name for model
-model_name = "PlantNotPlant_IM_PrecisionLoss"
+model_name = "PlantNotPlant_final_unorganised"
 
 # Number of classes in the dataset
 num_classes = 2
@@ -91,39 +89,39 @@ model.load_state_dict(weights)
 model.eval()
 model.to(device)
 
-
 ##############################################
 # Filter out non .JPEG and corrupt image files
-index = 33
+index = 2363
 #for class_ in os.listdir(data_dir):
 #	for image in os.listdir(os.path.join(data_dir, class_)):
 #		file_path = os.path.join(data_dir,class_,image)
 #		try:
 #			im = Image.open(file_path, formats=['JPEG'])
 #		except:
-#			dest = os.path.join('/local/scratch/jrs596/dat/NVAE/filtered_out', str(index) + '.jpg')
+#			dest = os.path.join('/local/scratch/jrs596/dat/final_filter/corrupt', str(index) + '.jpg')
 #			shutil.move(file_path,dest)
 #			index += 1
-#			print(file_path)
+#			print(file_path)#
+
+###############################################
+## Delete duplicate images for each class
+#for i in os.listdir(data_dir):
+#	search = dif(os.path.join(data_dir, i), delete=True, silent_del=True)
 
 
+##############################################
+# Filter out non-plant images with Plant-NotPlant CNN
 dataset = torchvision.datasets.ImageFolder(data_dir, transform=transform)
 loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=6, drop_last=False)
 
-# Filter out non-plant images
-
 for i, (inputs, labels) in enumerate(loader, 0):
-
 	source, _ = loader.dataset.samples[i]
 	inputs = inputs.to(device)
 	outputs = model(inputs)
-
-
-	if torch.sigmoid(outputs)[0][1].item() > 0.6:
-#	if torch.sigmoid(outputs)[0][1].item() < 1e-16:
-	#if outputs[0][1].item() < -26:
-
-		dest = os.path.join('/local/scratch/jrs596/dat/NonePlantIM', str(index) + '.jpg')
+	# [0][1] = Plant
+	# [0][0] = NotPlant
+	if torch.sigmoid(outputs)[0][0].item() > 0.995:
+		dest = os.path.join('/local/scratch/jrs596/dat/final_filter/PNP', str(index) + '.jpg')
 		shutil.move(source,dest)
 		print()
 		print(source)

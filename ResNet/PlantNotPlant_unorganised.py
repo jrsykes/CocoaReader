@@ -6,7 +6,7 @@ import torch.optim as optim
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import time
 import os
 import copy
@@ -19,13 +19,13 @@ from progress.bar import Bar
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/PlantNotPlant2"
+data_dir = "/local/scratch/jrs596/dat/PlantNotPlant_IN_unorganised_filtered"
 
 # File name for model
-model_name = "PlantNotPlant_2"
+model_name = "PlantNotPlant_final_unorganised"
 
 # Number of classes in the dataset
-num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
+num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
 
 
 # Batch size for training (change depending on how much memory you have)
@@ -85,7 +85,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         
         # Each epoch has a training and validation phase
         
-        for phase in ['train', 'val']:
+        for phase in ['train']:#, 'val']:
             #count = 0
             if phase == 'train':
                 model.train()  # Set model to training mode
@@ -172,7 +172,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
               
             
             # Save model and update best weights only if recall has improved
-            if phase == 'val' and epoch_precision > best_precision:
+            if phase == 'train' and epoch_precision > best_precision:
                 best_precision = epoch_precision
                 best_model_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
@@ -257,12 +257,16 @@ data_transforms = {
 print("Initializing Datasets and Dataloaders...")
 
 # Create training and validation datasets
-image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
+#image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
 # Create training and validation dataloaders
-dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
+#dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
+
+image_dataset = datasets.ImageFolder(os.path.join(data_dir, 'train'), data_transforms['train'])
+dataloaders_dict = {'train': torch.utils.data.DataLoader(image_dataset, batch_size=batch_size, shuffle=True, num_workers=4)}
 
 # Detect if we have a GPU available
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda")
 
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)
