@@ -6,6 +6,7 @@ import torch.optim as optim
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
+from torchvision.models import ConvNeXt_Tiny_Weights
 
 #import matplotlib.pyplot as plt
 import time
@@ -239,7 +240,8 @@ def set_parameter_requires_grad(model, feature_extracting):
 ## Initialize the model for this run
 #model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
 
-model_ft = models.convnext.convnext_tiny(pretrained=True)
+model_ft = models.convnext.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
+
 
 # Data augmentation and normalization for training
 # Just normalization for validation

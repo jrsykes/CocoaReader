@@ -19,10 +19,10 @@ from progress.bar import Bar
 
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/PlantNotPlant_IN_unorganised_filtered"
+data_dir = "/local/scratch/jrs596/dat/PlantNotPlant2_unorganised"
 
 # File name for model
-model_name = "PlantNotPlant_final_unorganised"
+model_name = "PlantNotPlant_FullDataSet_ResNet18"
 
 # Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
@@ -47,7 +47,7 @@ writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' 
 def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     since = time.time()
     
-    val_loss_history = []
+    train_loss_history = []
     best_precision = 0.0
     best_model_acc = 0.0
     
@@ -76,8 +76,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         print('\nEpoch {}'.format(epoch))
         print('-' * 10)
 
-        if len(val_loss_history) > min_epocs:
-            if val_loss_history[-1] > min(val_loss_history)*beta:
+        if len(train_loss_history) > min_epocs:
+            if train_loss_history[-1] > min(train_loss_history)*beta:
                 patience -= 1
             else:
                 patience = initial_patience
@@ -182,7 +182,9 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                 # Save only the model weights for easy loading into a new model
                 final_out = {
                     'model': best_model_wts,
-                    '__author__': 'Jamie R. Sykes'                    
+                    '__author__': 'Jamie R. Sykes',
+                    'model_name': model_name
+
                     }    
                  
                 model_path = PATH + model_name + '.pkl'
@@ -192,8 +194,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                 # Save the whole model with pytorch save function
                 torch.save(model, PATH + model_name + '.pth')
 
-            if phase == 'val':
-                val_loss_history.append(epoch_loss)
+            if phase == 'train':
+                train_loss_history.append(epoch_loss)
                 
     
         epoch += 1
@@ -210,7 +212,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
 
     writer.flush()
     writer.close()
-    return model #, val_loss_history
+    return model #, train_loss_history
 
 
 
