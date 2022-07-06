@@ -6,7 +6,6 @@ import torch.optim as optim
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
 import time
 import os
 import copy
@@ -15,17 +14,19 @@ import pickle
 import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
+from torchvision.models import ResNet18_Weights
 
-
-# Top level data directory. Here we assume the format of the directory conforms
-#   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/PlantNotPlant2_unorganised"
 
 # File name for model
-model_name = "PlantNotPlant_FullDataSet_ResNet18"
+model_name = "PlantNotPlant_unsplit_3.2"
+
+root = "/scratch/staff/jrs596/dat"
+data_dir = os.path.join(root, 'PlantNotPlant3.2')
+model_path = os.path.join(root, 'models')
+log_dir= os.path.join(model_path, "logs", "logs_" + model_name)
 
 # Number of classes in the dataset
-num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
+num_classes = len(os.listdir(os.path.join(data_dir, 'train_full')))
 
 
 # Batch size for training (change depending on how much memory you have)
@@ -42,13 +43,13 @@ input_size = 224
 #   when True we only update the reshaped layer params
 feature_extract = False
 
-writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
+writer = SummaryWriter(log_dir=log_dir)
 
 def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     since = time.time()
     
     train_loss_history = []
-    best_precision = 0.0
+    best_recall = 0.0
     best_model_acc = 0.0
     
     #Save Imagenet weights as 'best_model_wts' variable. 
@@ -56,7 +57,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     best_model_wts = copy.deepcopy(model.state_dict())
 
     ### Calculate and set bias for final layer based on imbalance in dataset classes
-    dir_ = os.path.join(data_dir, 'train')
+    dir_ = os.path.join(data_dir, 'train_full')
     list_cats = []
     for i in sorted(os.listdir(dir_)):
         path, dirs, files = next(os.walk(os.path.join(dir_, i)))
@@ -85,7 +86,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
         
         # Each epoch has a training and validation phase
         
-        for phase in ['train']:#, 'val']:
+        for phase in ['train']:
             #count = 0
             if phase == 'train':
                 model.train()  # Set model to training mode
@@ -121,10 +122,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                         
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
-                      
-                        loss += (1-stats_out['precision'])*0.4
-   
-                                     
+                        loss += (1-stats_out['recall'])*0.4
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -172,12 +170,12 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
               
             
             # Save model and update best weights only if recall has improved
-            if phase == 'train' and epoch_precision > best_precision:
-                best_precision = epoch_precision
+            if phase == 'train' and epoch_recall > best_recall:
+                best_recall = epoch_recall
                 best_model_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
-                PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
+                #PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
 
                 # Save only the model weights for easy loading into a new model
                 final_out = {
@@ -187,12 +185,11 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
 
                     }    
                  
-                model_path = PATH + model_name + '.pkl'
-                with open(model_path, 'wb') as f:
+                with open(os.path.join(model_path, model_name + '.pkl'), 'wb') as f:
                     pickle.dump(final_out, f)
 
                 # Save the whole model with pytorch save function
-                torch.save(model, PATH + model_name + '.pth')
+                torch.save(model, os.path.join(model_path, model_name + '.pth'))
 
             if phase == 'train':
                 train_loss_history.append(epoch_loss)
@@ -203,7 +200,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Best model Acc: {:4f}'.format(best_model_acc))
-    print('Best val Precision: {:4f}'.format(best_precision))
+    print('Best val Recall: {:4f}'.format(best_recall))
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
@@ -217,27 +214,27 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
 
 
 #Set Model Parameters’ .requires_grad attribute
-def set_parameter_requires_grad(model, feature_extracting):
-    if feature_extracting:
-        for param in model.parameters():
-            param.requires_grad = False
+#def set_parameter_requires_grad(model, feature_extracting):
+#    if feature_extracting:
+#        for param in model.parameters():
+#            param.requires_grad = False
 
 
 #Initialize and Reshape the Networks
-def initialize_model(num_classes, feature_extract, use_pretrained=True):
+#def initialize_model(num_classes, feature_extract, use_pretrained=True):
     # Initialize these variables which will be set in this if statement. Each of these
     #   variables is model specific.
-    model_ft = None
+#    model_ft = None
 
-    model_ft = models.resnet18(pretrained=use_pretrained)
-    set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
-    num_ftrs = model_ft.fc.in_features
-    model_ft.fc = nn.Linear(num_ftrs, num_classes)
+model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+#    set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
+num_ftrs = model_ft.fc.in_features
+model_ft.fc = nn.Linear(num_ftrs, num_classes)
     #model_ft.fc[1] = torch.nn.Sigmoid(1)
-    return model_ft #, input_size
+#return model_ft #, input_size
 
 # Initialize the model for this run
-model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
+#model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
 
 # Data augmentation and normalization for training
 # Just normalization for validation
@@ -246,13 +243,13 @@ data_transforms = {
         transforms.RandomResizedCrop(input_size),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
     'val': transforms.Compose([
         transforms.Resize((input_size,input_size)),
         #transforms.CenterCrop(input_size),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
 }
 
@@ -263,7 +260,7 @@ print("Initializing Datasets and Dataloaders...")
 # Create training and validation dataloaders
 #dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 
-image_dataset = datasets.ImageFolder(os.path.join(data_dir, 'train'), data_transforms['train'])
+image_dataset = datasets.ImageFolder(os.path.join(data_dir, 'train_full'), data_transforms['train'])
 dataloaders_dict = {'train': torch.utils.data.DataLoader(image_dataset, batch_size=batch_size, shuffle=True, num_workers=4)}
 
 # Detect if we have a GPU available
@@ -282,13 +279,13 @@ model_ft = model_ft.to(device)
 #  that we have just initialized, i.e. the parameters with requires_grad
 #  is True.
 params_to_update = model_ft.parameters()
-print("Params to learn:")
-if feature_extract:
-    params_to_update = []
-    for name,param in model_ft.named_parameters():
-        if param.requires_grad == True:
-            params_to_update.append(param)
-            print("\t",name)
+#print("Params to learn:")
+#if feature_extract:
+#    params_to_update = []
+#    for name,param in model_ft.named_parameters():
+#        if param.requires_grad == True:
+#            params_to_update.append(param)
+#            print("\t",name)
 #else:
  #   for name,param in model_ft.named_parameters():
         #if param.requires_grad == True:

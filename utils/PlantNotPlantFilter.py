@@ -1,75 +1,46 @@
-import pandas as pd
-from matplotlib import pyplot as plt
 import os
-import statistics
-from math import sqrt
-from scipy.stats import norm
-import numpy as np
-import torchvision
-import torchvision.transforms as transforms
 import torch
 import shutil
-
-#from __future__ import print_function
-#from __future__ import division
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import torchvision
 from torchvision import datasets, models, transforms
+import torchvision.transforms as transforms
+import copy
+import pickle
+from PIL import Image
+#from difPy import dif
 import matplotlib.pyplot as plt
 import time
-import os
-import copy
-from torch.utils.tensorboard import SummaryWriter
-import pickle
-import numpy as np
-from sklearn import metrics
-from progress.bar import Bar
-from PIL import Image
-from difPy import dif
 
 
-# Top level data directory. Here we assume the format of the directory conforms
-#   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_clean"
-#data_dir = '/local/scratch/jrs596/dat/ILSVRC/Data/CLS-LOC'
+model_name = "PlantNotPlant_unsplit_3.2"
+root = '/local/scratch/jrs596/dat'
+image_out_dir = os.path.join(root, 'Forestry_ArableImages_GoogleBing_PNP_out')
+os.makedirs(os.path.join(image_out_dir, 'NotPlant'), exist_ok=True)
+
+#data_dir = os.path.join(root, "Forestry_ArableImages_GoogleBing_clean/train")
+data_dir = os.path.join(root, "test2/images")
+#model_path = os.path.join(root, 'models')
+model_path = '/local/scratch/jrs596/PNP_models'
 
 input_size = 224
-use_cuda = torch.cuda.is_available()                   # check if GPU exists
-device = torch.device("cuda")   # use CPU or GPU
-
-# File name for model
-model_name = "PlantNotPlant_final_unorganised"
+device = torch.device("cuda")  
 
 # Number of classes in the dataset
 num_classes = 2
-###############################################
+
 transform = transforms.Compose([
         transforms.Resize((input_size,input_size)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
+model = models.resnet18(weights=None)
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, num_classes)
 
-
-#Initialize and Reshape the Networks
-def initialize_model(num_classes, use_pretrained=True):
-    # Initialize these variables which will be set in this if statement. Each of these
-    #   variables is model specific.
-    model = None
-
-    model = models.resnet18(pretrained=use_pretrained)
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, num_classes)
-
-    return model
-
-# Initialize the model for this run
-model = initialize_model(num_classes, use_pretrained=True)
-
-pretrained_model_path = os.path.join('/local/scratch/jrs596/ResNetFung50_Torch/models', model_name + '.pkl')
+pretrained_model_path = os.path.join(model_path, model_name + '.pkl')
 pretrained_model_wts = pickle.load(open(pretrained_model_path, "rb"))
 
 weights = copy.deepcopy(pretrained_model_wts['model'])
@@ -91,40 +62,92 @@ model.to(device)
 
 ##############################################
 # Filter out non .JPEG and corrupt image files
-index = 2363
-#for class_ in os.listdir(data_dir):
-#	for image in os.listdir(os.path.join(data_dir, class_)):
-#		file_path = os.path.join(data_dir,class_,image)
-#		try:
-#			im = Image.open(file_path, formats=['JPEG'])
-#		except:
-#			dest = os.path.join('/local/scratch/jrs596/dat/final_filter/corrupt', str(index) + '.jpg')
-#			shutil.move(file_path,dest)
-#			index += 1
-#			print(file_path)#
+
+
+def filter_corrupt_files():
+	dest = os.path.join(image_out_dir, 'corrupt') 
+	os.makedirs(dest, exist_ok = True)
+	index = len(os.listdir(dest))
+	for class_ in os.listdir(data_dir):
+		for image in os.listdir(os.path.join(data_dir, class_)):
+			file_path = os.path.join(data_dir,class_,image)
+			try:
+				im = Image.open(file_path, formats=['JPEG'])
+			except:
+				shutil.move(file_path, os.path.join(dest, str(index) + '.jpg'))
+				index += 1
+				print(file_path)
+
+#filter_corrupt_files()
 
 ###############################################
 ## Delete duplicate images for each class
-#for i in os.listdir(data_dir):
-#	search = dif(os.path.join(data_dir, i), delete=True, silent_del=True)
+def delete_duplicates():
+	for i in os.listdir(data_dir):
+		search = dif(os.path.join(data_dir, i), delete=True, silent_del=True)
 
+#delete_duplicates()
 
 ##############################################
 # Filter out non-plant images with Plant-NotPlant CNN
-dataset = torchvision.datasets.ImageFolder(data_dir, transform=transform)
+dataset = datasets.ImageFolder(data_dir, transform=transform)
 loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=6, drop_last=False)
 
-for i, (inputs, labels) in enumerate(loader, 0):
-	source, _ = loader.dataset.samples[i]
-	inputs = inputs.to(device)
-	outputs = model(inputs)
-	# [0][1] = Plant
-	# [0][0] = NotPlant
-	if torch.sigmoid(outputs)[0][0].item() > 0.995:
-		dest = os.path.join('/local/scratch/jrs596/dat/final_filter/PNP', str(index) + '.jpg')
-		shutil.move(source,dest)
-		print()
-		print(source)
-		print(torch.sigmoid(outputs)[0])
+classes = sorted(os.listdir(data_dir))
 
-		index += 1
+def plant_notplant_filter():
+	for i, (inputs, labels) in enumerate(loader):
+		source, _ = loader.dataset.samples[i]
+		inputs = inputs.to(device)
+		outputs = model(inputs)
+		outputs = torch.sigmoid(outputs)
+		# [0][1] = Plant
+		# [0][0] = NotPlant
+
+		class_ = classes[labels.item()]
+		os.makedirs(os.path.join(root, 'Forestry_ArableImages_GoogleBing_Final', class_), exist_ok=True)
+
+		#If model predicts "plant" 
+		if outputs[0][1].item() > 0.6:# and outputs[0][0].item() < 0.01:
+			dest = os.path.join(root, 'Forestry_ArableImages_GoogleBing_Final', class_, class_ + str(time.time()) + '.jpg')
+			print('Auto keeping image')
+		#If model predicts "not plant"
+		elif outputs[0][0].item() > 0.95:# and outputs[0][1].item() < 0.01:
+			dest = os.path.join(image_out_dir, 'NotPlant', class_ + str(time.time()) + '.jpg')
+			print('Auto deleting image')
+			print(outputs)
+		#If model is unsure
+		else:
+			print('\n', source, '\n')
+			plt.imshow(inputs[0].cpu().permute(1, 2, 0))
+			plt.draw()
+			plt.pause(2)
+			plt.close()
+			answer = input("\nIs this a plant, y or n? Or press a to see again. ")#
+		
+			if answer == 'a':
+				print('\n', source, '\n')
+				plt.imshow(inputs[0].cpu().permute(1, 2, 0))
+				plt.draw()
+				plt.pause(2)
+				plt.close()
+				answer = input("\nIs this a plant, y or n? Or press a to see again. ")#
+
+			elif answer == 'n':
+				print('Deleting image')
+				dest = os.path.join(image_out_dir, class_ + str(time.time()) + '.jpg')
+				print('Confidence, not plant: ' , str(outputs[0][0].item()))
+			
+			else:
+				dest = os.path.join(root, 'Forestry_ArableImages_GoogleBing_Final', class_, class_ + str(time.time()) + '.jpg')
+				print('Keeping image')
+				print(dest)
+				print('Confidence, plant: ' , str(outputs[0][1].item()))
+
+		shutil.move(source, dest)
+
+
+
+plant_notplant_filter()
+
+

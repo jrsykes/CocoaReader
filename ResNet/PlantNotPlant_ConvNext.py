@@ -1,14 +1,20 @@
 from __future__ import print_function
 from __future__ import division
+import sys
+sys.path.insert(0, "/home/userfs/j/jrs596/scripts")
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import torchvision
-from torchvision import datasets, models, transforms
-from torchvision.models import ConvNeXt_Tiny_Weights
+#import torchvision
+#from torchvision import datasets, models, transforms
+#from torchvision.models import ConvNeXt_Tiny_Weights
+#from torchvision.models import ResNet18_Weights
 
-#import matplotlib.pyplot as plt
+from vision.torchvision import models
+from vision.torchvision.models import ConvNeXt_Tiny_Weights
+
 import time
 import os
 import copy
@@ -18,13 +24,15 @@ import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
 
+
 # Top level data directory. Here we assume the format of the directory conforms
 #   to the ImageFolder structure
-data_dir = "/local/scratch/jrs596/dat/PlantNotPlant2"
+data_dir = "/scratch/staff/jrs596/dat/PlantNotPlant3"
+data_dir = "/scratch/staff/jrs596/dat/test"
 
 # File name for model
 model_name = "PlantNotPlant_2_ConvNext"
-
+model_path = '/scratch/staff/jrs596/dat/models'
 # Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
 
@@ -43,7 +51,7 @@ input_size = 224
 #   when True we only update the reshaped layer params
 feature_extract = False
 
-writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
+writer = SummaryWriter(log_dir='/scratch/staff/jrs596/dat/models/logs/logs_' + model_name)
 
 def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     since = time.time()
@@ -93,11 +101,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
             else:
                 model.eval()   # Set model to evaluate mode
 
-            running_loss = 0.0
-            running_corrects = 0
-            running_precision = 0
-            running_recall = 0
-            running_f1 = 0
+            running_loss, running_corrects, running_precision, running_recall, running_f1 = 0.0, 0, 0, 0, 0
 
             # Iterate over data.
             n = len(dataloaders_dict[phase].dataset)
@@ -117,15 +121,14 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                         # In train mode we calculate the loss by summing the final output and the auxiliary output
                         # but in testing we only consider the final output.
                         outputs = model(inputs)
+                        print(outputs.size())
+                        
                         loss = criterion(outputs, labels)   
                         _, preds = torch.max(outputs, 1) 
                         
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
-                      
                         loss += (1-stats_out['precision'])*0.4
-   
-                                     
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -138,14 +141,12 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                     #the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
-
-
                     running_precision += stats_out['precision'] * inputs.size(0)                
                     running_recall += stats_out['recall'] * inputs.size(0)
                     running_f1 += stats_out['f1-score'] * inputs.size(0)
 
                     bar.next()
-
+                    exit()
             n = len(dataloaders_dict[phase].dataset)
             epoch_loss = float(running_loss / n)
             epoch_acc = float(running_corrects.double() / n)
@@ -178,20 +179,21 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
                 best_model_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
-                PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
+                print('Saving')
 
+                
                 # Save only the model weights for easy loading into a new model
                 final_out = {
                     'model': best_model_wts,
-                    '__author__': 'Jamie R. Sykes'                    
+                    '__author__': 'Jamie R. Sykes',
+                    '__model_name__': model_name                    
                     }    
-                 
-                model_path = PATH + model_name + '.pkl'
-                with open(model_path, 'wb') as f:
+            
+                with open(os.path.join(model_path, model_name + '.pkl'), 'wb') as f:
                     pickle.dump(final_out, f)
 
                 # Save the whole model with pytorch save function
-                torch.save(model, PATH + model_name + '.pth')
+                torch.save(model, os.path.join(model_path, model_name + '.pth'))
 
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -206,41 +208,20 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size):
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
-    
-
-
     writer.flush()
     writer.close()
     return model #, val_loss_history
 
 
-
-#Set Model Parameters’ .requires_grad attribute
-def set_parameter_requires_grad(model, feature_extracting):
-    if feature_extracting:
-        for param in model.parameters():
-            param.requires_grad = False
+#weights = ConvNeXt_Tiny_Weights.DEFAULT
+#for key, value in weights.named_modules():
+#    print(key)
 
 
-##Initialize and Reshape the Networks
-#def initialize_model(num_classes, feature_extract, use_pretrained=True):
-#    # Initialize these variables which will be set in this if statement. Each of these
-#    #   variables is model specific.
-#    model_ft = None#
 
-#    #model_ft = models.resnet18(pretrained=use_pretrained)
-#    #
+model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT, num_classes=num_classes)
+model_ft.classifier[2].out_features = num_classes
 
-#    set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
-#    num_ftrs = model_ft.fc.in_features
-#    model_ft.fc = nn.Linear(num_ftrs, num_classes)
-#    #model_ft.fc[1] = torch.nn.Sigmoid(1)
-#    return model_ft #, input_size#
-
-## Initialize the model for this run
-#model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
-
-model_ft = models.convnext.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
 
 
 # Data augmentation and normalization for training
@@ -282,28 +263,14 @@ model_ft = model_ft.to(device)
 #  that we have just initialized, i.e. the parameters with requires_grad
 #  is True.
 params_to_update = model_ft.parameters()
-print("Params to learn:")
-if feature_extract:
-    params_to_update = []
-    for name,param in model_ft.named_parameters():
-        if param.requires_grad == True:
-            params_to_update.append(param)
-            print("\t",name)
-#else:
- #   for name,param in model_ft.named_parameters():
-        #if param.requires_grad == True:
-            #print("\t",name)
 
 # Observe that all parameters are being optimized
 optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
 
 
-
-#Run Training and Validation Step
 # Setup the loss fxn
 criterion = nn.CrossEntropyLoss()
 
 # Train and evaluate
-
 
 model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size)

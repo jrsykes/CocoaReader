@@ -7,7 +7,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import random
 import math
 
-dir_ = '/local/scratch/jrs596/dat/PlantNotPlant/val/Plant'
+dir_ = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_PNP_out/NotPlant/'
 
 def img_reshape(img):
     img = Image.open(os.path.join(dir_,img)).convert('RGB')
@@ -16,7 +16,7 @@ def img_reshape(img):
     return img
 
 
-n_imgs = 600#len(os.listdir(dir_))
+n_imgs = 80#len(os.listdir(dir_))
 
 
 images = os.listdir(dir_)
@@ -44,3 +44,4 @@ for ax, im in zip(grid, img_arr):
 	ax.imshow(im)
 
 plt.show()
+#plt.savefig("plt_grid.jpg")

@@ -15,47 +15,72 @@ import pickle
 import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
+from torchvision.models import ResNet18_Weights
+import sys
+import argparse
 
 
-# Top level data directory. Here we assume the format of the directory conforms
-#   to the ImageFolder structure
-data_dir = '/local/scratch/jrs596/dat/PlantNotPlant_TinyIM_Sig_filtered_split'
-#data_dir = '/local/scratch/jrs596/dat/test'
+parser = argparse.ArgumentParser('encoder decoder examiner')
+
+
+parser.add_argument('--model_name', type=str,
+                        help='save name for model')
+parser.add_argument('--root', type=str,
+                        help='location of all data')
+parser.add_argument('--data_dir', type=str,
+                        help='location of all data')
+parser.add_argument('--batch_size', type=int, default=42,
+                        help='Batch size')
+parser.add_argument('--min_epochs', type=int, default=10,
+                        help='n epochs before loss is assesed for early stopping')
+parser.add_argument('--patients', type=int, default=50,
+                        help='n epochs to run without improvment in loss')
+parser.add_argument('--beta', type=float, default=1.005,
+                        help='minimum required per cent improvment in validation loss')
+parser.add_argument('--input_size', type=int, default=224,
+                        help='image input size')
+
+
+args = parser.parse_args()
+
+#pretrained_model_path = "/scratch/staff/jrs596/dat/models/PlantNotPlant_unsplit_3.2.pkl"
 
 # File name for model
-model_name = "ResDes18_1kdim_HighRes_TinyIN_Sig_Filtered_WeightedLoss"
+#model_name = "ResDes18_750kdim_HighRes_PNPFiltered_WeightedLoss"
+
+#root = '/scratch/staff/jrs596/dat'
+data_dir = os.path.join(args.root, args.data_dir)#"Forestry_ArableImages_GoogleBing_Final")
+model_path = os.path.join(args.root, 'models')
+log_dir= os.path.join(model_path, "logs", "logs_" + args.model_name)
 
 # Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
 
-
 # Batch size for training (change depending on how much memory you have)
-batch_size = 42
+#batch_size = 42
 
 # Number of epochs to train for
-min_epocs = 10
+#min_epocs = 10
 #Earley stopping
-patience = 50 #epochs
-beta = 1.005 ## % improvment in validation loss
+#patience = 50 #epochs
+#beta = 1.005 ## % improvment in validation loss
 
-input_size = 1000
-# Flag for feature extracting. When False, we finetune the whole model,
-#   when True we only update the reshaped layer params
-feature_extract = False
+#input_size = 750
 
-writer = SummaryWriter(log_dir='/local/scratch/jrs596/ResNetFung50_Torch/logs_' + model_name)
+
+
+writer = SummaryWriter(log_dir=log_dir)
 
 def train_model(model, dataloaders, criterion, optimizer, patience, input_size, initial_bias):
     since = time.time()
     
     val_loss_history = []
-    best_recall = 0.0
-    best_recall_acc = 0.0
+    best_precision = 0.0
+    best_precision_acc = 0.0
     
-    #Save Imagenet weights as 'best_model_wts' variable. 
+    #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
-
 
     best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
@@ -66,8 +91,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
         print('\nEpoch {}'.format(epoch))
         print('-' * 10)
 
-        if len(val_loss_history) > min_epocs:
-            if val_loss_history[-1] > min(val_loss_history)*beta:
+        if len(val_loss_history) > args.min_epocs:
+            if val_loss_history[-1] > min(val_loss_history)*args.beta:
                 patience -= 1
             else:
                 patience = initial_patience
@@ -91,7 +116,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
             # Iterate over data.
             n = len(dataloaders_dict[phase].dataset)
             print(phase)
-            with Bar('Learning...', max=n/batch_size+1) as bar:
+            with Bar('Learning...', max=n/args.batch_size+1) as bar:
                 
                 for inputs, labels in dataloaders[phase]:
                     #count += 1
@@ -109,8 +134,11 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         # but in testing we only consider the final output.
                         outputs = model(inputs)
                         loss = criterion(outputs, labels)   
-
                         _, preds = torch.max(outputs, 1)    
+
+                        stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
+                        stats_out = stats['weighted avg']
+                        loss += (1-stats_out['precision'])*0.4
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -123,9 +151,6 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                     #the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
-
-                    stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-                    stats_out = stats['weighted avg']
                     running_precision += stats_out['precision'] * inputs.size(0)
                     running_recall += stats_out['recall'] * inputs.size(0)
                     running_f1 += stats_out['f1-score'] * inputs.size(0)
@@ -159,92 +184,55 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
               
             
             # Save model and update best weights only if recall has improved
-            if phase == 'val' and epoch_recall > best_recall:
-                best_recall = epoch_recall
-                best_recall_acc = epoch_acc
+            if phase == 'val' and epoch_precision > best_precision:
+                best_precision = epoch_precision
+                best_precision_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
-
-                PATH = '/local/scratch/jrs596/ResNetFung50_Torch/models/'
 
                 # Save only the model weights for easy loading into a new model
                 final_out = {
                     'model': best_model_wts,
-                    '__author__': 'Jamie R. Sykes'                    
-                    }    
+                    '__author__': 'Jamie R. Sykes',
+                    '__model_name__': model_name                    
+                    }       
                  
-                model_path = PATH + model_name + '.pkl'
-                with open(model_path, 'wb') as f:
+                PATH = os.path.join(model_path, model_name)
+                with open(PATH + '.pkl', 'wb') as f:
                     pickle.dump(final_out, f)
 
                 # Save the whole model with pytorch save function
-                torch.save(model, PATH + model_name + '.pth')
-
-                # Save in onnx format to be converted to TF-lite
-                input_names = os.listdir('/local/scratch/jrs596/dat/ResNetFung50+_images_organised_subset/val')
-                dummy_input = torch.randn(10, 3, input_size, input_size, device="cuda")
-                output_names = ['AauberginesDiseased']
-                torch.onnx.export(model.module, dummy_input, PATH + model_name + '.onnx', 
-                verbose=False, input_names=input_names, output_names=output_names)
+                torch.save(model, PATH + '.pth')
 
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
-                
     
         epoch += 1
         
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val recall_Acc: {:4f}'.format(best_recall_acc))
-    print('Best val recall: {:4f}'.format(best_recall))
+    print('Best val recall_Acc: {:4f}'.format(best_precision_acc))
+    print('Best val recall: {:4f}'.format(best_precision))
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
     
-
-
     writer.flush()
     writer.close()
-    return model #, val_loss_history
-
-
-
-#Set Model Parameters’ .requires_grad attribute
-def set_parameter_requires_grad(model, feature_extracting):
-    if feature_extracting:
-        for param in model.parameters():
-            param.requires_grad = False
-
-
-#Initialize and Reshape the Networks
-def initialize_model(num_classes, feature_extract, use_pretrained=True):
-    # Initialize these variables which will be set in this if statement. Each of these
-    #   variables is model specific.
-    model_ft = None
-
-    model_ft = models.resnet18(pretrained=use_pretrained)
-    set_parameter_requires_grad(model_ft, feature_extract) # Not requiered for full fine tuning
-    num_ftrs = model_ft.fc.in_features
-    model_ft.fc = nn.Linear(num_ftrs, num_classes)
-
-    return model_ft #, input_size
-
-# Initialize the model for this run
-model_ft = initialize_model(num_classes, feature_extract, use_pretrained=True)
+    return model 
 
 # Data augmentation and normalization for training
 # Just normalization for validation
 data_transforms = {
     'train': transforms.Compose([
-        transforms.RandomResizedCrop(input_size),
+        transforms.RandomResizedCrop(args.input_size),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
     'val': transforms.Compose([
-        transforms.Resize((input_size,input_size)),
-        #transforms.CenterCrop(input_size),
+        transforms.Resize((args.input_size,args.input_size)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
 }
 
@@ -253,36 +241,38 @@ print("Initializing Datasets and Dataloaders...")
 # Create training and validation datasets
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
 # Create training and validation dataloaders
-dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
+dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=4) for x in ['train', 'val']}
 
 # Detect if we have a GPU available
 device = torch.device("cuda")
 
+model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+num_ftrs = model_ft.fc.in_features
+model_ft.fc = nn.Linear(num_ftrs, num_classes)
+
+#Load PNP weights
+#pretrained_model_wts = pickle.load(open(pretrained_model_path, "rb"))
+#weights = copy.deepcopy(pretrained_model_wts['model'])
+
+###############
+#Remove 'module.' from layer names
+#new_keys = []
+#for key, value in weights.items():
+#    new_keys.append(key.replace('module.', ''))
+#for i in new_keys:
+#    weights[i] = weights.pop('module.' + i)#    
+
+##############
+#Load weights
+#model_ft.load_state_dict(weights)
+
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)
-
-#Create the Optimizer
 model_ft = model_ft.to(device)
 
-# Gather the parameters to be optimized/updated in this run. If we are
-#  finetuning we will be updating all parameters. However, if we are
-#  doing feature extract method, we will only update the parameters
-#  that we have just initialized, i.e. the parameters with requires_grad
-#  is True.
 params_to_update = model_ft.parameters()
-print("Params to learn:")
-if feature_extract:
-    params_to_update = []
-    for name,param in model_ft.named_parameters():
-        if param.requires_grad == True:
-            params_to_update.append(param)
-            print("\t",name)
-#else:
- #   for name,param in model_ft.named_parameters():
-        #if param.requires_grad == True:
-            #print("\t",name)
 
-# Observe that all parameters are being optimized
+#Deine optimiser
 optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
 
 ### Calculate and set bias for final layer based on imbalance in dataset classes
@@ -303,4 +293,4 @@ criterion = nn.CrossEntropyLoss(weight=initial_bias)
 # Train and evaluate
 
 
-model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=patience, input_size=input_size, initial_bias=initial_bias)
+model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)
