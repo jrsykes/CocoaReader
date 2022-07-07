@@ -2,9 +2,8 @@ import shutil
 import os
 import random
 
-not_plant = '/scratch/staff/jrs596/dat/CLS-LOC_filtered/second_pass/val'
-plant = '/scratch/staff/jrs596/dat/ResNetFung50+_images'
-dest = '/scratch/staff/jrs596/dat/PlantNotPlant3.2/train_full'
+dat = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_clean/train'
+dest = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_clean_split'
 
 
 def CopyPlant(destination, img_path):
@@ -31,13 +30,13 @@ def CopyNotPlant(destination, img_path, n_not_plant):
 		dest = os.path.join(destination, 'NotPlant', i)
 		shutil.copy(source, dest)
 
-CopyNotPlant(destination=dest, img_path=not_plant, n_not_plant=n_not_plant)
+#CopyNotPlant(destination=dest, img_path=not_plant, n_not_plant=n_not_plant)
 
 
 
-def Randomise_Split(destination):
-	for class_ in ['Plant', 'NotPlant']:
-		images = os.listdir(os.path.join(destination, class_))
+def Randomise_Split(dat, destination):
+	for class_ in os.listdir(dat):
+		images = os.listdir(os.path.join(dat, class_))
 		random.shuffle(images)	
 
 		dat_dict = {'train': images[:int(len(images)*0.8)], 
@@ -51,4 +50,4 @@ def Randomise_Split(destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-#Randomise_Split((destination=dest)
+Randomise_Split(dat=dat, destination=dest)
