@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --partition=small
+#SBATCH --partition=big
 
 # set the number of nodes
 #SBATCH --nodes=1
@@ -12,7 +12,7 @@
 #SBATCH --job-name=ResDes18
 
 # set number of GPUs
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 
 # mail alert at start, end and abortion of execution
 #SBATCH --mail-type=ALL
