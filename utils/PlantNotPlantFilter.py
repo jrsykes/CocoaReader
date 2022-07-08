@@ -9,32 +9,28 @@ import torchvision.transforms as transforms
 import copy
 import pickle
 from PIL import Image
-from difPy import dif
+#from difPy import dif
 import matplotlib.pyplot as plt
 import time
 
 
 model_name = "PlantNotPlant_SemiSup"
 root = '/local/scratch/jrs596/dat'
-image_out_dir = os.path.join(root, 'Forestry_ArableImages_GoogleBing_PNP_out')
-os.makedirs(os.path.join(image_out_dir, 'NotPlant'), exist_ok=True)
-os.makedirs(os.path.join(image_out_dir, 'Plant'), exist_ok=True)
+image_out_dir = os.path.join(root, 'Forestry_ArableImages_GoogleBing_PNP_out/FinalNotPlant')
 
-#data_dir = os.path.join(root, "Forestry_ArableImages_GoogleBing_clean/train")
-data_dir = '/local/scratch/jrs596/dat/PNP_manual'
+
+data_dir = os.path.join(root, "Forestry_ArableImages_GoogleBing_clean/train")
+#data_dir = '/local/scratch/jrs596/dat/PlantNotPlant3.3/train_full'
 #data_dir = os.path.join(root, "test2/images")
 #model_path = os.path.join(root, 'models')
 model_path = '/local/scratch/jrs596/dat/models'
+device = torch.device("cuda")
 
 def prep_model():
-	input_size = 224
-	device = torch.device("cuda")  
+	  
 	# Number of classes in the dataset
 	num_classes = 2
-	transform = transforms.Compose([
-	        transforms.Resize((input_size,input_size)),
-	        transforms.ToTensor(),
-	    ])	
+
 
 	model = models.resnet18(weights=None)
 	num_ftrs = model.fc.in_features
@@ -86,41 +82,48 @@ def delete_duplicates():
 	for i in os.listdir(data_dir):
 		search = dif(os.path.join(data_dir, i), delete=True, silent_del=True)
 
-delete_duplicates()
+#delete_duplicates()
 
 ##############################################
 # Filter out non-plant images with Plant-NotPlant CNN
 
 def plant_notplant_filter():
 	model = prep_model()
+	input_size = 224
+	transform = transforms.Compose([
+	    transforms.Resize((input_size,input_size)),
+	    transforms.ToTensor(),
+	    ])	
 
 	dataset = datasets.ImageFolder(data_dir, transform=transform)
 	loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=6, drop_last=False)
 	classes = sorted(os.listdir(data_dir))
+	
 	for i, (inputs, labels) in enumerate(loader):
+		class_ = classes[labels.item()]
 		source, _ = loader.dataset.samples[i]
 		inputs = inputs.to(device)
 		outputs = model(inputs)
-		outputs = torch.sigmoid(outputs)
+		outputs = torch.sigmoid(outputs)			
 		# [0][1] = Plant
 		# [0][0] = NotPlant
 
-		class_ = classes[labels.item()]
+		
 		#os.makedirs(os.path.join(root, 'FAIGB_Final', class_), exist_ok=True)
 
 		#If model predicts "plant" 
-		if outputs[0][1].item() > 0.99:# and outputs[0][0].item() < 0.01:
-			dest = os.path.join(root, 'PlantNotPlant3.3/train_full/Plant', class_ + str(time.time()) + '.jpg')
-			#dest = os.path.join(image_out_dir, 'Plant', class_ + str(time.time()) + '.jpg')
+		if outputs[0][0].item() > 0.9:# outputs[0][0].item():
+			dest = os.path.join(image_out_dir, class_ + str(time.time()) + '.jpg')
+			#dest = os.path.join(image_out_dir, 'Plant2', class_ + str(time.time()) + '.jpg')
 			print('Auto keeping image')
 			print(outputs)
 			shutil.move(source, dest)
 		#If model predicts "not plant"
-		if outputs[0][0].item() > 0.99:#outputs[0][1].item() * 1.01:
-			dest = os.path.join(image_out_dir, 'NotPlant', class_ + str(time.time()) + '.jpg')
-			print('Auto deleting image')
-			print(outputs)
-			shutil.move(source, dest)
+#		if outputs[0][0].item() > 0.99:#outputs[0][1].item() * 1.01:
+#			dest = os.path.join(image_out_dir, 'NotPlant', class_ + str(time.time()) + '.jpg')
+#			print('Auto deleting image')
+#			print(outputs)
+#			shutil.move(source, dest)
 		#If model is unsure
 #		else:
 #			print('\n', source, '\n')
@@ -153,6 +156,6 @@ def plant_notplant_filter():
 
 
 
-#plant_notplant_filter()
+plant_notplant_filter()
 
 

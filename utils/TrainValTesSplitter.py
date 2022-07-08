@@ -2,8 +2,8 @@ import shutil
 import os
 import random
 
-dat = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_clean/train'
-dest = '/local/scratch/jrs596/dat/Forestry_ArableImages_GoogleBing_clean_split'
+dat = '/local/scratch/jrs596/dat/FAIGB_clean_filtered/train'
+dest = '/local/scratch/jrs596/dat/FAIGB_clean_filtered_split'
 
 
 def CopyPlant(destination, img_path):
@@ -46,7 +46,7 @@ def Randomise_Split(dat, destination):
 		for split, im_list in dat_dict.items():
 			os.makedirs(os.path.join(destination, split, class_), exist_ok = True)
 			for image in im_list:
-				source = os.path.join(destination, class_, image)
+				source = os.path.join(dat, class_, image)
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 

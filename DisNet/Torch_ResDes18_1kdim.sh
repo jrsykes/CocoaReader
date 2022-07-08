@@ -37,7 +37,7 @@ cd $CODE_DIR
 python 'CocoaReader/DisNet/Torch_ResDes18_1kdim.py' \
         --model_name 'ResDis18_1kdim_HighRes_PNPFiltered_WeightedLoss' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
-        --data_dir 'Forestry_ArableImages_GoogleBing_clean_split' \
+        --data_dir 'FAIGB_clean_filtered_split' \
         --input_size 1000 \
 
 
