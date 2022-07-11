@@ -6,13 +6,13 @@
 #SBATCH --nodes=1
 
 # set max wallclock time
-#SBATCH --time=72:00:00
+#SBATCH --time=24:00:00
 
 # set name of job
 #SBATCH --job-name=ResDes18
 
 # set number of GPUs
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:8
 
 # mail alert at start, end and abortion of execution
 #SBATCH --mail-type=ALL
@@ -35,10 +35,11 @@ cd $CODE_DIR
 
 
 python 'CocoaReader/DisNet/Torch_ResDes18_1kdim.py' \
-        --model_name 'ResDis18_1kdim_HighRes_PNPFiltered_WeightedLoss' \
+        --model_name 'DisNet_1kdim_HighRes_ConvNext' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'FAIGB_clean_filtered_split' \
         --input_size 1000 \
+        --min_epochs 1
 
 
 

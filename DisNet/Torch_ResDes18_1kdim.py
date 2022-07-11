@@ -227,6 +227,23 @@ model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
 in_feat = model_ft.classifier[2].in_features
 model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
 
+
+#If checkpoint weights file exists, load these weights.
+if os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
+    pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
+    unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
+
+###############
+#Remove 'module.' from layer names
+    new_keys = []
+    for key, value in unpickled_model_wts.items():
+        new_keys.append(key.replace('module.', ''))
+    for i in new_keys:
+        unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)#    
+##############
+    model_ft.load_state_dict(unpickled_model_wts)
+    print('Checkpint weights loaded')
+
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)
 model_ft = model_ft.to(device)
