@@ -2,8 +2,8 @@ import shutil
 import os
 import random
 
-dat = '/local/scratch/jrs596/dat/FAIGB_clean_filtered/train'
-dest = '/local/scratch/jrs596/dat/FAIGB_clean_filtered_split'
+dat = '/local/scratch/jrs596/dat/FAIGB_reduced/train/'
+dest = '/local/scratch/jrs596/dat/FAIGB_reduced_split'
 
 
 def CopyPlant(destination, img_path):
