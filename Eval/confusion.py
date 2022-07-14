@@ -17,8 +17,8 @@ input_size = 1000
 batch_size = 5
 
 root = '/local/scratch/jrs596/dat'
-data_dir = os.path.join(root, 'FAIGB_clean_filtered_split/val')
-model_path = os.path.join(root, 'models/DisNet_1kdim_HighRes_ConvNext.pkl')
+data_dir = os.path.join(root, 'FAIGB_reduced_split/val')
+model_path = os.path.join(root, 'models/DisNet_1kdim_HighRes_ConvNext_reduced.pkl')
 
 # Number of classes in the dataset
 num_classes = len(os.listdir(data_dir))
@@ -124,5 +124,5 @@ df = pd.DataFrame(cm,columns=names)
 df.insert(loc=0,column='/',value=names)
 print(df)
 
-df.to_csv(os.path.join(root, 'confusion_matrix.csv'))
-acc_df.to_csv(os.path.join(root, 'stats.csv'))
+df.to_csv(os.path.join(root, 'confusion_matrix2.csv'))
+acc_df.to_csv(os.path.join(root, 'stats2.csv'))

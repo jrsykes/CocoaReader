@@ -2,9 +2,11 @@ import shutil
 import os
 import random
 
-dat = '/local/scratch/jrs596/dat/FAIGB_reduced/train/'
+dat = '/local/scratch/jrs596/dat/FAIGB_clean_filtered/train'
 dest = '/local/scratch/jrs596/dat/FAIGB_reduced_split'
 
+healthy_path = '/local/scratch/jrs596/dat/FAIGB_combined/healthy/'
+disease_path = '/local/scratch/jrs596/dat/FAIGB_combined/diseased/'
 
 def CopyPlant(destination, img_path):
 	n = 0
@@ -50,4 +52,20 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-Randomise_Split(dat=dat, destination=dest)
+#Randomise_Split(dat=dat, destination=dest)
+
+def combine(original_data, disease_path, healthy_path):
+	for i in os.listdir(original_data):
+		source = os.path.join(original_data, i)
+
+		if 'Diseased' in i:
+			print(i)
+			for file in os.listdir(source):
+				shutil.copy(os.path.join(source,file), os.path.join(disease_path, file))
+		else:
+			print(i)
+			for file in os.listdir(source):
+				shutil.copy(os.path.join(source,file), os.path.join(healthy_path, file))
+		
+
+combine(dat, disease_path, healthy_path)

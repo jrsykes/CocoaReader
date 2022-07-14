@@ -9,7 +9,7 @@ import torchvision.transforms as transforms
 import copy
 import pickle
 from PIL import Image
-#from difPy import dif
+from difPy import dif
 import matplotlib.pyplot as plt
 import time
 
@@ -19,7 +19,7 @@ root = '/local/scratch/jrs596/dat'
 image_out_dir = os.path.join(root, 'Forestry_ArableImages_GoogleBing_PNP_out/FinalNotPlant')
 
 
-data_dir = os.path.join(root, "Forestry_ArableImages_GoogleBing_clean/train")
+data_dir = os.path.join(root, "FAIGB_combined")
 #data_dir = '/local/scratch/jrs596/dat/PlantNotPlant3.3/train_full'
 #data_dir = os.path.join(root, "test2/images")
 #model_path = os.path.join(root, 'models')
@@ -82,7 +82,7 @@ def delete_duplicates():
 	for i in os.listdir(data_dir):
 		search = dif(os.path.join(data_dir, i), delete=True, silent_del=True)
 
-#delete_duplicates()
+delete_duplicates()
 
 ##############################################
 # Filter out non-plant images with Plant-NotPlant CNN
@@ -156,6 +156,6 @@ def plant_notplant_filter():
 
 
 
-plant_notplant_filter()
+#plant_notplant_filter()
 
 
