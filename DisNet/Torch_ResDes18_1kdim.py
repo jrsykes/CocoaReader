@@ -40,6 +40,8 @@ parser.add_argument('--input_size', type=int, default=224,
                         help='image input size')
 parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18 or convnext_tiny')
+parser.add_argument('--cont_train', type=bool, default=False,
+                        help='Continue training from previous checkpoint? True or False?')
 args = parser.parse_args()
 
 
@@ -62,7 +64,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
-
+    #Add initial bias to last layer
     best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
     
@@ -114,7 +116,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         # In train mode we calculate the loss by summing the final output and the auxiliary output
                         # but in testing we only consider the final output.
                         outputs = model(inputs)
-                        loss = criterion(outputs, labels)   
+                        loss = criterion(outputs, labels)
                         _, preds = torch.max(outputs, 1)    
 
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
@@ -237,7 +239,7 @@ elif args.arch == 'resnet18':
 
 
 #If checkpoint weights file exists, load these weights.
-if os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
+if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
     pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
     unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
 
