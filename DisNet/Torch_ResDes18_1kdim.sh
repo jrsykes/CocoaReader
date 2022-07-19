@@ -9,7 +9,7 @@
 #SBATCH --time=24:00:00
 
 # set name of job
-#SBATCH --job-name=ResDes18
+#SBATCH --job-name=DesNet
 
 # set number of GPUs
 #SBATCH --gres=gpu:8
@@ -35,12 +35,12 @@ cd $CODE_DIR
 
 
 python 'CocoaReader/DisNet/Torch_ResDes18_1kdim.py' \
-        --model_name 'DisNet_1kdim_HighRes_ConvNext' \
+        --model_name 'DisNet_1kdim_Binary_ResNet18' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
-        --data_dir 'FAIGB_clean_filtered_split' \
+        --data_dir 'FAIGB_combined_split' \
         --input_size 1000 \
-        --min_epochs 1
-
+        --min_epochs 1 \
+	--arch resnet18
 
 
 

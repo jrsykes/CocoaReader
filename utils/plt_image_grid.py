@@ -7,7 +7,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import random
 import math
 
-dir_ = '/local/scratch/jrs596/dat/FAIGB_clean_filtered/train/Prunus_Diseased/'
+dir_ = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/FAIGB_combined_split/val/diseased'
 
 def img_reshape(img):
     img = Image.open(os.path.join(dir_,img)).convert('RGB')
@@ -16,7 +16,7 @@ def img_reshape(img):
     return img
 
 
-n_imgs = len(os.listdir(dir_))
+n_imgs = 600#len(os.listdir(dir_))
 
 #images = []
 #for i in os.listdir(dir_):

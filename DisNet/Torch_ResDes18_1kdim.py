@@ -14,7 +14,8 @@ import pickle
 import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models import ConvNeXt_Tiny_Weights
+from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights
+
 
 import sys
 import argparse
@@ -37,6 +38,8 @@ parser.add_argument('--beta', type=float, default=1.005,
                         help='minimum required per cent improvment in validation loss')
 parser.add_argument('--input_size', type=int, default=224,
                         help='image input size')
+parser.add_argument('--arch', type=str, default='resnet18',
+                        help='Model architecture. resnet18 or convnext_tiny')
 args = parser.parse_args()
 
 
@@ -223,9 +226,14 @@ dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size
 # Detect if we have a GPU available
 device = torch.device("cuda")
 
-model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
-in_feat = model_ft.classifier[2].in_features
-model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+if args.arch == 'convnext_tiny':
+    model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
+    in_feat = model_ft.classifier[2].in_features
+    model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+elif args.arch == 'resnet18':
+    model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+    in_feat = model_ft.fc.in_features
+    model_ft.fc = nn.Linear(in_feat, num_classes)
 
 
 #If checkpoint weights file exists, load these weights.
