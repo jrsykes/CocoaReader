@@ -2,8 +2,8 @@ import shutil
 import os
 import random
 
-dat = '/local/scratch/jrs596/dat/FAIGB_clean_filtered/train'
-dest = '/local/scratch/jrs596/dat/FAIGB_reduced_split'
+dat = '/local/scratch/jrs596/dat/FAIGB_combined_hf/'
+dest = '/local/scratch/jrs596/dat/FAIGB_combined_hf_split'
 
 healthy_path = '/local/scratch/jrs596/dat/FAIGB_combined/healthy/'
 disease_path = '/local/scratch/jrs596/dat/FAIGB_combined/diseased/'
@@ -39,7 +39,10 @@ def CopyNotPlant(destination, img_path, n_not_plant):
 def Randomise_Split(dat, destination):
 	for class_ in os.listdir(dat):
 		images = os.listdir(os.path.join(dat, class_))
-		random.shuffle(images)	
+		random.shuffle(images)
+
+		if class_ == 'healthy':
+			images = random.sample(images, 10000)	
 
 		dat_dict = {'train': images[:int(len(images)*0.8)], 
 			'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
@@ -52,7 +55,7 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-#Randomise_Split(dat=dat, destination=dest)
+Randomise_Split(dat=dat, destination=dest)
 
 def combine(original_data, disease_path, healthy_path):
 	for i in os.listdir(original_data):
@@ -68,4 +71,4 @@ def combine(original_data, disease_path, healthy_path):
 				shutil.copy(os.path.join(source,file), os.path.join(healthy_path, file))
 		
 
-combine(dat, disease_path, healthy_path)
+#combine(dat, disease_path, healthy_path)

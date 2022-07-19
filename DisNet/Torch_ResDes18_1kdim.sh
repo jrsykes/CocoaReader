@@ -9,10 +9,10 @@
 #SBATCH --time=24:00:00
 
 # set name of job
-#SBATCH --job-name=DesNet
+#SBATCH --job-name=DisNet_ResNet18
 
 # set number of GPUs
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:4
 
 # mail alert at start, end and abortion of execution
 #SBATCH --mail-type=ALL
@@ -37,7 +37,7 @@ cd $CODE_DIR
 python 'CocoaReader/DisNet/Torch_ResDes18_1kdim.py' \
         --model_name 'DisNet_1kdim_Binary_ResNet18' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
-        --data_dir 'FAIGB_combined_split' \
+        --data_dir 'FAIGB_combined_hf_split' \
         --input_size 1000 \
         --min_epochs 1 \
 	--arch resnet18
