@@ -3,7 +3,7 @@ import os
 import random
 
 dat = '/local/scratch/jrs596/dat/FAIGB_combined_hf/'
-dest = '/local/scratch/jrs596/dat/FAIGB_combined_hf_split'
+dest = '/local/scratch/jrs596/dat/FAIGB_test'
 
 healthy_path = '/local/scratch/jrs596/dat/FAIGB_combined/healthy/'
 disease_path = '/local/scratch/jrs596/dat/FAIGB_combined/diseased/'
@@ -41,8 +41,8 @@ def Randomise_Split(dat, destination):
 		images = os.listdir(os.path.join(dat, class_))
 		random.shuffle(images)
 
-		if class_ == 'healthy':
-			images = random.sample(images, 10000)	
+		#if class_ == 'healthy':
+		images = random.sample(images, 200)	
 
 		dat_dict = {'train': images[:int(len(images)*0.8)], 
 			'test': images[int(len(images)*0.8):int(len(images)*0.9)], 

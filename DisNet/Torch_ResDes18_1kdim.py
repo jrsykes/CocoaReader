@@ -15,8 +15,6 @@ import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
 from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights
-
-
 import sys
 import argparse
 
@@ -191,7 +189,6 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                 val_loss_history.append(epoch_loss)
     
         epoch += 1
-        
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Best val recall_Acc: {:4f}'.format(best_precision_acc))
@@ -233,6 +230,7 @@ if args.arch == 'convnext_tiny':
     in_feat = model_ft.classifier[2].in_features
     model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
 elif args.arch == 'resnet18':
+    print('Loaded ResNet18 with pretrained weights')
     model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
     in_feat = model_ft.fc.in_features
     model_ft.fc = nn.Linear(in_feat, num_classes)
@@ -240,6 +238,7 @@ elif args.arch == 'resnet18':
 
 #If checkpoint weights file exists, load these weights.
 if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
+    print('Checkpoint loaded')
     pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
     unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
 
@@ -261,7 +260,11 @@ model_ft = model_ft.to(device)
 params_to_update = model_ft.parameters()
 
 #Deine optimiser
-optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
+#optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
+optimizer_ft = torch.optim.Adamax(params_to_update, lr=2e-3,
+                                           weight_decay=0, eps=1e-8)
+#optimizer_ft = torch.optim.Adam(params_to_update, lr=2e-3,
+#                                           weight_decay=0, eps=1e-8)
 
 ### Calculate and set bias for final layer based on imbalance in dataset classes
 dir_ = os.path.join(data_dir, 'train')
@@ -276,7 +279,8 @@ for i in list_cats:
 
 initial_bias = torch.FloatTensor(weights).to(device)
 
-criterion = nn.CrossEntropyLoss(weight=initial_bias)
+#criterion = nn.CrossEntropyLoss(weight=initial_bias)
+criterion = nn.CrossEntropyLoss()
 
 # Train and evaluate
 model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)
