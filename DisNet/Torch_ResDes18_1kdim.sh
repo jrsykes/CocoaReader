@@ -9,7 +9,7 @@
 #SBATCH --time=24:00:00
 
 # set name of job
-#SBATCH --job-name=DisNet_ResNet
+#SBATCH --job-name=DisNet_ResNet_NoBatchNorm
 
 # set number of GPUs
 #SBATCH --gres=gpu:4
@@ -35,12 +35,14 @@ cd $CODE_DIR
 
 
 python 'CocoaReader/DisNet/Torch_ResDes18_1kdim.py' \
-        --model_name 'DisNet_1kdim_Binary_ResNet' \
+        --model_name 'DisNet_1kdim_Binary_ResNet_NoBatchNorm' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'FAIGB_combined_hf_split' \
         --input_size 1000 \
         --min_epochs 1 \
-	--arch resnet18
+	--arch resnet18 \
+        --batch_norm False
+
 
 
 

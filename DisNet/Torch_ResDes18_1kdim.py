@@ -40,6 +40,8 @@ parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18 or convnext_tiny')
 parser.add_argument('--cont_train', type=bool, default=False,
                         help='Continue training from previous checkpoint? True or False?')
+parser.add_argument('--batch_norm', type=bool, default=True,
+                        help='Deactivate all batchnorm layers? True or False?')
 args = parser.parse_args()
 
 
@@ -252,6 +254,17 @@ if args.cont_train == True and os.path.exists(os.path.join(model_path, args.mode
 ##############
     model_ft.load_state_dict(unpickled_model_wts)
     print('Checkpint weights loaded')
+
+
+def deactivate_batchnorm(m):
+    if isinstance(m, nn.BatchNorm2d):
+        m.reset_parameters()
+        with torch.no_grad():
+            m.weight.fill_(1.0)
+            m.bias.zero_()
+
+if args.batch_norm == False:
+    model_ft.apply(deactivate_batchnorm)
 
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)
