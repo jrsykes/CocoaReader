@@ -38,10 +38,10 @@ parser.add_argument('--input_size', type=int, default=224,
                         help='image input size')
 parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18 or convnext_tiny')
-parser.add_argument('--cont_train', type=bool, default=False,
-                        help='Continue training from previous checkpoint? True or False?')
-parser.add_argument('--batch_norm', type=bool, default=True,
-                        help='Deactivate all batchnorm layers? True or False?')
+parser.add_argument('--cont_train', action='store_true',
+                        help='Continue training from previous checkpoint?')
+parser.add_argument('--remove_batch_norm', action='store_true',
+                        help='Deactivate all batchnorm layers?')
 args = parser.parse_args()
 
 
@@ -58,8 +58,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     since = time.time()
     
     val_loss_history = []
-    best_precision = 0.0
-    best_precision_acc = 0.0
+    best_f1 = 0.0
+    best_f1_acc = 0.0
     
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
@@ -87,6 +87,9 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
             #count = 0
             if phase == 'train':
                 model.train()  # Set model to training mode
+                if args.remove_batch_norm == True:
+                    print('BatchNorm layers deactivated')
+                    model.apply(deactivate_batchnorm)
             else:
                 model.eval()   # Set model to evaluate mode
 
@@ -121,8 +124,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
 
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
-                        #Weight loss function by precision, recall or f1
-                        #loss += (1-stats_out['precision'])*0.4
+                        #Weight loss function by precision, recall or f1-score
+                        #loss += (1-stats_out['recall'])*0.2
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -168,9 +171,9 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
               
             
             # Save model and update best weights only if recall has improved
-            if phase == 'val' and epoch_precision > best_precision:
-                best_precision = epoch_precision
-                best_precision_acc = epoch_acc
+            if phase == 'val' and epoch_f1 > best_f1:
+                best_f1 = epoch_f1
+                best_f1_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
                 # Save only the model weights for easy loading into a new model
@@ -193,8 +196,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
         epoch += 1
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val recall_Acc: {:4f}'.format(best_precision_acc))
-    print('Best val recall: {:4f}'.format(best_precision))
+    print('Best val F1_Acc: {:4f}'.format(best_f1_acc))
+    print('Best val F1: {:4f}'.format(best_f1))
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
@@ -228,6 +231,7 @@ dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size
 device = torch.device("cuda")
 
 if args.arch == 'convnext_tiny':
+    print('Loaded ConvNext Tiny with pretrained weights')
     model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
     in_feat = model_ft.classifier[2].in_features
     model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
@@ -263,8 +267,8 @@ def deactivate_batchnorm(m):
             m.weight.fill_(1.0)
             m.bias.zero_()
 
-if args.batch_norm == False:
-    model_ft.apply(deactivate_batchnorm)
+
+
 
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)
@@ -273,9 +277,9 @@ model_ft = model_ft.to(device)
 params_to_update = model_ft.parameters()
 
 #Deine optimiser
-#optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
-optimizer_ft = torch.optim.Adamax(params_to_update, lr=2e-3,
-                                           weight_decay=0, eps=1e-8)
+optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.7)
+#optimizer_ft = torch.optim.Adamax(params_to_update, lr=2e-5,
+#                                           weight_decay=0, eps=0)#eps=1e-10)
 #optimizer_ft = torch.optim.Adam(params_to_update, lr=2e-3,
 #                                           weight_decay=0, eps=1e-8)
 

@@ -41,7 +41,7 @@ python 'CocoaReader/DisNet/Torch_ResDes18_1kdim.py' \
         --input_size 1000 \
         --min_epochs 1 \
 	--arch resnet18 \
-        --batch_norm False
+        --remove_batch_norm
 
 
 
