@@ -26,6 +26,12 @@ parser.add_argument('--root', type=str,
                         help='location of all data')
 parser.add_argument('--data_dir', type=str,
                         help='location of all data')
+
+parser.add_argument('--pretrained', action='store_true',
+                        help='Train useing specified pre-trained weights?')
+parser.add_argument('--pretrained_weights', type=str,
+                        help='location of pre-trained weights')
+
 parser.add_argument('--batch_size', type=int, default=42,
                         help='Batch size')
 parser.add_argument('--min_epochs', type=int, default=10,
@@ -44,7 +50,6 @@ parser.add_argument('--remove_batch_norm', action='store_true',
                         help='Deactivate all batchnorm layers?')
 args = parser.parse_args()
 
-
 data_dir = os.path.join(args.root, args.data_dir)
 model_path = os.path.join(args.root, 'models')
 log_dir= os.path.join(model_path, "logs", "logs_" + args.model_name)
@@ -58,8 +63,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     since = time.time()
     
     val_loss_history = []
-    best_f1 = 0.0
-    best_f1_acc = 0.0
+    best_recall = 0.0
+    best_recall_acc = 0.0
     
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
@@ -68,8 +73,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
     
-    epoch = 0
     initial_patience = patience
+    epoch = 0
     while patience > 0: # Run untill validation loss has not improved for n epochs equal to patience variable
         print('\nEpoch {}'.format(epoch))
         print('-' * 10)
@@ -171,16 +176,17 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
               
             
             # Save model and update best weights only if recall has improved
-            if phase == 'val' and epoch_f1 > best_f1:
-                best_f1 = epoch_f1
-                best_f1_acc = epoch_acc
+            if phase == 'val' and epoch_recall > best_recall:
+                best_recall = epoch_recall
+                best_recall_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
                 # Save only the model weights for easy loading into a new model
                 final_out = {
                     'model': best_model_wts,
                     '__author__': 'Jamie R. Sykes',
-                    '__model_name__': args.model_name                    
+                    '__model_name__': args.model_name,
+                    '__model_parameters__': args                    
                     }       
                  
                 PATH = os.path.join(model_path, args.model_name)
@@ -196,8 +202,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
         epoch += 1
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val F1_Acc: {:4f}'.format(best_f1_acc))
-    print('Best val F1: {:4f}'.format(best_f1))
+    print('Best val F1_Acc: {:4f}'.format(best_recall_acc))
+    print('Best val F1: {:4f}'.format(best_recall))
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
@@ -230,34 +236,59 @@ dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size
 # Detect if we have a GPU available
 device = torch.device("cuda")
 
-if args.arch == 'convnext_tiny':
-    print('Loaded ConvNext Tiny with pretrained weights')
-    model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
-    in_feat = model_ft.classifier[2].in_features
-    model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-elif args.arch == 'resnet18':
-    print('Loaded ResNet18 with pretrained weights')
-    model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-    in_feat = model_ft.fc.in_features
-    model_ft.fc = nn.Linear(in_feat, num_classes)
+if args.pretrained == False:
+    if args.arch == 'convnext_tiny':
+        print('Loaded ConvNext Tiny with pretrained weights')
+        model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
+        in_feat = model_ft.classifier[2].in_features
+        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet18':
+        print('Loaded ResNet18 with pretrained weights')
+        model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
 
 
-#If checkpoint weights file exists, load these weights.
-if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
-    print('Checkpoint loaded')
-    pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
-    unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
-
-###############
-#Remove 'module.' from layer names
+def Remove_module_from_layers(weights):
     new_keys = []
     for key, value in unpickled_model_wts.items():
         new_keys.append(key.replace('module.', ''))
     for i in new_keys:
         unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)#    
-##############
+    return unpickled_model_wts
+
+
+# Load custom pretrained weights
+if args.pretrained == True:
+    print('Loading ConvNeXt architecture with custom pre-trained weights')
+    pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.pretrained_weights), "rb"))
+    unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
+    unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
+    
+    #Reload model with n output meatures to match pretrained weights
+    out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
+    model_ft = models.convnext_tiny(weights=None)
+    in_feat = model_ft.classifier[2].in_features
+    model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
+    
+    #Load custom weights
     model_ft.load_state_dict(unpickled_model_wts)
-    print('Checkpint weights loaded')
+   
+    #Delete final linear layer and replace to match n classes in the dataset
+    model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+   
+
+
+#If checkpoint weights file exists, load these weights.
+if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
+    print('Loading checkpoint weights')
+    pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
+    unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
+
+    unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
+
+    model_ft.load_state_dict(unpickled_model_wts)
+    
 
 
 def deactivate_batchnorm(m):
@@ -268,8 +299,6 @@ def deactivate_batchnorm(m):
             m.bias.zero_()
 
 
-
-
 #Run model on all GPUs
 model_ft = nn.DataParallel(model_ft)
 model_ft = model_ft.to(device)
@@ -277,11 +306,10 @@ model_ft = model_ft.to(device)
 params_to_update = model_ft.parameters()
 
 #Deine optimiser
-optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.7)
-#optimizer_ft = torch.optim.Adamax(params_to_update, lr=2e-5,
-#                                           weight_decay=0, eps=0)#eps=1e-10)
-#optimizer_ft = torch.optim.Adam(params_to_update, lr=2e-3,
-#                                           weight_decay=0, eps=1e-8)
+#optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.7)
+
+optimizer_ft = torch.optim.Adam(params_to_update, lr=1e-3,
+                                           weight_decay=0, eps=1e-1)
 
 ### Calculate and set bias for final layer based on imbalance in dataset classes
 dir_ = os.path.join(data_dir, 'train')
