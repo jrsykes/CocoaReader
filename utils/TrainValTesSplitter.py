@@ -54,7 +54,7 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-Randomise_Split(dat=dat, destination=dest)
+#Randomise_Split(dat=dat, destination=dest)
 
 def combine(original_data, disease_path, healthy_path):
 	for i in os.listdir(original_data):
@@ -71,3 +71,17 @@ def combine(original_data, disease_path, healthy_path):
 		
 
 #combine(dat, disease_path, healthy_path)
+
+def CopySubset(destination, sorce):
+	images = os.listdir(sorce)
+	images = random.sample(images, 500)	
+	for i in images:
+		src = os.path.join(source, i)
+		dest = os.path.join(destination, i)
+		shutil.copy(src, dest)
+	
+
+source = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/FAIGB_combined_hf_split/val/healthy/'
+destination = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/PNP_SubSet/Plant'
+
+CopySubset(destination, source)

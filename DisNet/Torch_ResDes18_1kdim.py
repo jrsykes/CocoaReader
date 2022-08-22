@@ -238,12 +238,12 @@ device = torch.device("cuda")
 
 if args.pretrained == False:
     if args.arch == 'convnext_tiny':
-        print('Loaded ConvNext Tiny with pretrained weights')
+        print('Loaded ConvNext Tiny with pretrained IN weights')
         model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
     elif args.arch == 'resnet18':
-        print('Loaded ResNet18 with pretrained weights')
+        print('Loaded ResNet18 with pretrained IN weights')
         model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
