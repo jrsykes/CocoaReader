@@ -9,7 +9,7 @@
 #SBATCH --time=24:00:00
 
 # set name of job
-#SBATCH --job-name=DisNet_ResNet_NoBatchNorm
+#SBATCH --job-name=DisNet_ResNext101
 
 # set number of GPUs
 #SBATCH --gres=gpu:4
@@ -33,13 +33,13 @@ conda activate convnext
 export CODE_DIR='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts'      #PATH_TO_CODE_DIR
 cd $CODE_DIR
 
-python 'CocoaReader/DisNet/Torch_Custom_CNNs_qunat.py' \
-        --model_name 'DesNet_ResNext50' \
+python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' \
+        --model_name 'DesNet_ResNext101' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'FAIGB_combined_hf_split' \
         --input_size 1000 \
         --min_epochs 10 \
-	--arch 'resnext50' \
+	--arch 'resnext101' \
         --batch_size 37 \
         --patience 10
 

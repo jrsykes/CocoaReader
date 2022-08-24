@@ -14,13 +14,13 @@ import pickle
 import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights, ResNeXt50_32X4D_Weights
+from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights, ResNeXt101_32X8D_Weights
 
 import sys
 import argparse
 
-#from quantisation_aware_training import convnext_tiny as convnext_tiny_q
-#from quantisation_aware_training import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
+from quantisation_aware_training import convnext_tiny as convnext_tiny_q
+from quantisation_aware_training import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
 
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
@@ -50,7 +50,7 @@ parser.add_argument('--beta', type=float, default=1.005,
 parser.add_argument('--input_size', type=int, default=224,
                         help='image input size')
 parser.add_argument('--arch', type=str, default='resnet18',
-                        help='Model architecture. resnet18, resnext50 or convnext_tiny')
+                        help='Model architecture. resnet18, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true',
                         help='Continue training from previous checkpoint?')
 parser.add_argument('--remove_batch_norm', action='store_true',
@@ -280,45 +280,82 @@ if args.custom_pretrained == False:
         model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif args.arch == 'resnext50':
-        print('Loaded ResNext50 with pretrained IN weights')
-        model_ft = models.resnext50_32x4d(weights=ResNeXt50_32X4D_Weights.DEFAULT)
-        
+    elif args.arch == 'resnext101':
+        print('Loaded ResNext101 with pretrained IN weights')
+        model_ft = models.resnext101_32x8d(weights=ResNeXt101_32X8D_Weights.DEFAULT)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
 # Load custom pretrained weights
 
 else:
-    print('Loading ConvNeXt architecture with custom pre-trained weights')
+    print('\nLoading custom pre-trained weights with: ')
     pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.custom_pretrained_weights), "rb"))
     unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
     unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
     
     #Reload model with n output meatures to match pretrained weights
-    out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
-    if args.quantise == True:
-        print('Training with Quantization Aware Training')
-        model_ft = convnext_tiny_q(weights = None)
+    
+#    if args.quantise == True:
+#        print('Training with Quantization Aware Training')
+#        model_ft = convnext_tiny_q(weights = None)
+#        out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
+#        in_feat = model_ft.classifier[2].in_features
+#        model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
+#        #Load custom weights
+#        model_ft.load_state_dict(unpickled_model_wts)
+#        #Delete final linear layer and replace to match n classes in the dataset
+#        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+#        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
+#        torch.quantization.prepare_qat(model_ft, inplace=True)
+
+    
+    if args.arch == 'convnext_tiny':
+        print('\tConvNeXt tiny architecture\n')
+        if args.quantise == False:
+            model_ft = models.convnext_tiny(weights= None)
+        else:
+            model_ft = convnext_tiny_q(weights = None)
+        out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-    #Load custom weights
+        #Load custom weights
         model_ft.load_state_dict(unpickled_model_wts)
-    #Delete final linear layer and replace to match n classes in the dataset
+        #Delete final linear layer and replace to match n classes in the dataset
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+        
+    elif args.arch == 'resnet18':
+        print('\tResnet18 architecture\n')
+        if args.quantise == False:
+            model_ft = models.resnet18(weights= None)
+        else:
+            model_ft = models.quantization.resnet18(weights=None)
+
+        in_feat = model_ft.fc.in_features
+        out_feat = unpickled_model_wts['fc.weight'].size()[0]
+        model_ft.fc = nn.Linear(in_feat, out_feat)
+        #Load custom weights
+        model_ft.load_state_dict(unpickled_model_wts)
+        #Delete final linear layer and replace to match n classes in the dataset
+        model_ft.fc = torch.nn.Linear(in_feat, num_classes)
+
+    elif args.arch == 'resnext101':
+        print('\tResNext101 architecture\n')
+        if args.quantise == False:
+            model_ft = models.resnext101_32x8d(weights= None)
+        else:
+            model_ft = models.quantization.resnext101_32x8d(weights=None)
+
+        in_feat = model_ft.fc.in_features
+        out_feat = unpickled_model_wts['fc.weight'].size()[0]
+        model_ft.fc = nn.Linear(in_feat, out_feat)
+        #Load custom weights
+        model_ft.load_state_dict(unpickled_model_wts)
+        #Delete final linear layer and replace to match n classes in the dataset
+        model_ft.fc = torch.nn.Linear(in_feat, num_classes)
+   
+    if args.quantise == True:
         model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
         torch.quantization.prepare_qat(model_ft, inplace=True)
-
-    else:
-        model_ft = models.convnext_tiny(weights= None)
-    
-        in_feat = model_ft.classifier[2].in_features
-        model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-    #Load custom weights
-        model_ft.load_state_dict(unpickled_model_wts)
-    #Delete final linear layer and replace to match n classes in the dataset
-        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-   
-
 
 #If checkpoint weights file exists, load these weights.
 if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
