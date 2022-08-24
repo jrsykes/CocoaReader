@@ -39,7 +39,7 @@ python 'CocoaReader/DisNet/Torch_Custom_CNNs_qunat.py' \
         --data_dir 'FAIGB_combined_hf_split' \
         --input_size 1000 \
         --min_epochs 10 \
-		--arch resnext50 \
+	--arch 'resnext50' \
         --batch_size 37 \
         --patience 10
 

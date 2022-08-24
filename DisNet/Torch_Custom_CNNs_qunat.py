@@ -281,8 +281,9 @@ if args.custom_pretrained == False:
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif args.arch == 'resnext50':
-        print('Loaded ResNet18 with pretrained IN weights')
+        print('Loaded ResNext50 with pretrained IN weights')
         model_ft = models.resnext50_32x4d(weights=ResNeXt50_32X4D_Weights.DEFAULT)
+        
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
 # Load custom pretrained weights
