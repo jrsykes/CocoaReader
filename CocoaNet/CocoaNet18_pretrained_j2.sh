@@ -33,15 +33,17 @@ conda activate convnext
 export CODE_DIR='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts'      #PATH_TO_CODE_DIR
 cd $CODE_DIR
 
-python 'CocoaReader/DisNet/Torch_ResDes18_1kdim.py' \
-        --model_name 'CocoaNet_750kdim_ConvNeXt_INPreTrained' \
+python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' \
+        --model_name 'CocoaNet18_DN_test' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'split_cocoa_images' \
         --input_size 750 \
         --min_epochs 10 \
-	--arch convnext_tiny \
+	--arch resnet18 \
         --batch_size 37 \
-        --patience 10
+        --patience 10 \
+        --custom_pretrained \
+        --custom_pretrained_weights 'DesNet_ResNet18.pkl'
         
 
 

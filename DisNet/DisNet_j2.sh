@@ -34,7 +34,7 @@ export CODE_DIR='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts'      #PATH_TO_
 cd $CODE_DIR
 
 python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' \
-        --model_name 'DesNet_ResNext101' \
+        --model_name 'DisNet_ResNext101' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'FAIGB_combined_hf_split' \
         --input_size 1000 \
