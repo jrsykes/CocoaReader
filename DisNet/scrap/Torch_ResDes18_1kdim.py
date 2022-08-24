@@ -15,9 +15,11 @@ import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
 from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights
+from torchvision.models.quantization import resnet18 as resnet18_quant
+from torchvision.models.quantization import ResNet18_QuantizedWeights
+
 import sys
 import argparse
-
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str,
@@ -26,12 +28,10 @@ parser.add_argument('--root', type=str,
                         help='location of all data')
 parser.add_argument('--data_dir', type=str,
                         help='location of all data')
-
-parser.add_argument('--pretrained', action='store_true',
+parser.add_argument('--custom_pretrained', action='store_true',
                         help='Train useing specified pre-trained weights?')
-parser.add_argument('--pretrained_weights', type=str,
+parser.add_argument('--custom_pretrained_weights', type=str,
                         help='location of pre-trained weights')
-
 parser.add_argument('--batch_size', type=int, default=42,
                         help='Batch size')
 parser.add_argument('--min_epochs', type=int, default=10,
@@ -46,8 +46,7 @@ parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true',
                         help='Continue training from previous checkpoint?')
-parser.add_argument('--remove_batch_norm', action='store_true',
-                        help='Deactivate all batchnorm layers?')
+
 args = parser.parse_args()
 
 data_dir = os.path.join(args.root, args.data_dir)
@@ -89,15 +88,11 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
         # Each epoch has a training and validation phase
         
         for phase in ['train', 'val']:
-            #count = 0
             if phase == 'train':
                 model.train()  # Set model to training mode
-                if args.remove_batch_norm == True:
-                    print('BatchNorm layers deactivated')
-                    model.apply(deactivate_batchnorm)
             else:
                 model.eval()   # Set model to evaluate mode
-
+                
             running_loss = 0.0
             running_corrects = 0
             running_precision = 0
@@ -110,7 +105,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
             with Bar('Learning...', max=n/args.batch_size+1) as bar:
                 
                 for inputs, labels in dataloaders[phase]:
-                    #count += 1
+                 
                     inputs = inputs.to(device)
                     labels = labels.to(device)  
 
@@ -130,12 +125,12 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
                         #Weight loss function by precision, recall or f1-score
-                        #loss += (1-stats_out['recall'])*0.2
+                        loss += (1-stats_out['recall'])*0.2
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
-                            optimizer.step()    
+                            optimizer.step()  
 
                     #Calculate statistics
                     #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
@@ -236,18 +231,6 @@ dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size
 # Detect if we have a GPU available
 device = torch.device("cuda")
 
-if args.pretrained == False:
-    if args.arch == 'convnext_tiny':
-        print('Loaded ConvNext Tiny with pretrained IN weights')
-        model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
-        in_feat = model_ft.classifier[2].in_features
-        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-    elif args.arch == 'resnet18':
-        print('Loaded ResNet18 with pretrained IN weights')
-        model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-        in_feat = model_ft.fc.in_features
-        model_ft.fc = nn.Linear(in_feat, num_classes)
-
 
 def Remove_module_from_layers(weights):
     new_keys = []
@@ -258,25 +241,53 @@ def Remove_module_from_layers(weights):
     return unpickled_model_wts
 
 
+
+if args.custom_pretrained == False:
+    if args.arch == 'convnext_tiny':
+        model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
+        in_feat = model_ft.classifier[2].in_features
+        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet18':
+        print('Loaded ResNet18 with pretrained IN weights')
+        model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet18_quant':
+        print('Loaded quantised ResNet18 with pretrained IN weights')
+        model_ft = resnet18_quant(weights=ResNet18_QuantizedWeights.DEFAULT)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+
 # Load custom pretrained weights
-if args.pretrained == True:
+
+else:
     print('Loading ConvNeXt architecture with custom pre-trained weights')
-    pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.pretrained_weights), "rb"))
+    pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.custom_pretrained_weights), "rb"))
     unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
     unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
-    
-    #Reload model with n output meatures to match pretrained weights
-    out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
-    model_ft = models.convnext_tiny(weights=None)
-    in_feat = model_ft.classifier[2].in_features
-    model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-    
-    #Load custom weights
-    model_ft.load_state_dict(unpickled_model_wts)
-   
-    #Delete final linear layer and replace to match n classes in the dataset
-    model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-   
+    print(unpickled_model_wts)
+    exit()
+    if args.arch == 'convnext_tiny':
+        #Reload model with n output meatures to match pretrained weights
+        out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
+        model_ft = models.convnext_tiny(weights= None)
+        in_feat = model_ft.classifier[2].in_features
+        model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
+        #Load custom weights
+        model_ft.load_state_dict(unpickled_model_wts)
+        #Delete final linear layer and replace to match n classes in the new dataset
+        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+     elif args.arch == 'resnet18':
+                #Reload model with n output meatures to match pretrained weights
+        out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
+        model_ft = models.convnext_tiny(weights= None)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = torch.nn.Linear(in_feat, out_feat)
+        #Load custom weights
+        model_ft.load_state_dict(unpickled_model_wts)
+        #Delete final linear layer and replace to match n classes in the new dataset
+        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+
 
 
 #If checkpoint weights file exists, load these weights.
@@ -289,14 +300,6 @@ if args.cont_train == True and os.path.exists(os.path.join(model_path, args.mode
 
     model_ft.load_state_dict(unpickled_model_wts)
     
-
-
-def deactivate_batchnorm(m):
-    if isinstance(m, nn.BatchNorm2d):
-        m.reset_parameters()
-        with torch.no_grad():
-            m.weight.fill_(1.0)
-            m.bias.zero_()
 
 
 #Run model on all GPUs

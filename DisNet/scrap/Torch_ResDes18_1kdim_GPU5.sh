@@ -8,7 +8,8 @@ python '/home/userfs/j/jrs596/scripts/CocoaReader/DisNet/Torch_ResDes18_1kdim.py
 	--arch convnext_tiny \
         --batch_size 10 \
         --patience 3 \
-        #--remove_batch_norm
+        --custom_pretrained \
+        --custom_pretrained_weights '/local/scratch/jrs596/dat/models/DisNet_1kdim_Binary_ResNet18.pkl'
 
 
 

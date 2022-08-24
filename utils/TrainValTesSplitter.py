@@ -2,8 +2,8 @@ import shutil
 import os
 import random
 
-dat = '/local/scratch/jrs596/dat/compiled_cocoa_images'
-dest = '/local/scratch/jrs596/dat/split_cocoa_images'
+dat = '/home/jamiesykes/Downloads/compiled_cocoa_images'
+dest = '/home/jamiesykes/Downloads/split_cocoa_images'
 
 healthy_path = '/local/scratch/jrs596/dat/FAIGB_combined/healthy/'
 disease_path = '/local/scratch/jrs596/dat/FAIGB_combined/diseased/'
@@ -54,7 +54,7 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-#Randomise_Split(dat=dat, destination=dest)
+Randomise_Split(dat=dat, destination=dest)
 
 def combine(original_data, disease_path, healthy_path):
 	for i in os.listdir(original_data):
@@ -81,7 +81,9 @@ def CopySubset(destination, sorce):
 		shutil.copy(src, dest)
 	
 
-source = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/FAIGB_combined_hf_split/val/healthy/'
-destination = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/PNP_SubSet/Plant'
+root = '/local/scratch/jrs596/dat'
 
-CopySubset(destination, source)
+source = os.path.join(root, 'PlantNotPlant3.3/train_full/Plant')
+destination = os.path.join(root, 'compiled_cocoa_images/NotCocoa')
+
+#CopySubset(destination, source)
