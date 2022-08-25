@@ -19,8 +19,8 @@ from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights, ResNeXt1
 import sys
 import argparse
 
-from quantisation_aware_training import convnext_tiny as convnext_tiny_q
-from quantisation_aware_training import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
+from ConvNext_tiny_quantised import convnext_tiny as convnext_tiny_q
+from ConvNext_tiny_quantised import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str,
@@ -49,7 +49,7 @@ parser.add_argument('--beta', type=float, default=1.005,
 parser.add_argument('--input_size', type=int, default=224,
                         help='image input size')
 parser.add_argument('--arch', type=str, default='resnet18',
-                        help='Model architecture. resnet18, resnext101 or convnext_tiny')
+                        help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true',
                         help='Continue training from previous checkpoint?')
 parser.add_argument('--remove_batch_norm', action='store_true',
@@ -281,18 +281,24 @@ def Remove_module_from_layers(weights):
 if args.custom_pretrained == False:
     if args.arch == 'convnext_tiny':
         print('Loaded ConvNext Tiny with pretrained IN weights')
-        if args.quantise == True:
-            model_ft = convnext_tiny_q(weights = ConvNeXt_Tiny_Weights.DEFAULT)
-            model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-            torch.quantization.prepare_qat(model_ft, inplace=True)
-        else:
-            model_ft = models.convnext_tiny(weights=ConvNeXt_Tiny_Weights.DEFAULT)
-
+        model_ft = convnext_tiny_q(weights = ConvNeXt_Tiny_Weights.DEFAULT)
+        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
+        torch.quantization.prepare_qat(model_ft, inplace=True)
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
     elif args.arch == 'resnet18':
         print('Loaded ResNet18 with pretrained IN weights')
         model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet50':
+        print('Loaded ResNet50 with pretrained IN weights')
+        model_ft = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnext50':
+        print('Loaded ResNext50 with pretrained IN weights')
+        model_ft = models.resnext50_32x4d(weights=ResNeXt50_32X4D_Weights.DEFAULT)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif args.arch == 'resnext101':
@@ -336,7 +342,37 @@ else:
         model_ft.load_state_dict(unpickled_model_wts)
         #Delete final linear layer and replace to match n classes in the dataset
         model_ft.fc = torch.nn.Linear(in_feat, num_classes)
+    
+    elif args.arch == 'resnet50':
+        print('\tResnet50 architecture\n')
+        if args.quantise == False:
+            model_ft = models.resnet50(weights= None)
+        else:
+            model_ft = models.quantization.resnet50(weights=None)
 
+        in_feat = model_ft.fc.in_features
+        out_feat = unpickled_model_wts['fc.weight'].size()[0]
+        model_ft.fc = nn.Linear(in_feat, out_feat)
+        #Load custom weights
+        model_ft.load_state_dict(unpickled_model_wts)
+        #Delete final linear layer and replace to match n classes in the dataset
+        model_ft.fc = torch.nn.Linear(in_feat, num_classes) 
+           
+    elif args.arch == 'resnext50':
+        print('\tResNext50 architecture\n')
+        if args.quantise == False:
+            model_ft = models.resnext50_32x4d(weights= None)
+        else:
+            model_ft = resnext50_q(weights=None)
+
+        in_feat = model_ft.fc.in_features
+        out_feat = unpickled_model_wts['fc.weight'].size()[0]
+        model_ft.fc = nn.Linear(in_feat, out_feat)
+        #Load custom weights
+        model_ft.load_state_dict(unpickled_model_wts)
+        #Delete final linear layer and replace to match n classes in the dataset
+        model_ft.fc = torch.nn.Linear(in_feat, num_classes)
+    
     elif args.arch == 'resnext101':
         print('\tResNext101 architecture\n')
         if args.quantise == False:

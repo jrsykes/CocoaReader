@@ -34,12 +34,12 @@ export CODE_DIR='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts'      #PATH_TO_
 cd $CODE_DIR
 
 python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' \
-        --model_name 'CocoaNet18_DN_test' \
+        --model_name 'CocoaNet18_DN' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'split_cocoa_images' \
         --input_size 750 \
         --min_epochs 10 \
-	--arch resnet18 \
+	--arch 'resnet18' \
         --batch_size 37 \
         --patience 10 \
         --custom_pretrained \
