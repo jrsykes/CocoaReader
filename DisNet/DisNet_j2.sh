@@ -12,7 +12,7 @@
 #SBATCH --job-name=DisNet_ResNext101
 
 # set number of GPUs
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 
 # mail alert at start, end and abortion of execution
 #SBATCH --mail-type=ALL

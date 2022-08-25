@@ -22,7 +22,6 @@ import argparse
 from quantisation_aware_training import convnext_tiny as convnext_tiny_q
 from quantisation_aware_training import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
 
-
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str,
                         help='save name for model')
@@ -104,7 +103,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                     model.apply(deactivate_batchnorm)
             else:
                 if args.quantise == True:
-                    model = torch.quantization.convert(model.eval(), inplace=False)
+                    quantized_model = torch.quantization.convert(model.eval(), inplace=False)
+                    quantized_model.eval()
                 model.eval()   # Set model to evaluate mode
                 
             running_loss = 0.0
@@ -132,7 +132,12 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         # Get model outputs and calculate loss
                         # In train mode we calculate the loss by summing the final output and the auxiliary output
                         # but in testing we only consider the final output.
-                        outputs = model(inputs)
+                        if args.quantise == True and phase == 'val':
+                            outputs = quantized_model(inputs)
+                        else:
+                            outputs = model(inputs)
+                        
+
                         loss = criterion(outputs, labels)
                         _, preds = torch.max(outputs, 1)    
 
@@ -146,8 +151,11 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                             loss.backward()
                             optimizer.step()  
 
-                            if args.quantise == True and epoch > 3:
-                                model.apply(torch.quantization.disable_observer)
+                            if args.quantise == True:
+                                if epoch > 3:
+                                    model.apply(torch.quantization.disable_observer)
+                                if epoch > 2:
+                                    model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
 
                     #Calculate statistics
                     #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
@@ -202,11 +210,15 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                     }       
                  
                 PATH = os.path.join(model_path, args.model_name)
-                with open(PATH + '.pkl', 'wb') as f:
-                    pickle.dump(final_out, f)
+                
+                if args.quantise == False:
+                    with open(PATH + '.pkl', 'wb') as f:
+                        pickle.dump(final_out, f)   
 
-                # Save the whole model with pytorch save function
-                torch.save(model, PATH + '.pth')
+                    # Save the whole model with pytorch save function
+                    torch.save(model, PATH + '.pth')
+                else:
+                    torch.save(quantized_model, PATH + '.pth')
 
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -222,7 +234,11 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     
     writer.flush()
     writer.close()
-    return model 
+
+    if args.quantise == True:
+        return quantized_model
+    else:
+        return model 
 
 # Data augmentation and normalization for training
 # Just normalization for validation
@@ -266,7 +282,6 @@ if args.custom_pretrained == False:
     if args.arch == 'convnext_tiny':
         print('Loaded ConvNext Tiny with pretrained IN weights')
         if args.quantise == True:
-            print('Training with Quantization Aware Training')
             model_ft = convnext_tiny_q(weights = ConvNeXt_Tiny_Weights.DEFAULT)
             model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
             torch.quantization.prepare_qat(model_ft, inplace=True)
@@ -292,22 +307,6 @@ else:
     pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.custom_pretrained_weights), "rb"))
     unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
     unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
-    
-    #Reload model with n output meatures to match pretrained weights
-    
-#    if args.quantise == True:
-#        print('Training with Quantization Aware Training')
-#        model_ft = convnext_tiny_q(weights = None)
-#        out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
-#        in_feat = model_ft.classifier[2].in_features
-#        model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-#        #Load custom weights
-#        model_ft.load_state_dict(unpickled_model_wts)
-#        #Delete final linear layer and replace to match n classes in the dataset
-#        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-#        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-#        torch.quantization.prepare_qat(model_ft, inplace=True)
-
     
     if args.arch == 'convnext_tiny':
         print('\tConvNeXt tiny architecture\n')
@@ -354,6 +353,7 @@ else:
         model_ft.fc = torch.nn.Linear(in_feat, num_classes)
    
     if args.quantise == True:
+        print('Training with Quantization Aware Training on CPU')
         model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
         torch.quantization.prepare_qat(model_ft, inplace=True)
 

@@ -222,10 +222,17 @@ class ConvNeXt(nn.Module):
         return self._forward_impl(x)
     
     
-    # def fuse_model(self):
-    #     for m in self.modules():
-    #         print()
-    #         print(type(m))
+def fuse_model(model):
+    for m in model.modules():
+        print(type(m))
+        if type(m) == 'ConvBNReLU':
+            torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
+        if type(m) == 'InvertedResidual':
+            for idx in range(len(m.conv)):
+                if type(m.conv[idx]) == nn.Conv2d:
+                    torch.quantization.fuse_modules(m.conv, [str(idx), str(idx + 1)], inplace=True)
+    exit()
+    return model
 
 def _convnext(
     block_setting: List[CNBlockConfig],
