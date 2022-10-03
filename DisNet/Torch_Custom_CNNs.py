@@ -14,7 +14,8 @@ import pickle
 import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights, ResNeXt101_32X8D_Weights
+from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights, ResNet50_Weights, ResNeXt101_32X8D_Weights
+from torch.utils.mobile_optimizer import optimize_for_mobile
 
 import sys
 import argparse
@@ -101,7 +102,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                 if args.remove_batch_norm == True:
                     print('BatchNorm layers deactivated')
                     model.apply(deactivate_batchnorm)
-            else:
+            elif phase == 'val':
                 if args.quantise == True:
                     quantized_model = torch.quantization.convert(model.eval(), inplace=False)
                     quantized_model.eval()
@@ -119,7 +120,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
             with Bar('Learning...', max=n/args.batch_size+1) as bar:
                 
                 for inputs, labels in dataloaders[phase]:
-                    #count += 1
+                  
                     inputs = inputs.to(device)
                     labels = labels.to(device)  
 
@@ -216,9 +217,14 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         pickle.dump(final_out, f)   
 
                     # Save the whole model with pytorch save function
-                    torch.save(model, PATH + '.pth')
+                    torch.save(model.module.state_dict(), PATH + '.pth')
                 else:
-                    torch.save(quantized_model, PATH + '.pth')
+                    # Convert the quantized model to torchscipt and optmize for mobile platforms
+                    torchscript_model = torch.jit.script(quantized_model)
+                    torch.jit.save(torchscript_model, PATH + '.pth')
+                    optimized_torchscript_model = optimize_for_mobile(torchscript_model)
+                    optimized_torchscript_model.save(PATH + "_mobile.pth")
+                    optimized_torchscript_model._save_for_lite_interpreter(PATH + "_mobile.ptl")
 
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -281,9 +287,7 @@ def Remove_module_from_layers(weights):
 if args.custom_pretrained == False:
     if args.arch == 'convnext_tiny':
         print('Loaded ConvNext Tiny with pretrained IN weights')
-        model_ft = convnext_tiny_q(weights = ConvNeXt_Tiny_Weights.DEFAULT)
-        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-        torch.quantization.prepare_qat(model_ft, inplace=True)
+        model_ft = models.convnext_tiny(weights = ConvNeXt_Tiny_Weights.DEFAULT)
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
     elif args.arch == 'resnet18':
@@ -306,6 +310,9 @@ if args.custom_pretrained == False:
         model_ft = models.resnext101_32x8d(weights=ResNeXt101_32X8D_Weights.DEFAULT)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
+    else:
+        print("Architecture name not recognised")
+        exit(0)
 # Load custom pretrained weights
 
 else:
@@ -388,12 +395,13 @@ else:
         #Delete final linear layer and replace to match n classes in the dataset
         model_ft.fc = torch.nn.Linear(in_feat, num_classes)
    
-    if args.quantise == True:
-        print('Training with Quantization Aware Training on CPU')
-        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-        torch.quantization.prepare_qat(model_ft, inplace=True)
+    else:
+        print("Architecture name not recognised")
+        exit(0)
 
-#If checkpoint weights file exists, load these weights.
+
+
+#If checkpoint weights file exists, load those weights.
 if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
     print('Loading checkpoint weights')
     pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
@@ -403,6 +411,14 @@ if args.cont_train == True and os.path.exists(os.path.join(model_path, args.mode
 
     model_ft.load_state_dict(unpickled_model_wts)
     
+def fuse_model(self):
+        for m in self.modules():
+            if type(m) == ConvBNReLU:
+                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
+            if type(m) == InvertedResidual:
+                for idx in range(len(m.conv)):
+                    if type(m.conv[idx]) == nn.Conv2d:
+                        torch.quantization.fuse_modules(m.conv, [str(idx), str(idx + 1)], inplace=True)
 
 
 def deactivate_batchnorm(m):
@@ -416,16 +432,22 @@ def deactivate_batchnorm(m):
 #Run model on all GPUs
 if args.quantise == False:
     model_ft = nn.DataParallel(model_ft)
+else:
+    #model_ft.fuse_model()
+    model_ft.eval()
+    model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
+    model_ft.train()
 
 model_ft = model_ft.to(device)
 
 params_to_update = model_ft.parameters()
-
-#Deine optimiser
-#optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.7)
-
 optimizer_ft = torch.optim.Adam(params_to_update, lr=1e-3,
                                            weight_decay=0, eps=1e-1)
+
+if args.quantise == True:
+    print('Training with Quantization Aware Training on CPU')
+    model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
+    torch.quantization.prepare_qat(model_ft, inplace=True)
 
 ### Calculate and set bias for final layer based on imbalance in dataset classes
 dir_ = os.path.join(data_dir, 'train')
