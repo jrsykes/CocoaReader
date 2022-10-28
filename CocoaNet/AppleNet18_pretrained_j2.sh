@@ -9,7 +9,7 @@
 #SBATCH --time=24:00:00
 
 # set name of job
-#SBATCH --job-name=CocoaConvNext
+#SBATCH --job-name=AppleNet18
 
 # set number of GPUs
 #SBATCH --gres=gpu:4
@@ -34,17 +34,13 @@ export CODE_DIR='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts'      #PATH_TO_
 cd $CODE_DIR
 
 python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' \
-        --model_name 'CocoaNet18_DN' \
+        --model_name 'AppleNet18' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
-        --data_dir 'split_cocoa_images' \
-        --input_size 896 \
+        --data_dir 'PlantPathologyKaggle/dat' \
+        --input_size 1120 \
         --min_epochs 10 \
-	--arch 'resnet18' \
+        --arch 'resnet18' \
         --batch_size 37 \
-        --patience 10 \
+        --patience 50 \
         --custom_pretrained \
-        --custom_pretrained_weights 'DisNet18.pkl'
-        
-
-
-
+        --custom_pretrained_weights 'DisNet18_v2.pkl'

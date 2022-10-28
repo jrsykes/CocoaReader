@@ -145,7 +145,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
                         #Weight loss function by precision, recall or f1-score
-                        loss += (1-stats_out['recall'])*0.2
+                        #loss += (1-stats_out['recall'])#*0.4
 
                         # backward + optimize only if in training phase
                         if phase == 'train':
@@ -217,7 +217,9 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         pickle.dump(final_out, f)   
 
                     # Save the whole model with pytorch save function
-                    torch.save(model.module.state_dict(), PATH + '.pth')
+                    # torch.save(model, PATH + '.pth')
+                    torch.save(model.module, PATH + '.pth')
+
                 else:
                     # Convert the quantized model to torchscipt and optmize for mobile platforms
                     torchscript_model = torch.jit.script(quantized_model)
@@ -232,8 +234,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
         epoch += 1
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val F1_Acc: {:4f}'.format(best_recall_acc))
-    print('Best val F1: {:4f}'.format(best_recall))
+    print('Acc of saved model: {:4f}'.format(best_recall_acc))
+    print('Recall of saved model: {:4f}'.format(best_recall))
     
     # load best model weights and save
     model.load_state_dict(best_model_wts)
@@ -246,12 +248,13 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     else:
         return model 
 
+
 # Data augmentation and normalization for training
 # Just normalization for validation
 data_transforms = {
     'train': transforms.Compose([
-        transforms.RandomResizedCrop(args.input_size),
-        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(args.input_size, pad_if_needed=True, padding_mode = 'reflect'),
+        transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
         transforms.ToTensor(),
     ]),
     'val': transforms.Compose([
@@ -441,8 +444,8 @@ else:
 model_ft = model_ft.to(device)
 
 params_to_update = model_ft.parameters()
-optimizer_ft = torch.optim.Adam(params_to_update, lr=1e-3,
-                                           weight_decay=0, eps=1e-1)
+optimizer_ft = torch.optim.Adam(params_to_update, lr=1e-5,
+                                           weight_decay=0, eps=1e-8)
 
 if args.quantise == True:
     print('Training with Quantization Aware Training on CPU')

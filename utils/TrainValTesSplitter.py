@@ -1,12 +1,12 @@
 import shutil
 import os
 import random
+from PIL import Image
 
-dat = '/home/jamiesykes/Downloads/compiled_cocoa_images'
-dest = '/home/jamiesykes/Downloads/split_cocoa_images'
+src = '/local/scratch/jrs596/dat/PlantPathologyKaggle/dat/unsplit'
+dest = '/local/scratch/jrs596/dat/PlantPathologyKaggle/dat'
 
-healthy_path = '/local/scratch/jrs596/dat/FAIGB_combined/healthy/'
-disease_path = '/local/scratch/jrs596/dat/FAIGB_combined/diseased/'
+
 
 def CopyPlant(destination, img_path):
 	n = 0
@@ -43,8 +43,8 @@ def Randomise_Split(dat, destination):
 
 #		images = random.sample(images, 200)	
 
-		dat_dict = {'train': images[:int(len(images)*0.8)], 
-			'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
+		dat_dict = {'train': images[:int(len(images)*0.9)], 
+			#'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
 			'val': images[int(len(images)*0.9):]}										
 		
 		for split, im_list in dat_dict.items():
@@ -54,7 +54,7 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-Randomise_Split(dat=dat, destination=dest)
+Randomise_Split(src, dest)
 
 def combine(original_data, disease_path, healthy_path):
 	for i in os.listdir(original_data):
@@ -72,18 +72,53 @@ def combine(original_data, disease_path, healthy_path):
 
 #combine(dat, disease_path, healthy_path)
 
-def CopySubset(destination, sorce):
-	images = os.listdir(sorce)
-	images = random.sample(images, 500)	
+def CopySubset(source, destination):
+	images = os.listdir(source)
+	images = random.sample(images, 545)	
 	for i in images:
 		src = os.path.join(source, i)
 		dest = os.path.join(destination, i)
 		shutil.copy(src, dest)
 	
 
-root = '/local/scratch/jrs596/dat'
+def Image_checker(dir_):
+	for i in os.listdir(dir_):
+		try:
+			image = Image.open(os.path.join(dir_, i))
+			print(os.path.join(dir_, i))
+		except:
+			print('Bad image, deleting')
+			#os.remove(os.path.join(dir_, i))
 
-source = os.path.join(root, 'PlantNotPlant3.3/train_full/Plant')
-destination = os.path.join(root, 'compiled_cocoa_images/NotCocoa')
 
-#CopySubset(destination, source)
+def Size_checker(dir_):
+	total = 0
+	yes = 0
+	for i in os.listdir(dir_):
+		total += 1
+		image = Image.open(os.path.join(dir_, i))
+		width, height = image.size
+		if width >= 1120 or height >= 1120:
+			#print(os.path.join(dir_, i))
+			#print(width, height)
+			
+			yes += 1
+	print(str(yes/total*100), '%')
+
+
+#root = '/local/scratch/jrs596/dat/FAIGB_combined_hf_split/train'
+#print('Diseased: ')
+#Size_checker(os.path.join(root, 'diseased'))
+#print('Healthy: ')
+#Size_checker(os.path.join(root, 'healthy'))
+
+#root = '/local/scratch/jrs596/dat'#
+
+#source = os.path.join(root, 'PlantNotPlant3.3/train_full/Plant')
+#destination = os.path.join(root, 'compiled_cocoa_images/NotCocoa')#
+
+##CopySubset(destination, source)
+
+#Image_checker("/local/scratch/jrs596/dat/all_cocoa_images")
+
+#CopySubset(src, dest)
