@@ -5,14 +5,14 @@ from torch import nn
 from sklearn import metrics
 import pandas as pd
 import time
+import numpy as np
 
 root = '/local/scratch/jrs596/dat/models'
-model_path = 'CocoaNet18_DN.pth'
-#model_path = 'CocoaNet18_DN.pth'
-data_dir = "/local/scratch/jrs596/dat/split_cocoa_images"
+model_path = 'AppleNet18.pth'
+data_dir = "/local/scratch/jrs596/dat/PlantPathologyKaggle/dat"
 quantized = False
 
-
+n_classes = len(os.listdir(os.path.join(data_dir, 'train')))
 
 if quantized == False:
 	model = torch.load(os.path.join(root, model_path))
@@ -28,7 +28,7 @@ else:
 
 model = model.to(device)
 
-input_size = 750
+input_size = 1120
 batch_size = 1
 criterion = nn.CrossEntropyLoss()
 
@@ -62,6 +62,7 @@ def eval(model, dataloaders_dict):
 	running_precision = 0
 	running_recall = 0
 	running_f1 = 0	
+	running_auc = 0
 
 	for i in ['val']:#, 'train']:
 		for inputs, labels in dataloaders_dict[i]:
@@ -76,12 +77,16 @@ def eval(model, dataloaders_dict):
 		#the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
 		
 			running_loss += loss.item() * inputs.size(0)
-			running_corrects += torch.sum(preds == labels.data)	
-			stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-			stats_out = stats['macro avg']
-			running_precision += stats_out['precision']* inputs.size(0)
-			running_recall += stats_out['recall']* inputs.size(0)
-			running_f1 += stats_out['f1-score']* inputs.size(0)#
+
+			#Convert labels to 1 hot matrix
+			y = np.zeros(n_classes)
+			y[labels] = 1
+			
+			x = torch.sigmoid(outputs[0]).cpu().detach().numpy()
+
+			fpr, tpr, thresholds = metrics.roc_curve(y, x, pos_label=1)
+			auc = metrics.auc(fpr, tpr)
+			running_auc += auc
 
 			for j in labels.data.tolist():
 				lables_list.append(j)
@@ -90,27 +95,21 @@ def eval(model, dataloaders_dict):
 
 		n = len(dataloaders_dict[i].dataset)
 		epoch_loss = float(running_loss / n)
-		epoch_acc = float(running_corrects.double() / n)
-		precision = (running_precision) / n         
-		recall = (running_recall) / n        
-		f1 = (running_f1) / n	#	
+		auc = running_auc / n
 		
-	#print('Accuracy: ' + str(round(epoch_acc,3)))
-	#print('Precision: ' + str(round(precision,3)))
-	#print('Recall: ' + str(round(recall,3)))
-	#print('F1: ' + str(round(f1,3)))
+
 		
 		print(i)
 		print('\n' + '-'*10 + '\nPer class results:')#
-		print(metrics.classification_report(lables_list, preds_list, digits=4))#
-		print('loss: ' + str(round(epoch_loss,3)))
-		
+		print(metrics.classification_report(lables_list, preds_list, digits=4, zero_division=True))#
+		print('loss: ' + str(round(epoch_loss,4)))
+		print('AUC: ' + str(round(auc, 4)))
 		
 		if i == 'val':
 			print('\n' + '-'*10 + '\nConfusion matrix:')
-			print(metrics.confusion_matrix(lables_list, preds_list))#
-			#df = pd.DataFrame(metrics.confusion_matrix(lables_list, preds_list))
-			#df.to_csv(model_path + '/confusion_matrix.csv')	
+			print(metrics.confusion_matrix(lables_list, preds_list))
+			print()
+
 
 	classes = os.listdir(os.path.join(data_dir, 'val'))
 	classes.sort()
@@ -120,8 +119,9 @@ def eval(model, dataloaders_dict):
 		print(i, ': ', str(number))
 		number += 1	
 
+	print()
 	print(classes)
-
+	print()
 
 
 def quant_eval(model, img_loader):
