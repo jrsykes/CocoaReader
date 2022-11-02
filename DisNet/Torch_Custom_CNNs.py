@@ -39,7 +39,7 @@ parser.add_argument('--custom_pretrained_weights', type=str,
 parser.add_argument('--quantise', action='store_true',
                         help='Train with Quantization Aware Training?')
 
-parser.add_argument('--batch_size', type=int, default=42,
+parser.add_argument('--initial_batch_size', type=int, default=128,
                         help='Batch size')
 parser.add_argument('--min_epochs', type=int, default=10,
                         help='n epochs before loss is assesed for early stopping')
@@ -56,17 +56,16 @@ parser.add_argument('--cont_train', action='store_true',
 parser.add_argument('--remove_batch_norm', action='store_true',
                         help='Deactivate all batchnorm layers?')
 args = parser.parse_args()
+print(args)
 
+#Define some variable and paths
 data_dir = os.path.join(args.root, args.data_dir)
 model_path = os.path.join(args.root, 'models')
 log_dir= os.path.join(model_path, "logs", "logs_" + args.model_name)
-
-# Number of classes in the dataset
 num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
-
 writer = SummaryWriter(log_dir=log_dir)
 
-def train_model(model, dataloaders, criterion, optimizer, patience, input_size, initial_bias):
+def train_model(model, image_datasets, criterion, optimizer, patience, input_size, initial_bias):
     since = time.time()
     
     val_loss_history = []
@@ -79,30 +78,47 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     #Add initial bias to last layer
     best_model_wts['module.fc.bias'] = initial_bias
     #######################################################################
-    
+    #Initialise dataloader and set decaying batch size
+    batch_size = args.initial_batch_size
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=2) for x in ['train', 'val']}
+
+
     initial_patience = patience
     epoch = 0
     while patience > 0: # Run untill validation loss has not improved for n epochs equal to patience variable
         print('\nEpoch {}'.format(epoch))
         print('-' * 10)
 
+        #Ensure minimum number of epochs is met before patience is allow to reduce
         if len(val_loss_history) > args.min_epochs:
+            #If the current loss is not at least 0.5% less than the lowest loss recorded, reduce patiece by one epoch
             if val_loss_history[-1] > min(val_loss_history)*args.beta:
                 patience -= 1
             else:
+                #If validation loss improves by at least 0.5%, reset patient to initial value
                 patience = initial_patience
         print('Patience: ' + str(patience) + '/' + str(initial_patience))
         
-        # Each epoch has a training and validation phase
+        #If patience gets to 6, half batch size, reintialise dataloader and revert to best model weights to undo any overfitting.
+        #Do this for every epoch where patience is less than 6. i.e. if inital batch size = 128, the last epoch will have a batchsize of at most 2.
+        if patience < 6 & batch_size > 1:
+            batch_size = int(batch_size/2)
+            #Re-initialise dataloaders and rerandomise batches.  
+            dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=2) for x in ['train', 'val']}
+            #Reload best model weights
+            model.load_state_dict(best_model_wts)
+        print('\n' , batch_size, '\n')
         
+        #Training and validation loop
         for phase in ['train', 'val']:
-            #count = 0
             if phase == 'train':
                 model.train()  # Set model to training mode
+                #Experimental. Remove batch norm layer from Resnet if specified.
                 if args.remove_batch_norm == True:
                     print('BatchNorm layers deactivated')
                     model.apply(deactivate_batchnorm)
             elif phase == 'val':
+                #Model quatisation with quantisation aware training
                 if args.quantise == True:
                     quantized_model = torch.quantization.convert(model.eval(), inplace=False)
                     quantized_model.eval()
@@ -115,12 +131,14 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
             running_f1 = 0
 
             # Iterate over data.
+            #Get size of whole dataset split
             n = len(dataloaders_dict[phase].dataset)
+            #Begin training
             print(phase)
-            with Bar('Learning...', max=n/args.batch_size+1) as bar:
+            with Bar('Learning...', max=n/batch_size+1) as bar:
                 
-                for inputs, labels in dataloaders[phase]:
-                  
+                for inputs, labels in dataloaders_dict[phase]:
+                    #Load images and lables from current batch onto GPU(s)
                     inputs = inputs.to(device)
                     labels = labels.to(device)  
 
@@ -133,18 +151,20 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                         # Get model outputs and calculate loss
                         # In train mode we calculate the loss by summing the final output and the auxiliary output
                         # but in testing we only consider the final output.
+                        
+                        #Get predictionas from regular or quantised model
                         if args.quantise == True and phase == 'val':
                             outputs = quantized_model(inputs)
                         else:
                             outputs = model(inputs)
                         
-
+                        #Calculate loss and other model metrics
                         loss = criterion(outputs, labels)
                         _, preds = torch.max(outputs, 1)    
-
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
-                        #Weight loss function by precision, recall or f1-score
+                        
+                        #Add precision, recall or f1-score to loss with weight. Experimental. Doesn't seem to work in practice.
                         #loss += (1-stats_out['recall'])#*0.4
 
                         # backward + optimize only if in training phase
@@ -160,16 +180,18 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
 
                     #Calculate statistics
                     #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
-                    #running totals for these metrics by the total number of training or test samples. This controls for 
-                    #the effect of batch size and the fact that the size of the last batch will not be equal to batch_size
+                    #running totals for these metrics by the total number of training or validation samples. This controls for 
+                    #the effect of batch size and the fact that the size of the last batch will less than args.batch_size
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
                     running_precision += stats_out['precision'] * inputs.size(0)
                     running_recall += stats_out['recall'] * inputs.size(0)
                     running_f1 += stats_out['f1-score'] * inputs.size(0)
 
+                    #Move progress bar.
                     bar.next()
 
+            #Calculate statistics for epoch
             n = len(dataloaders_dict[phase].dataset)
             epoch_loss = float(running_loss / n)
             epoch_acc = float(running_corrects.double() / n)
@@ -181,7 +203,7 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
  
-            # Save loss and acc to tensorboard log
+            # Save statistics to tensorboard log
             if phase == 'train':
                 writer.add_scalar("Loss/train", epoch_loss, epoch)
                 writer.add_scalar("Accuracy/train", epoch_acc, epoch)
@@ -212,12 +234,12 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
                  
                 PATH = os.path.join(model_path, args.model_name)
                 
+
                 if args.quantise == False:
                     with open(PATH + '.pkl', 'wb') as f:
                         pickle.dump(final_out, f)   
 
                     # Save the whole model with pytorch save function
-                    # torch.save(model, PATH + '.pth')
                     torch.save(model.module, PATH + '.pth')
 
                 else:
@@ -238,15 +260,16 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
     print('Recall of saved model: {:4f}'.format(best_recall))
     
     # load best model weights and save
-    model.load_state_dict(best_model_wts)
+    #model.load_state_dict(best_model_wts)
     
+    #Flush and close tensorbaord writer
     writer.flush()
     writer.close()
 
-    if args.quantise == True:
-        return quantized_model
-    else:
-        return model 
+#    if args.quantise == True:
+#        return quantized_model
+#    else:
+#        return model 
 
 
 # Data augmentation and normalization for training
@@ -254,7 +277,8 @@ def train_model(model, dataloaders, criterion, optimizer, patience, input_size, 
 data_transforms = {
     'train': transforms.Compose([
         transforms.RandomCrop(args.input_size, pad_if_needed=True, padding_mode = 'reflect'),
-        transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
+        transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 2)),
+        transforms.RandomHorizontalFlip(p=0.5),
         transforms.ToTensor(),
     ]),
     'val': transforms.Compose([
@@ -267,16 +291,16 @@ print("Initializing Datasets and Dataloaders...")
 
 # Create training and validation datasets
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
-# Create training and validation dataloaders
-dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=2) for x in ['train', 'val']}
 
-# Detect if we have a GPU available
+
+# Specify whether to use GPU or cpu. Quantisation aware training is not yet avalable for GPU.
 if args.quantise == True:
     device = torch.device("cpu")
 else:
     device = torch.device("cuda")
 
 
+#Depriated. Remove later
 def Remove_module_from_layers(weights):
     new_keys = []
     for key, value in unpickled_model_wts.items():
@@ -286,7 +310,7 @@ def Remove_module_from_layers(weights):
     return unpickled_model_wts
 
 
-
+#Chose which model architecture to use and whether to load ImageNet weights or custom weights
 if args.custom_pretrained == False:
     if args.arch == 'convnext_tiny':
         print('Loaded ConvNext Tiny with pretrained IN weights')
@@ -414,6 +438,7 @@ if args.cont_train == True and os.path.exists(os.path.join(model_path, args.mode
 
     model_ft.load_state_dict(unpickled_model_wts)
     
+#Used in model quantisation to fuse layers
 def fuse_model(self):
         for m in self.modules():
             if type(m) == ConvBNReLU:
@@ -424,6 +449,7 @@ def fuse_model(self):
                         torch.quantization.fuse_modules(m.conv, [str(idx), str(idx + 1)], inplace=True)
 
 
+#Experimental. Used to deactivate batch normalisation layers in Resnets
 def deactivate_batchnorm(m):
     if isinstance(m, nn.BatchNorm2d):
         m.reset_parameters()
@@ -432,7 +458,7 @@ def deactivate_batchnorm(m):
             m.bias.zero_()
 
 
-#Run model on all GPUs
+#Run model on all avalable GPUs
 if args.quantise == False:
     model_ft = nn.DataParallel(model_ft)
 else:
@@ -441,6 +467,7 @@ else:
     model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
     model_ft.train()
 
+#Load model onto device
 model_ft = model_ft.to(device)
 
 params_to_update = model_ft.parameters()
@@ -465,8 +492,9 @@ for i in list_cats:
 
 initial_bias = torch.FloatTensor(weights).to(device)
 
+#Optional, weight loss function.
 #criterion = nn.CrossEntropyLoss(weight=initial_bias)
 criterion = nn.CrossEntropyLoss()
 
 # Train and evaluate
-model = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)
+model = train_model(model_ft, image_datasets, criterion, optimizer_ft, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)

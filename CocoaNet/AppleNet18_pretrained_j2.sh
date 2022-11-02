@@ -34,13 +34,13 @@ export CODE_DIR='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts'      #PATH_TO_
 cd $CODE_DIR
 
 python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' \
-        --model_name 'AppleNet18' \
+        --model_name 'AppleNet18_v0.2' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'PlantPathologyKaggle/dat' \
         --input_size 1120 \
-        --min_epochs 10 \
+        --min_epochs 2 \
         --arch 'resnet18' \
-        --batch_size 37 \
-        --patience 50 \
+        --initial_batch_size 128 \
+        --patience 20 \
         --custom_pretrained \
-        --custom_pretrained_weights 'DisNet18_v2.pkl'
+        --custom_pretrained_weights 'DisNet18_v0.3.pkl'

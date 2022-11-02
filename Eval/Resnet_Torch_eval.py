@@ -8,7 +8,7 @@ import time
 import numpy as np
 
 root = '/local/scratch/jrs596/dat/models'
-model_path = 'AppleNet18.pth'
+model_path = 'AppleNext_tiny.pth'
 data_dir = "/local/scratch/jrs596/dat/PlantPathologyKaggle/dat"
 quantized = False
 
@@ -42,14 +42,18 @@ data_transforms = {
         transforms.Resize((input_size,input_size)),
         transforms.ToTensor(),
     ]),
+    'test': transforms.Compose([
+        transforms.Resize((input_size,input_size)),
+        transforms.ToTensor(),
+    ])
 }
 
 # Create training and validation datasets
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) 
-	for x in ['train', 'val']}
+	for x in ['train', 'val', 'test']}
 # Create training and validation dataloaders
 dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, 
-	shuffle=False, num_workers=1) for x in ['train', 'val']}#
+	shuffle=False, num_workers=1) for x in ['train', 'val', 'test']}#
 
 
 
@@ -64,8 +68,14 @@ def eval(model, dataloaders_dict):
 	running_f1 = 0	
 	running_auc = 0
 
-	for i in ['val']:#, 'train']:
-		for inputs, labels in dataloaders_dict[i]:
+	df = pd.DataFrame(columns=['image_id','healthy','multiple_diseases','rust','scab'])
+	for phase in ['test']:#, 'train']:
+		for i, (inputs, labels) in enumerate(dataloaders_dict[phase],0 ):
+			filename, _ = dataloaders_dict[phase].dataset.samples[i]
+			head_tail = os.path.split(filename)
+
+			filename = head_tail[1][:-4]
+			
 			inputs = inputs.to(device)
 			labels = labels.to(device)
 			outputs = model(inputs)
@@ -83,6 +93,13 @@ def eval(model, dataloaders_dict):
 			y[labels] = 1
 			
 			x = torch.sigmoid(outputs[0]).cpu().detach().numpy()
+			
+			out = [filename] + list(x)
+			df.loc[len(df)] = out
+
+#			for i in x:
+#				out = out + ',' + str(round(i,2)) + '\n'
+
 
 			fpr, tpr, thresholds = metrics.roc_curve(y, x, pos_label=1)
 			auc = metrics.auc(fpr, tpr)
@@ -93,7 +110,7 @@ def eval(model, dataloaders_dict):
 			for j in preds.tolist():
 				preds_list.append(j)#
 
-		n = len(dataloaders_dict[i].dataset)
+		n = len(dataloaders_dict[phase].dataset)
 		epoch_loss = float(running_loss / n)
 		auc = running_auc / n
 		
@@ -122,6 +139,9 @@ def eval(model, dataloaders_dict):
 	print()
 	print(classes)
 	print()
+
+	print(df)
+	df.to_csv('/local/scratch/jrs596/dat/PlantPathologyKaggle/out.csv', index=False)
 
 
 def quant_eval(model, img_loader):
