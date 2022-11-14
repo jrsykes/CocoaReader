@@ -9,10 +9,10 @@
 #SBATCH --time=24:00:00
 
 # set name of job
-#SBATCH --job-name=AppleNet18
+#SBATCH --job-name=AppleNet50
 
 # set number of GPUs
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 
 # mail alert at start, end and abortion of execution
 #SBATCH --mail-type=ALL
@@ -34,13 +34,13 @@ export CODE_DIR='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts'      #PATH_TO_
 cd $CODE_DIR
 
 python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' \
-        --model_name 'AppleNet18_v0.2' \
+        --model_name 'AppleNet50_v0.2' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'PlantPathologyKaggle/dat' \
         --input_size 1120 \
         --min_epochs 2 \
-        --arch 'resnet18' \
-        --initial_batch_size 128 \
+        --arch 'resnet50' \
+        --initial_batch_size 64 \
         --patience 20 \
         --custom_pretrained \
-        --custom_pretrained_weights 'DisNet18_v0.3.pkl'
+        --custom_pretrained_weights 'DisNet50_v0.3.pkl'

@@ -8,7 +8,7 @@ import time
 import numpy as np
 
 root = '/local/scratch/jrs596/dat/models'
-model_path = 'AppleNext_tiny.pth'
+model_path = 'AppleNet18_v0.2.pth'
 data_dir = "/local/scratch/jrs596/dat/PlantPathologyKaggle/dat"
 quantized = False
 

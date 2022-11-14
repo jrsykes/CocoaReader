@@ -83,9 +83,9 @@ def train_model(model, image_datasets, criterion, optimizer, patience, input_siz
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=2) for x in ['train', 'val']}
 
 
-    initial_patience = patience
+    #initial_patience = patience
     epoch = 0
-    while patience > 0: # Run untill validation loss has not improved for n epochs equal to patience variable
+    while batch_size > 1: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
         print('\nEpoch {}'.format(epoch))
         print('-' * 10)
 
@@ -96,19 +96,20 @@ def train_model(model, image_datasets, criterion, optimizer, patience, input_siz
                 patience -= 1
             else:
                 #If validation loss improves by at least 0.5%, reset patient to initial value
-                patience = initial_patience
-        print('Patience: ' + str(patience) + '/' + str(initial_patience))
+                patience = args.patience
+        print('Patience: ' + str(patience) + '/' + str(args.patience))
         
         #If patience gets to 6, half batch size, reintialise dataloader and revert to best model weights to undo any overfitting.
         #Do this for every epoch where patience is less than 6. i.e. if inital batch size = 128, the last epoch will have a batchsize of at most 2.
-        if patience < 6 & batch_size > 1:
+        if patience == 0:
             batch_size = int(batch_size/2)
+            patience = args.patience
             #Re-initialise dataloaders and rerandomise batches.  
             dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=2) for x in ['train', 'val']}
             #Reload best model weights
             model.load_state_dict(best_model_wts)
-        print('\n' , batch_size, '\n')
-        
+        print('\n Batch size: ' , batch_size, '\n')
+
         #Training and validation loop
         for phase in ['train', 'val']:
             if phase == 'train':
