@@ -1,10 +1,11 @@
 
-python 'scripts/CocoaReader/DisNet/Torch_Custom_CNNs.py' \
-        --model_name 'AppleNet18' \
-        --root '/local/scratch/jrs596/dat/PlantPathologyKaggle' \
-        --data_dir 'dat' \
+python '/home/userfs/j/jrs596/scripts/CocoaReader/DisNet/Torch_Custom_CNNs_wandbSweep.py' \
+        --model_name 'DisNet18_test' \
+        --root '/local/scratch/jrs596/dat' \
+        --data_dir 'test' \
         --input_size 224 \
-        --min_epochs 10 \
+        --min_epochs 1 \
         --arch 'resnet18' \
-        --batch_size 37 \
-        --patience 50
+        --initial_batch_size 8 \
+        --patience 1 \
+        --sweep_id 'DisNet/ey8egw8q'
