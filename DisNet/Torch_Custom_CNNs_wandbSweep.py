@@ -50,7 +50,7 @@ parser.add_argument('--min_epochs', type=int, default=10,
                         help='n epochs before loss is assesed for early stopping')
 parser.add_argument('--patience', type=int, default=50,
                         help='n epochs to run without improvment in loss')
-parser.add_argument('--beta', type=float, default=1.005,
+parser.add_argument('--beta', type=float, default=1,
                         help='minimum required per cent improvment in validation loss')
 parser.add_argument('--learning_rate', type=float, default=1e-5,
                         help='Learning rate, Default:1e-5')
@@ -64,6 +64,11 @@ parser.add_argument('--cont_train', action='store_true',
                         help='Continue training from previous checkpoint?')
 parser.add_argument('--remove_batch_norm', action='store_true',
                         help='Deactivate all batchnorm layers?')
+parser.add_argument('--sweep', action='store_true',
+                        help='Run Waits and Biases optimisation sweep')
+parser.add_argument('--sweep_runs', type=int, default=10,
+                        help='n optimisation sweeps to run')
+
 args = parser.parse_args()
 print(args)
 
@@ -239,7 +244,11 @@ def train_model(model, optimizer, image_datasets, criterion, patience, input_siz
                                 if epoch > 3:
                                     model.apply(torch.quantization.disable_observer)
                                 if epoch > 2:
-                                    model.apply(torch.nn.intrinsic.qat.freeze_bn_stats) 
+                                    model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
+                        else: 
+                            if idx == 0:
+                                # Log one batch of images to the dashboard, always same batch_idx.
+                                log_image_table(inputs, preds, labels, outputs.softmax(dim=1))
                    #Calculate statistics
                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
                    #running totals for these metrics by the total number of training or validation samples. This controls for 
@@ -249,15 +258,7 @@ def train_model(model, optimizer, image_datasets, criterion, patience, input_siz
                     running_precision += stats_out['precision'] * inputs.size(0)
                     running_recall += stats_out['recall'] * inputs.size(0)
                     running_f1 += stats_out['f1-score'] * inputs.size(0)    
-#                    if phase == 'train':
-#                        example_ct += len(inputs)
-#                        metrics = {"train/train_loss": running_loss, 
-#                           "train/epoch": (step + 1 + (n_steps_per_epoch * epoch)) / n_steps_per_epoch, 
-#                           "train/example_ct": example_ct}      #
-#                        if idx + 1 < n_steps_per_epoch:
-#                        # 🐝 Log train metrics to wandb 
-#                            wandb.log(metrics)  
-                   #Move progress bar.
+
                     bar.next()  
            #Calculate statistics for epoch
             n = len(dataloaders_dict[phase].dataset)
@@ -268,12 +269,13 @@ def train_model(model, optimizer, image_datasets, criterion, patience, input_siz
             epoch_f1 = (running_f1) / n 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
-           # Save statistics to tensorboard log
-            if phase == 'val' and idx == 0:
-               # Log one batch of images to the dashboard, always same batch_idx.
-                log_image_table(inputs, preds, labels, outputs.softmax(dim=1))
-            wandb.log({"epoch": epoch, "loss": epoch_loss, "acc": epoch_acc, "F1": epoch_f1})  
-           
+            # Save statistics to tensorboard log
+            
+            if phase == 'train':
+                wandb.log({"Train/loss": epoch_loss, "Train/acc": epoch_acc, "Train/F1": epoch_f1})  
+            else:
+                wandb.log({"Val/loss": epoch_loss, "Val/acc": epoch_acc, "Val/F1": epoch_f1})  
+
            # Save model and update best weights only if recall has improved
             if phase == 'val' and epoch_recall > best_recall:
                 best_recall = epoch_recall
@@ -315,7 +317,7 @@ def train_model(model, optimizer, image_datasets, criterion, patience, input_siz
 def log_image_table(images, predicted, labels, probs):
     "Log a wandb.Table with (img, pred, target, scores)"
     # 🐝 Create a wandb Table to log images, labels and predictions to
-    table = wandb.Table(columns=["image", "pred", "target"]+[f"score_{i}" for i in range(10)])
+    table = wandb.Table(columns=["image", "pred", "target"]+[f"class_{i}" for i in range(num_classes)])
     for img, pred, targ, prob in zip(images.to("cpu"), predicted.to("cpu"), labels.to("cpu"), probs.to("cpu")):
         table.add_data(wandb.Image(img[0].numpy()*255), pred, targ, *prob.numpy())
     wandb.log({"predictions_table":table}, commit=False)
@@ -567,11 +569,10 @@ criterion = nn.CrossEntropyLoss()
 #    # Copy your config 
 #    config = wandb.config
 
-#optimizer_ft = torch.optim.Adam(params_to_update, lr=config.lr,
-    #                                       weight_decay=0, eps=config.eps)
+
     # Train and evaluate
 
-def train(config=None):
+def sweep_train(config=None):
     # Initialize a new wandb run
     with wandb.init(config=config):
         # If called by wandb.agent, as below,
@@ -586,8 +587,19 @@ def train(config=None):
 
         train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)
 
+def train():
+    model_ft = build_model()
+    model_ft = model_ft.to(device)
+    optimizer = torch.optim.Adam(model_ft.parameters(), lr=,
+                                           weight_decay=0, eps=)
+    image_datasets = build_datasets(kernel_size=, sigma_max=)
 
-wandb.agent(sweep_id, 
-    train,
-    count=10)
+    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)
 
+
+if args.sweep == True:
+    wandb.agent(sweep_id, 
+        train,
+        count=args.sweep_count)
+else:
+    train()
