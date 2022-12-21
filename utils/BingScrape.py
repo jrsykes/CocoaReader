@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import time
 
-subscription_key = "b13aa96e4c934bbdafe1a15970adf7a5"
+subscription_key = ""
 search_url = "https://api.bing.microsoft.com/v7.0/images/search"
 headers = {"Ocp-Apim-Subscription-Key" : subscription_key}
 base_dir = '/local/scratch/jrs596/dat/GoogleBingCocoaImages/'

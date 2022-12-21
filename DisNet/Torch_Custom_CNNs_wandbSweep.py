@@ -109,7 +109,7 @@ parameters_dict = {
         'values': [3,5,7,9,11]
       },
     'learning_rate': {
-        # a flat distribution between min and max
+        # a flat distribution between min and 0.1
         'distribution': 'uniform',
         'min': 0,
         'max': 0.1
@@ -596,7 +596,7 @@ def sweep_train(config=sweep_config):
     model_ft = set_batchnorm_momentum(model_ft, wandb.config.batchnorm_momentum)
     model_ft = model_ft.to(device)  
     optimizer = build_optimizer(model_ft, wandb.config.optimizer, wandb.config.learning_rate, wandb.config.eps, wandb.config.weight_decay)
-    image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=wandb.config.input_size)
+    image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=int(wandb.config.input_size))
 
     train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias)
 
