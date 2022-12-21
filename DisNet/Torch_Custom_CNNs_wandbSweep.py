@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import torchvision
+#import torchvision
 from torchvision import datasets, models, transforms
 import time
 import os
@@ -29,8 +29,14 @@ from ConvNext_tiny_quantised import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weigh
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str,
                         help='save name for model')
-parser.add_argument('--sweep_id', type=str,
+
+parser.add_argument('--sweep', action='store_true',
+                        help='Run Waits and Biases optimisation sweep')
+parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
+parser.add_argument('--sweep_count', type=int, default=4,
+                        help='Initial batch size')
+
 parser.add_argument('--root', type=str,
                         help='location of all data')
 parser.add_argument('--data_dir', type=str,
@@ -45,7 +51,9 @@ parser.add_argument('--quantise', action='store_true',
                         help='Train with Quantization Aware Training?')
 
 parser.add_argument('--initial_batch_size', type=int, default=128,
-                        help='Batch size')
+                        help='Initial batch size')
+parser.add_argument('--min_batch_size', type=int, default=8,
+                        help='Minimum batch size before training ends')
 parser.add_argument('--min_epochs', type=int, default=10,
                         help='n epochs before loss is assesed for early stopping')
 parser.add_argument('--patience', type=int, default=50,
@@ -64,10 +72,8 @@ parser.add_argument('--cont_train', action='store_true',
                         help='Continue training from previous checkpoint?')
 parser.add_argument('--remove_batch_norm', action='store_true',
                         help='Deactivate all batchnorm layers?')
-parser.add_argument('--sweep', action='store_true',
-                        help='Run Waits and Biases optimisation sweep')
-parser.add_argument('--sweep_runs', type=int, default=10,
-                        help='n optimisation sweeps to run')
+
+
 
 args = parser.parse_args()
 print(args)
@@ -84,8 +90,8 @@ sweep_config = {
     }
 
 metric = {
-    'name': 'loss',
-    'goal': 'minimize'   
+    'name': 'Val_F1',
+    'goal': 'maximize'   
     }
 
 sweep_config['metric'] = metric
@@ -94,29 +100,31 @@ parameters_dict = {
     'optimizer': {
         'values': ['adam', 'sgd']
         },
+    'input_size': {
+        'distribution': 'uniform',
+        'min': 448,
+        'max': 1120
+      },
     'kernel_size': {
         'values': [3,5,7,9,11]
       },
     'learning_rate': {
-        # a flat distribution between 0 and 0.1
+        # a flat distribution between min and max
         'distribution': 'uniform',
         'min': 0,
         'max': 0.1
       },
     'eps': {
-        # a flat distribution between 0 and 0.1
         'distribution': 'uniform',
         'min': 0,
         'max': 0.1
       },
     'weight_decay': {
-        # a flat distribution between 0 and 0.1
         'distribution': 'uniform',
         'min': 0,
         'max': 0.1
       },
     'sigma_max': {
-        # a flat distribution between 0 and 0.1
         'distribution': 'uniform',
         'min': 1,
         'max': 5
@@ -133,15 +141,18 @@ sweep_config['parameters'] = parameters_dict
 print('Sweep config:')
 pprint.pprint(sweep_config)
 print()
-sweep_id = args.sweep_id
-sweep_id = wandb.sweep(sweep_config, project="DisNet", entity="frankslab")
 
+
+if args.sweep_id is None:
+    sweep_id = wandb.sweep(sweep_config, project="DisNet", entity="frankslab")
+else:
+    sweep_id = args.sweep_id
 
 print("Sweep ID: ", sweep_id)
 print()
 
 
-def train_model(model, optimizer, image_datasets, criterion, patience, input_size, initial_bias):
+def train_model(model, optimizer, image_datasets, criterion, patience, initial_bias):
     since = time.time()
     val_loss_history = []
     best_recall = 0.0
@@ -155,10 +166,10 @@ def train_model(model, optimizer, image_datasets, criterion, patience, input_siz
     #######################################################################
     #Initialise dataloader and set decaying batch size
     batch_size = args.initial_batch_size
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=2) for x in ['train', 'val']}    
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=12) for x in ['train', 'val']}    
     #initial_patience = patience
     epoch = 0
-    while batch_size >= 8: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
+    while batch_size >= args.min_batch_size: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
         #Ensure minimum number of epochs is met before patience is allow to reduce
@@ -177,7 +188,7 @@ def train_model(model, optimizer, image_datasets, criterion, patience, input_siz
             batch_size = int(batch_size/2)
             patience = args.patience
            #Re-initialise dataloaders and rerandomise batches.  
-            dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=2) for x in ['train', 'val']}
+            dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=12) for x in ['train', 'val']}
            #Reload best model weights
             model.load_state_dict(best_model_wts)
         print('\n Batch size: ' , batch_size, '\n') 
@@ -272,9 +283,9 @@ def train_model(model, optimizer, image_datasets, criterion, patience, input_siz
             # Save statistics to tensorboard log
             
             if phase == 'train':
-                wandb.log({"Train/loss": epoch_loss, "Train/acc": epoch_acc, "Train/F1": epoch_f1})  
+                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1})  
             else:
-                wandb.log({"Val/loss": epoch_loss, "Val/acc": epoch_acc, "Val/F1": epoch_f1})  
+                wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1})  
 
            # Save model and update best weights only if recall has improved
             if phase == 'val' and epoch_recall > best_recall:
@@ -332,18 +343,18 @@ def build_optimizer(network, optimizer, learning_rate, eps, weight_decay):
     return optimizer
 
 
-def build_datasets(kernel_size, sigma_max):
+def build_datasets(kernel_size, sigma_max, input_size):
     # Data augmentation and normalization for training
     # Just normalization for validation
     data_transforms = {
         'train': transforms.Compose([
-            transforms.RandomCrop(args.input_size, pad_if_needed=True, padding_mode = 'reflect'),
+            transforms.RandomCrop(input_size, pad_if_needed=True, padding_mode = 'reflect'),
             transforms.GaussianBlur(kernel_size=kernel_size, sigma=(0.1, sigma_max)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
         ]),
         'val': transforms.Compose([
-            transforms.Resize((args.input_size,args.input_size)),
+            transforms.Resize((input_size,input_size)),
             transforms.ToTensor(),
         ]),
     }   
@@ -370,8 +381,18 @@ def Remove_module_from_layers(weights):
     return unpickled_model_wts
 
 def build_model():
+    #If checkpoint weights file exists, load those weights.
+    if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
+        print('Loading checkpoint weights')
+        pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
+        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
+
+        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
+
+        model_ft.load_state_dict(unpickled_model_wts)
+
     #Chose which model architecture to use and whether to load ImageNet weights or custom weights
-    if args.custom_pretrained == False:
+    elif args.custom_pretrained == False:
         if args.arch == 'convnext_tiny':
             print('Loaded ConvNext Tiny with pretrained IN weights')
             model_ft = models.convnext_tiny(weights = ConvNeXt_Tiny_Weights.DEFAULT)
@@ -485,16 +506,6 @@ def build_model():
         else:
             print("Architecture name not recognised")
             exit(0) 
-
-    #If checkpoint weights file exists, load those weights.
-    if args.cont_train == True and os.path.exists(os.path.join(model_path, args.model_name + '.pkl')) == True:
-        print('Loading checkpoint weights')
-        pretrained_model_wts = pickle.load(open(os.path.join(model_path, args.model_name + '.pkl'), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
-
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
-
-        model_ft.load_state_dict(unpickled_model_wts)
         
     #Run model on all avalable GPUs
     if args.quantise == False:
@@ -572,34 +583,36 @@ criterion = nn.CrossEntropyLoss()
 
     # Train and evaluate
 
-def sweep_train(config=None):
+def sweep_train(config=sweep_config):
     # Initialize a new wandb run
-    with wandb.init(config=config):
+    #with wandb.init(config=config):
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
-        config = wandb.config
- 
-        model_ft = build_model()
-        model_ft = set_batchnorm_momentum(model_ft, config.batchnorm_momentum)
-        model_ft = model_ft.to(device)  
-        optimizer = build_optimizer(model_ft, config.optimizer, config.learning_rate, config.eps, config.weight_decay)
-        image_datasets = build_datasets(config.kernel_size, config.sigma_max)
+    run = wandb.init(config=config)
+    #config = wandb.config
 
-        train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)
+    model_ft = build_model()
+    
+    model_ft = set_batchnorm_momentum(model_ft, wandb.config.batchnorm_momentum)
+    model_ft = model_ft.to(device)  
+    optimizer = build_optimizer(model_ft, wandb.config.optimizer, wandb.config.learning_rate, wandb.config.eps, wandb.config.weight_decay)
+    image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=wandb.config.input_size)
+
+    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias)
 
 def train():
     model_ft = build_model()
     model_ft = model_ft.to(device)
-    optimizer = torch.optim.Adam(model_ft.parameters(), lr=,
-                                           weight_decay=0, eps=)
-    image_datasets = build_datasets(kernel_size=, sigma_max=)
+    optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
+                                           weight_decay=0, eps=1e-8)
+    image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size)
 
-    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, input_size=args.input_size, initial_bias=initial_bias)
+    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias)
 
 
 if args.sweep == True:
     wandb.agent(sweep_id, 
-        train,
+        sweep_train,
         count=args.sweep_count)
 else:
     train()

@@ -1,8 +1,12 @@
+#%%
 import shutil
 import os
 import random
 from PIL import Image
+import time
 
+
+#%%
 src = '/local/scratch/jrs596/dat/PlantPathologyKaggle/dat/unsplit'
 dest = '/local/scratch/jrs596/dat/PlantPathologyKaggle/dat'
 
@@ -41,10 +45,10 @@ def Randomise_Split(dat, destination):
 		images = os.listdir(os.path.join(dat, class_))
 		random.shuffle(images)
 
-#		images = random.sample(images, 200)	
+		#images = random.sample(images, 50)	
 
-		dat_dict = {'train': images[:int(len(images)*0.9)], 
-			#'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
+		dat_dict = {'train': images[:int(len(images)*0.8)], 
+			'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
 			'val': images[int(len(images)*0.9):]}										
 		
 		for split, im_list in dat_dict.items():
@@ -54,7 +58,6 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-Randomise_Split(src, dest)
 
 def combine(original_data, disease_path, healthy_path):
 	for i in os.listdir(original_data):
@@ -106,19 +109,24 @@ def Size_checker(dir_):
 	print(str(yes/total*100), '%')
 
 
-#root = '/local/scratch/jrs596/dat/FAIGB_combined_hf_split/train'
-#print('Diseased: ')
-#Size_checker(os.path.join(root, 'diseased'))
-#print('Healthy: ')
-#Size_checker(os.path.join(root, 'healthy'))
+def Randomise_combine_subset(dat, destination):
+	for dir_ in os.listdir(dat):
+		images = os.listdir(os.path.join(dat, dir_))
+		random.shuffle(images)
 
-#root = '/local/scratch/jrs596/dat'#
+		if len(images) > 50:
+			images = random.sample(images, 50)	
 
-#source = os.path.join(root, 'PlantNotPlant3.3/train_full/Plant')
-#destination = os.path.join(root, 'compiled_cocoa_images/NotCocoa')#
+		for i in images:
+			source = os.path.join(dat, dir_, i)
+			dest = os.path.join(destination, str(time.time()) + '.jpeg')
+			shutil.copy(source, dest)								
+		
 
-##CopySubset(destination, source)
+#Randomise_combine_subset('/local/scratch/jrs596/dat/ElodeaProject/Elodea_BB3', 
+#	'/local/scratch/jrs596/dat/ElodeaProject/BB3_combined/rudder')
+Randomise_Split('/local/scratch/jrs596/dat/FAIGB_PNPFiltered_HandFiltered_PinopsidaCollapsed', 
+	'/local/scratch/jrs596/dat/FAIGB_FinalSplit')
 
-#Image_checker("/local/scratch/jrs596/dat/all_cocoa_images")
 
-#CopySubset(src, dest)
+#%%
