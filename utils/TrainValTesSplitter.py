@@ -45,8 +45,6 @@ def Randomise_Split(dat, destination):
 		images = os.listdir(os.path.join(dat, class_))
 		random.shuffle(images)
 
-		#images = random.sample(images, 50)	
-
 		dat_dict = {'train': images[:int(len(images)*0.8)], 
 			'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
 			'val': images[int(len(images)*0.9):]}										
@@ -60,6 +58,8 @@ def Randomise_Split(dat, destination):
 
 
 def combine(original_data, disease_path, healthy_path):
+	os.makedirs(disease_path, exist_ok = True)
+	os.makedirs(healthy_path, exist_ok = True)
 	for i in os.listdir(original_data):
 		source = os.path.join(original_data, i)
 
@@ -73,7 +73,6 @@ def combine(original_data, disease_path, healthy_path):
 				shutil.copy(os.path.join(source,file), os.path.join(healthy_path, file))
 		
 
-#combine(dat, disease_path, healthy_path)
 
 def CopySubset(source, destination):
 	images = os.listdir(source)
@@ -88,7 +87,7 @@ def Image_checker(dir_):
 	for i in os.listdir(dir_):
 		try:
 			image = Image.open(os.path.join(dir_, i))
-			print(os.path.join(dir_, i))
+			#print(os.path.join(dir_, i))
 		except:
 			print('Bad image, deleting')
 			#os.remove(os.path.join(dir_, i))
@@ -123,10 +122,8 @@ def Randomise_combine_subset(dat, destination):
 			shutil.copy(source, dest)								
 		
 
-#Randomise_combine_subset('/local/scratch/jrs596/dat/ElodeaProject/Elodea_BB3', 
-#	'/local/scratch/jrs596/dat/ElodeaProject/BB3_combined/rudder')
-Randomise_Split('/local/scratch/jrs596/dat/FAIGB_PNPFiltered_HandFiltered_PinopsidaCollapsed', 
-	'/local/scratch/jrs596/dat/FAIGB_FinalSplit')
-
-
 #%%
+
+Image_checker('/local/scratch/jrs596/dat/FAIGB_Combined_FinalSplit/FullTrainHealthy')
+
+# %%

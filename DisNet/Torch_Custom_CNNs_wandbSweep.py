@@ -1,5 +1,7 @@
 from __future__ import print_function
 from __future__ import division
+
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,52 +9,55 @@ import numpy as np
 #import torchvision
 from torchvision import datasets, models, transforms
 import time
-import os
 import copy
+import shutil
 #from torch.utils.tensorboard import SummaryWriter
 import wandb
 import pprint
-
+import random
 import pickle
 from sklearn import metrics
 from progress.bar import Bar
 from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights, ResNet50_Weights, ResNeXt101_32X8D_Weights
 from torch.utils.mobile_optimizer import optimize_for_mobile
-
-import sys
 import argparse
 
 #Local scripts
 from ConvNext_tiny_quantised import convnext_tiny as convnext_tiny_q
 from ConvNext_tiny_quantised import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
 
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 parser = argparse.ArgumentParser('encoder decoder examiner')
-parser.add_argument('--model_name', type=str,
+parser.add_argument('--model_name', type=str, default='model',
                         help='save name for model')
 
-parser.add_argument('--sweep', action='store_true',
+parser.add_argument('--sweep', action='store_true', default=False,
                         help='Run Waits and Biases optimisation sweep')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
-parser.add_argument('--sweep_count', type=int, default=4,
+parser.add_argument('--sweep_count', type=int, default=100,
                         help='Initial batch size')
 
-parser.add_argument('--root', type=str,
+parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat',
                         help='location of all data')
-parser.add_argument('--data_dir', type=str,
+parser.add_argument('--data_dir', type=str, default='FAIGB_Combined_FinalSplit',
                         help='location of all data')
 
-parser.add_argument('--custom_pretrained', action='store_true',
+parser.add_argument('--custom_pretrained', action='store_true', default=False,
                         help='Train useing specified pre-trained weights?')
 parser.add_argument('--custom_pretrained_weights', type=str,
                         help='location of pre-trained weights')
 
-parser.add_argument('--quantise', action='store_true',
+parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
 
-parser.add_argument('--initial_batch_size', type=int, default=128,
+parser.add_argument('--initial_batch_size', type=int, default=32,
                         help='Initial batch size')
-parser.add_argument('--min_batch_size', type=int, default=8,
+parser.add_argument('--initial_num_classes', type=int, default=2,
+                        help='Initial number of classes to start traning')
+parser.add_argument('--min_batch_size', type=int, default=4,
                         help='Minimum batch size before training ends')
 parser.add_argument('--min_epochs', type=int, default=10,
                         help='n epochs before loss is assesed for early stopping')
@@ -68,21 +73,24 @@ parser.add_argument('--input_size', type=int, default=224,
                         help='image input size')
 parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
-parser.add_argument('--cont_train', action='store_true',
+parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
-parser.add_argument('--remove_batch_norm', action='store_true',
+parser.add_argument('--subset_classes_balance', action='store_true', default=True,
+                        help='When loss stops decreasing, increase n classes by one and re-subsample the most common classes to match the least frequent?')
+parser.add_argument('--remove_batch_norm', action='store_true', default=False,
                         help='Deactivate all batchnorm layers?')
-
 
 
 args = parser.parse_args()
 print(args)
 
 #Define some variable and paths
+os.environ['TORCH_HOME'] = os.path.join(args.root, "TORCH_HOME")
 data_dir = os.path.join(args.root, args.data_dir)
 model_path = os.path.join(args.root, 'models')
 log_dir= os.path.join(model_path, "logs", "logs_" + args.model_name)
-num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
+#num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
+num_classes=args.initial_num_classes
 #writer = SummaryWriter(log_dir=log_dir)
 
 sweep_config = {
@@ -131,33 +139,41 @@ parameters_dict = {
       },
     'batchnorm_momentum': {
         'distribution': 'uniform',
-        'min': 0.1,
+        'min': 0,
         'max': 2
       }
     }
 
-
-sweep_config['parameters'] = parameters_dict
-print('Sweep config:')
-pprint.pprint(sweep_config)
-print()
+num_workers = os.cpu_count()-2
 
 
-if args.sweep_id is None:
-    sweep_id = wandb.sweep(sweep_config, project="DisNet", entity="frankslab")
-else:
-    sweep_id = args.sweep_id
+#Set environment variables for wandb sweep
+os.environ['WANDB_CACHE_DIR'] = os.path.join(args.root, 'WANDB_CACHE')
+os.environ['WANDB_DIR'] = os.path.join(args.root, 'WANDB_DIR')
 
-print("Sweep ID: ", sweep_id)
-print()
+if args.sweep:
+    sweep_config['parameters'] = parameters_dict
+    print('Sweep config:')
+    pprint.pprint(sweep_config)
+    print()
+    
+    if args.sweep_id is None:
+        sweep_id = wandb.sweep(sweep_config, project="DisNet", entity="frankslab")
+    else:
+        sweep_id = args.sweep_id
+
+    print("Sweep ID: ", sweep_id)
+    print()
 
 
-def train_model(model, optimizer, image_datasets, criterion, patience, initial_bias):
+def train_model(model, optimizer, image_datasets, criterion, patience, initial_bias, initial_num_classes):
     since = time.time()
     val_loss_history = []
     best_recall = 0.0
     best_recall_acc = 0.0
-    
+    num_classes = initial_num_classes
+    print("\nCurrent number of classes: ", str(num_classes))
+
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -166,12 +182,19 @@ def train_model(model, optimizer, image_datasets, criterion, patience, initial_b
     #######################################################################
     #Initialise dataloader and set decaying batch size
     batch_size = args.initial_batch_size
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=12) for x in ['train', 'val']}    
+    
+    if args.subset_classes_balance == True:
+        #Incrementally increase the number of classes used in training and balance the dataset with continuoiuse resampling
+        dataloaders_dict = subset_classes_balance(num_classes=num_classes, image_datasets=image_datasets, batch_size=batch_size)
+    else:
+        dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=num_workers) for x in ['train', 'val']}
+
     #initial_patience = patience
     epoch = 0
-    while batch_size >= args.min_batch_size: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
+    while patience >= 0: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
+
         #Ensure minimum number of epochs is met before patience is allow to reduce
         if len(val_loss_history) > args.min_epochs:
            #If the current loss is not at least 0.5% less than the lowest loss recorded, reduce patiece by one epoch
@@ -184,11 +207,25 @@ def train_model(model, optimizer, image_datasets, criterion, patience, initial_b
        
        #If patience gets to 6, half batch size, reintialise dataloader and revert to best model weights to undo any overfitting.
        #Do this for every epoch where patience is less than 6. i.e. if inital batch size = 128, the last epoch will have a batchsize of at most 2.
-        if patience == 0:
+        if patience < 6:
             batch_size = int(batch_size/2)
-            patience = args.patience
-           #Re-initialise dataloaders and rerandomise batches.  
-            dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=12) for x in ['train', 'val']}
+            print('Batch size: ' + str(batch_size))
+        
+        if patience == 12:
+           #Re-initialise dataloaders and re-randomise batches.  
+            if args.subset_classes_balance == True:
+                #Increase number of classes used in training and balance the dataset with continuoiuse resampling
+                num_classes += 1
+                print("Current number of classes: ", str(num_classes))
+                dataloaders_dict = subset_classes_balance(num_classes=num_classes, image_datasets=image_datasets, batch_size=batch_size)
+                
+                #Re-initialise last layer of model with new number of classes
+                #Revert to best model weights so far
+                model.classifier[2] = torch.nn.Linear(model.fc.in_features, num_classes)
+                model.load_state_dict(best_model_wts)
+            else:
+                dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=num_workers) for x in ['train', 'val']}
+
            #Reload best model weights
             model.load_state_dict(best_model_wts)
         print('\n Batch size: ' , batch_size, '\n') 
@@ -217,7 +254,7 @@ def train_model(model, optimizer, image_datasets, criterion, patience, initial_b
             n = len(dataloaders_dict[phase].dataset)
            #Begin training
             print(phase)
-           #n_steps_per_epoch = len(dataloaders_dict['train'].dataset)/batch_size
+            #n_steps_per_epoch = len(dataloaders_dict['train'].dataset)/batch_size
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
@@ -343,7 +380,7 @@ def build_optimizer(network, optimizer, learning_rate, eps, weight_decay):
     return optimizer
 
 
-def build_datasets(kernel_size, sigma_max, input_size):
+def build_datasets(kernel_size, sigma_max, input_size, data_dir):
     # Data augmentation and normalization for training
     # Just normalization for validation
     data_transforms = {
@@ -548,6 +585,83 @@ def set_batchnorm_momentum(self, momentum):
             m.momentum = momentum
     return self
 
+# def continuouse_resample_balance(batch_size, data_dir):
+#     try:
+#         shutil.rmtree(data_dir + '/train/Healthy')
+#     except:
+#         pass
+#     os.mkdir(data_dir + '/train/Healthy')
+#     n_diseased = len(os.listdir(data_dir + '/train/Diseased'))
+#     healthy_imgs = os.listdir(data_dir + '/FullTrainHealthy')
+#     random.shuffle(healthy_imgs)
+
+#     for i in healthy_imgs[:n_diseased]:
+#         shutil.copy2(os.path.join(data_dir, 'FullTrainHealthy', i), os.path.join(data_dir, 'train/Healthy/', i))
+#     time.sleep(10)
+            
+#     if args.sweep == True:
+#         image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=int(wandb.config.input_size), data_dir=data_dir)
+#     else:
+#         image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size, data_dir=data_dir)
+
+#     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=num_workers) for x in ['train', 'val']}    
+#     print("Subsampled most common class to match least common class")
+#     print("Total images in training set: " + str(len(dataloaders_dict['train'].dataset.imgs)))
+#     print(dataloaders_dict['train'].dataset)
+#     print()
+#     return dataloaders_dict
+
+# def subset_classes(num_classes, dataloaders_dict, batch_size):
+#     classes = dataloaders_dict['train'].classes
+#     classes_tensor = torch.tensor(list(range(len(classes[0:num_classes]))))
+#     indices = (torch.tensor(dataloaders_dict['train'].targets)[..., None] == classes_tensor).any(-1).nonzero(as_tuple=True)[0]
+#     train_subset = torch.utils.data.Subset(dataloaders_dict['train'], indices)
+
+#     dataloaders_dict['train'] = torch.utils.data.DataLoader(train_subset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+#     return dataloaders_dict
+
+def subset_classes_balance(num_classes, image_datasets, batch_size):
+    print("\n########################################")
+    print("Subsetting classes and balancing dataset")
+    print("########################################\n")
+
+    if num_classes >= len(os.listdir(os.path.join(data_dir, 'val'))):
+        num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
+
+    #list all classes
+    classes = image_datasets['train'].classes
+    #create list of first n classes
+    classes = list(range(len(classes[0:num_classes])))
+
+    #create dictionary with key = class and value = indices of images in class
+    indices_dict = {}
+    for i in classes:
+        class_tensor = torch.tensor(i)
+        indices = (torch.tensor(image_datasets['train'].targets)[..., None] == class_tensor).any(-1).nonzero(as_tuple=True)[0]
+        indices_dict[i] = indices
+
+    #get lenght of shortest key in indices_dict
+    max_len = len(indices_dict[0]) 
+    for key in indices_dict:
+        if len(indices_dict[key]) < max_len:
+            max_len = len(indices_dict[key])
+    indices = []
+    for key in indices_dict:
+        #random sample value of size max_len from indices_dict[key]
+        sample = random.sample(list(indices_dict[key]), max_len)
+        indices.append(sample)
+    #flatten list of lists
+    indices = [item for sublist in indices for item in sublist]
+    image_datasets['train'] = torch.utils.data.Subset(image_datasets['train'], indices)
+
+    #subset validation set. Full size but only first n classes
+    val_indices = (torch.tensor(image_datasets['val'].targets)[..., None] == torch.tensor(classes)).any(-1).nonzero(as_tuple=True)[0]
+    image_datasets['val'] = torch.utils.data.Subset(image_datasets['val'], val_indices)
+
+    print("\nCurrent train subset size: " + str(len(image_datasets['train'])))
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=num_workers) for x in ['train', 'val']}
+
+    return dataloaders_dict
 
 ### Calculate and set bias for final layer based on imbalance in dataset classes
 dir_ = os.path.join(data_dir, 'train')
@@ -566,23 +680,6 @@ initial_bias = torch.FloatTensor(weights).to(device)
 criterion = nn.CrossEntropyLoss()
 
 
-#for _ in range(5):
-#    # 🐝 initialise a wandb run
-#    wandb.init(
-#        project="pytorch-intro",
-#        config={
-#            "min_epochs": argparse.min_epochs,
-#            "batch_size": args.initial_batch_size,
-#            "lr": random.uniform(1e-4, 1e-1),
-#            "eps": random.uniform(1e-10, 1e-5),
-#            })
-#    
-#    # Copy your config 
-#    config = wandb.config
-
-
-    # Train and evaluate
-
 def sweep_train(config=sweep_config):
     # Initialize a new wandb run
     #with wandb.init(config=config):
@@ -596,18 +693,19 @@ def sweep_train(config=sweep_config):
     model_ft = set_batchnorm_momentum(model_ft, wandb.config.batchnorm_momentum)
     model_ft = model_ft.to(device)  
     optimizer = build_optimizer(model_ft, wandb.config.optimizer, wandb.config.learning_rate, wandb.config.eps, wandb.config.weight_decay)
-    image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=int(wandb.config.input_size))
+    image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=int(wandb.config.input_size), data_dir=data_dir)
 
-    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias)
+    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias, initial_num_classes=args.initial_num_classes)
 
 def train():
+    wandb.init(project="DisNet")
     model_ft = build_model()
     model_ft = model_ft.to(device)
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
-    image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size)
+    image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size, data_dir=data_dir)
 
-    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias)
+    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias, initial_num_classes=args.initial_num_classes)
 
 
 if args.sweep == True:
