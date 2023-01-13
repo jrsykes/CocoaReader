@@ -6,18 +6,18 @@ from sklearn import metrics
 import pandas as pd
 import time
 import numpy as np
+import cv2
 
-root = '/local/scratch/jrs596/dat/models'
-model_path = 'AppleNet18_v0.2.pth'
-data_dir = "/local/scratch/jrs596/dat/PlantPathologyKaggle/dat"
+model_path = '/local/scratch/jrs596/dat/ElodeaProject/models/Entangled18.pth'
+data_dir = "/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders_split"
 quantized = False
 
 n_classes = len(os.listdir(os.path.join(data_dir, 'train')))
 
 if quantized == False:
-	model = torch.load(os.path.join(root, model_path))
+	model = torch.load(model_path)
 else:
-	model = torch.jit.load(os.path.join(root, model_path))
+	model = torch.jit.load(model_path)
 
 model.eval()
 
@@ -28,13 +28,14 @@ else:
 
 model = model.to(device)
 
-input_size = 1120
+input_size = 224
 batch_size = 1
 criterion = nn.CrossEntropyLoss()
 
 data_transforms = {
     'train': transforms.Compose([
-        transforms.RandomResizedCrop(input_size),
+#        transforms.RandomResizedCrop(input_size),
+        transforms.Resize((input_size,input_size)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
     ]),
@@ -50,10 +51,10 @@ data_transforms = {
 
 # Create training and validation datasets
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) 
-	for x in ['train', 'val', 'test']}
+	for x in ['train', 'val']}#, 'test']}
 # Create training and validation dataloaders
 dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, 
-	shuffle=False, num_workers=1) for x in ['train', 'val', 'test']}#
+	shuffle=False, num_workers=1) for x in ['train', 'val']}#, 'test']}#
 
 
 
@@ -68,14 +69,20 @@ def eval(model, dataloaders_dict):
 	running_f1 = 0	
 	running_auc = 0
 
-	df = pd.DataFrame(columns=['image_id','healthy','multiple_diseases','rust','scab'])
-	for phase in ['test']:#, 'train']:
+	#df = pd.DataFrame(columns=['image_id','healthy','multiple_diseases','rust','scab'])
+	for phase in ['train', 'val']:
+		lables_list = []
+		preds_list = []
 		for i, (inputs, labels) in enumerate(dataloaders_dict[phase],0 ):
 			filename, _ = dataloaders_dict[phase].dataset.samples[i]
 			head_tail = os.path.split(filename)
 
-			filename = head_tail[1][:-4]
-			
+			# filename = head_tail[1][:-4]
+			# input_img_ = inputs.squeeze(0).permute(1, 2, 0).cpu().numpy()
+			# input_img_ = input_img_.astype(np.uint8)
+			# tmp_out = "/local/scratch/jrs596/dat/ElodeaProject/croped_tensors"
+			# cv2.imwrite(os.path.join(tmp_out, filename), input_img_)
+
 			inputs = inputs.to(device)
 			labels = labels.to(device)
 			outputs = model(inputs)
@@ -94,8 +101,8 @@ def eval(model, dataloaders_dict):
 			
 			x = torch.sigmoid(outputs[0]).cpu().detach().numpy()
 			
-			out = [filename] + list(x)
-			df.loc[len(df)] = out
+			#out = [filename] + list(x)
+			#df.loc[len(df)] = out
 
 #			for i in x:
 #				out = out + ',' + str(round(i,2)) + '\n'
@@ -104,7 +111,7 @@ def eval(model, dataloaders_dict):
 			fpr, tpr, thresholds = metrics.roc_curve(y, x, pos_label=1)
 			auc = metrics.auc(fpr, tpr)
 			running_auc += auc
-
+	
 			for j in labels.data.tolist():
 				lables_list.append(j)
 			for j in preds.tolist():
@@ -116,32 +123,31 @@ def eval(model, dataloaders_dict):
 		
 
 		
-		print(i)
+		print(phase)
 		print('\n' + '-'*10 + '\nPer class results:')#
 		print(metrics.classification_report(lables_list, preds_list, digits=4, zero_division=True))#
 		print('loss: ' + str(round(epoch_loss,4)))
 		print('AUC: ' + str(round(auc, 4)))
 		
-		if i == 'val':
-			print('\n' + '-'*10 + '\nConfusion matrix:')
-			print(metrics.confusion_matrix(lables_list, preds_list))
-			print()
+		print('\n' + '-'*10 + '\nConfusion matrix:')
+		print(metrics.confusion_matrix(lables_list, preds_list))
+		print()
 
 
-	classes = os.listdir(os.path.join(data_dir, 'val'))
-	classes.sort()
-	number = 0	
+	# classes = os.listdir(os.path.join(data_dir, 'val'))
+	# classes.sort()
+	# number = 0	
 
-	for i in classes:
-		print(i, ': ', str(number))
-		number += 1	
+	# for i in classes:
+	# 	print(i, ': ', str(number))
+	# 	number += 1	
 
-	print()
-	print(classes)
-	print()
+	# print()
+	# print(classes)
+	# print()
 
-	print(df)
-	df.to_csv('/local/scratch/jrs596/dat/PlantPathologyKaggle/out.csv', index=False)
+	# print(df)
+	# df.to_csv('/local/scratch/jrs596/dat/PlantPathologyKaggle/out.csv', index=False)
 
 
 def quant_eval(model, img_loader):

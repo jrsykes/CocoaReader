@@ -7,8 +7,8 @@ import time
 
 
 #%%
-src = '/local/scratch/jrs596/dat/PlantPathologyKaggle/dat/unsplit'
-dest = '/local/scratch/jrs596/dat/PlantPathologyKaggle/dat'
+src = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders'
+dest = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders_split'
 
 
 
@@ -45,8 +45,8 @@ def Randomise_Split(dat, destination):
 		images = os.listdir(os.path.join(dat, class_))
 		random.shuffle(images)
 
-		dat_dict = {'train': images[:int(len(images)*0.8)], 
-			'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
+		dat_dict = {'train': images[:int(len(images)*0.9)], 
+			#'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
 			'val': images[int(len(images)*0.9):]}										
 		
 		for split, im_list in dat_dict.items():
@@ -56,6 +56,7 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
+Randomise_Split(dat = src, destination = dest)
 
 def combine(original_data, disease_path, healthy_path):
 	os.makedirs(disease_path, exist_ok = True)
@@ -124,6 +125,6 @@ def Randomise_combine_subset(dat, destination):
 
 #%%
 
-Image_checker('/local/scratch/jrs596/dat/FAIGB_Combined_FinalSplit/FullTrainHealthy')
+#Image_checker('/local/scratch/jrs596/dat/FAIGB_Combined_FinalSplit/FullTrainHealthy')
 
 # %%

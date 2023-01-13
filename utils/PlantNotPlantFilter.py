@@ -9,17 +9,17 @@ import torchvision.transforms as transforms
 import copy
 import pickle
 from PIL import Image
-from difPy import dif
+#from difPy import dif
 import matplotlib.pyplot as plt
 import time
 
 
 model_name = "PlantNotPlant_SemiSup"
 root = '/local/scratch/jrs596/dat'
-image_out_dir = os.path.join(root, 'Forestry_ArableImages_GoogleBing_PNP_out/FinalNotPlant')
+image_out_dir = os.path.join(root, 'ElodeaProject/FasterRCNN_output/PNP_filtered')
 
 
-data_dir = os.path.join(root, "FAIGB_combined")
+data_dir = os.path.join(root, "ElodeaProject/FasterRCNN_output/Images_out")
 #data_dir = '/local/scratch/jrs596/dat/PlantNotPlant3.3/train_full'
 #data_dir = os.path.join(root, "test2/images")
 #model_path = os.path.join(root, 'models')
@@ -47,7 +47,7 @@ def prep_model():
 	for key, value in weights.items():
 	    new_keys.append(key.replace('module.', ''))
 	for i in new_keys:
-	    weights[i] = weights.pop('module.' + i)#    	
+	    weights[i] = weights.pop('module.' + i)    	
 
 	##############
 	model.load_state_dict(weights)
@@ -82,7 +82,7 @@ def delete_duplicates():
 	for i in os.listdir(data_dir):
 		search = dif(os.path.join(data_dir, i), delete=True, silent_del=True)
 
-delete_duplicates()
+#delete_duplicates()
 
 ##############################################
 # Filter out non-plant images with Plant-NotPlant CNN
@@ -105,25 +105,31 @@ def plant_notplant_filter():
 		inputs = inputs.to(device)
 		outputs = model(inputs)
 		outputs = torch.sigmoid(outputs)			
+		print(i)
+		print(outputs)
+		print()
 		# [0][1] = Plant
 		# [0][0] = NotPlant
-
 		
-		#os.makedirs(os.path.join(root, 'FAIGB_Final', class_), exist_ok=True)
+		# out_path = "/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/PNP_filtered/"
 
-		#If model predicts "plant" 
-		if outputs[0][0].item() > 0.9:# outputs[0][0].item():
-			dest = os.path.join(image_out_dir, class_ + str(time.time()) + '.jpg')
-			#dest = os.path.join(image_out_dir, 'Plant2', class_ + str(time.time()) + '.jpg')
-			print('Auto keeping image')
-			print(outputs)
-			shutil.move(source, dest)
-		#If model predicts "not plant"
-#		if outputs[0][0].item() > 0.99:#outputs[0][1].item() * 1.01:
-#			dest = os.path.join(image_out_dir, 'NotPlant', class_ + str(time.time()) + '.jpg')
-#			print('Auto deleting image')
-#			print(outputs)
-#			shutil.move(source, dest)
+		# #If model predicts "plant" 
+		# if outputs[0][0].item() > outputs[0][1].item():# outputs[0][0].item():
+			
+		# 	dest = os.path.join(out_path, 'Entangled')
+		# 	os.makedirs(dest, exist_ok=True)
+		# 	shutil.copy(source, dest + '/' + str(i) + '.jpeg')
+
+		# #If model predicts "not plant"
+		# else: #outputs[0][1].item() > 0.9: #outputs[0][1].item() * 1.01:
+		# 	dest = os.path.join(out_path, 'NotEntangled')
+		# 	os.makedirs(dest, exist_ok=True)
+
+		# 	shutil.copy(source, dest + '/' + str(i) + '.jpeg')
+
+
+
+#%%
 		#If model is unsure
 #		else:
 #			print('\n', source, '\n')
@@ -156,6 +162,6 @@ def plant_notplant_filter():
 
 
 
-#plant_notplant_filter()
+plant_notplant_filter()
 
 

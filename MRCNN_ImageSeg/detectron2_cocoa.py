@@ -45,8 +45,9 @@ Original file is located at
 # check pytorch installation: 
 import torch, torchvision
 print(torch.__version__, torch.cuda.is_available())
-
-
+import os, json, cv2, random
+#change to the directory where the data is stored
+os.chdir('/home/userfs/j/jrs596/scripts')
 # Some basic setup:
 # Setup detectron2 logger
 import detectron2
@@ -54,13 +55,16 @@ from detectron2.utils.logger import setup_logger
 setup_logger()
 
 import numpy as np
-import os, json, cv2, random
+
 from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from pycocotools.coco import COCO
+
+from detectron2.data.datasets import register_coco_instances
+from detectron2.engine import DefaultTrainer
 
 """# Train on a custom dataset
 
@@ -81,10 +85,10 @@ Here, the dataset is in its custom format, therefore we write a function to pars
 #from google.colab import drive
 #drive.mount('/content/drive')
 
-from detectron2.data.datasets import register_coco_instances
-base_path = '/local/scratch/jrs596/MaskRCNN/dat/results/'
-register_coco_instances("my_dataset_train", {}, base_path + "/annotations/train_combined_instances_default.json", base_path + "/images/train")
-register_coco_instances("my_dataset_val", {}, base_path + "annotations/val_combined_instances_default.json", base_path + "/images/val")
+root='/local/scratch/jrs596/dat/MaskRCNN/dat/results'
+
+register_coco_instances("my_dataset_train", {}, root + "/annotations/train_combined_instances_default.json", root + "/images/train")
+register_coco_instances("my_dataset_val", {}, root + "/annotations/val_combined_instances_default.json", root + "images/val")
 
 pod_metadata = MetadataCatalog.get("my_dataset_train")
 
@@ -95,7 +99,7 @@ pod_metadata = MetadataCatalog.get("my_dataset_train")
 Now, let's fine-tune a COCO-pretrained R50-FPN Mask R-CNN model on the balloon dataset. It takes ~2 minutes to train 300 iterations on a P100 GPU.
 """
 
-from detectron2.engine import DefaultTrainer
+
 
 cfg = get_cfg()
 cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))

@@ -1,0 +1,27 @@
+sweep_config:
+  method: random
+metric:
+  name: Best_F1
+  goal: maximize
+parameters:
+    optimizer:
+        values: ['adam', 'sgd']
+    input_size:
+        distribution: uniform
+        min: 224
+        max: 1120
+    kernel_size:
+        values: [3,5,7,9,11]
+    learning_rate:
+        values: [1e-7, 1e-6 ,1e-5, 1e-4, 1e-3, 1e-2, 1e-1]        
+    eps: 
+        values: [1e-9, 1e-8, 1e-7, 1e-6 ,1e-5, 1e-4, 1e-3]        
+    weight_decay:
+        values: [1e-10, 1e-9, 1e-8, 1e-7, 1e-6 ,1e-5, 1e-4]        
+    sigma_max:
+        distribution: uniform
+        min: 1
+        max: 5
+    batchnorm_momentum:
+        values: [1e-10, 1e-9, 1e-8, 1e-7, 1e-6 ,1e-5, 1e-4]        
+      
