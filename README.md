@@ -12,6 +12,4 @@ Useing a config file such as CocoaReader/CocoaNet/CocoaNetSweep.sh (shown below)
   7. Disable features such as the batchnorm layers of ResNet
 
 
-'''
-python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' --model_name 'CocoaNet18_quantised' --root <location of data file> --data_dir 'split_cocoa_images' --input_size 750 --min_epochs 10 --arch 'resnet18' --batch_size 32 --patience 20 --custom_pretrained --custom_pretrained_weights 'CocoaNet18_DN.pkl' --quantise
-'''
+<code> python 'CocoaReader/DisNet/Torch_Custom_CNNs.py' --model_name 'CocoaNet18_quantised' --root <location of data file> --data_dir 'split_cocoa_images' --input_size 750 --min_epochs 10 --arch 'resnet18' --batch_size 32 --patience 20 --custom_pretrained --custom_pretrained_weights 'CocoaNet18_DN.pkl' --quantise <code>
