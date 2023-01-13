@@ -3,8 +3,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import torchvision
+
 from torchvision import datasets, models, transforms
 import time
 import os
@@ -15,12 +14,10 @@ import pickle
 import numpy as np
 from sklearn import metrics
 from progress.bar import Bar
-#from torchvision.models import ResNet18_Weights
 
 
 # File name for model
 model_name = "PlantNotPlant_SemiSup"
-#pretrained_model_path = '/local/scratch/jrs596/PNP_models/PlantNotPlant_unsplit_3.2.pkl'
 pretrained_model_path = '/local/scratch/jrs596/dat/models/PlantNotPlant_SemiSup.pkl'
 
 pretrained_model_wts = pickle.load(open(pretrained_model_path, "rb"))
@@ -40,7 +37,6 @@ for i in new_keys:
 root = "/local/scratch/jrs596/dat"
 data_dir = os.path.join(root, 'PlantNotPlant3.3', 'train_full')
 GoogleBing_data_dir = os.path.join(root, 'Forestry_ArableImages_GoogleBing_clean/train')
-#GoogleBing_data_dir = os.path.join(root, 'test2/images')
 
 
 model_path = os.path.join(root, 'models')
