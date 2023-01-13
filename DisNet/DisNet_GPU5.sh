@@ -1,7 +1,7 @@
 source activate convnext
 
 
-python '/home/userfs/j/jrs596/scripts/CocoaReader/DisNet/Torch_Custom_CNNs_wandbSweep.py' \
+python '/home/userfs/j/jrs596/scripts/CocoaReader/utils/Torch_Custom_CNNs.py' \
         --model_name 'DisNet18_sweep' \
         --root '/local/scratch/jrs596/dat/' \
         --data_dir 'FAIGB_FinalSplit' \
