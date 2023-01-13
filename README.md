@@ -11,8 +11,7 @@ Useing a config file such as CocoaReader/CocoaNet/CocoaNetSweep.sh (shown below)
   6. Train with decaying batchsize for very fine tuning
   7. Disable features such as the batchnorm layers of ResNet
 
-<code>
-python 'CocoaReader/utils/Torch_Custom_CNNs.py' \
+<code> python 'CocoaReader/utils/Torch_Custom_CNNs.py' \
         --model_name 'CocoaNet18_quantised' \
         --root <location of data dit> \
         --data_dir <data dir> \
@@ -23,5 +22,4 @@ python 'CocoaReader/utils/Torch_Custom_CNNs.py' \
         --patience 3 \
         --custom_pretrained \
         --custom_pretrained_weights 'CocoaNet18_DN.pkl' \
-        --quantise
-<code>
+        --quantise <code>
