@@ -4,12 +4,10 @@ metric:
   name: Best_F1
   goal: maximize
 parameters:
-    optimizer:
-        values: ['adam', 'sgd']
     input_size:
         distribution: uniform
         min: 224
         max: 1224
     batchnorm_momentum:
-        values: [0, 1e-9, 1e-7, 1e-5 ,1e-3, 1e-1, 0.5, 0.9]        
+        values: [0, 1e-5, 1e-4, 1e-3 ,1e-2, 1e-1, 0.5, 0.9]        
       

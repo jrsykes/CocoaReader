@@ -6,10 +6,10 @@ from sklearn import metrics
 import pandas as pd
 import time
 import numpy as np
-import cv2
+#import cv2
 
-model_path = '/local/scratch/jrs596/dat/ElodeaProject/models/Entangled18.pth'
-data_dir = "/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders_split"
+model_path = '/local/scratch/jrs596/dat/models/CocoaNet18_sweep_silvery-sweep-26.pth'
+data_dir = "/local/scratch/jrs596/dat/split_cocoa_images_min"
 quantized = False
 
 n_classes = len(os.listdir(os.path.join(data_dir, 'train')))
@@ -28,7 +28,7 @@ else:
 
 model = model.to(device)
 
-input_size = 224
+input_size = 287
 batch_size = 1
 criterion = nn.CrossEntropyLoss()
 
@@ -71,11 +71,13 @@ def eval(model, dataloaders_dict):
 
 	#df = pd.DataFrame(columns=['image_id','healthy','multiple_diseases','rust','scab'])
 	for phase in ['train', 'val']:
+		running_auc = 0
+		running_loss = 0.0
 		lables_list = []
 		preds_list = []
 		for i, (inputs, labels) in enumerate(dataloaders_dict[phase],0 ):
 			filename, _ = dataloaders_dict[phase].dataset.samples[i]
-			head_tail = os.path.split(filename)
+			#head_tail = os.path.split(filename)
 
 			# filename = head_tail[1][:-4]
 			# input_img_ = inputs.squeeze(0).permute(1, 2, 0).cpu().numpy()
@@ -120,9 +122,7 @@ def eval(model, dataloaders_dict):
 		n = len(dataloaders_dict[phase].dataset)
 		epoch_loss = float(running_loss / n)
 		auc = running_auc / n
-		
-
-		
+	
 		print(phase)
 		print('\n' + '-'*10 + '\nPer class results:')#
 		print(metrics.classification_report(lables_list, preds_list, digits=4, zero_division=True))#
@@ -249,3 +249,7 @@ else:
 
 
 print('Time taken: ' + str(time.time()-start))
+
+
+
+

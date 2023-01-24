@@ -21,8 +21,8 @@ import argparse
 import yaml
 
 #Local scripts
-from ConvNext_tiny_quantised import convnext_tiny as convnext_tiny_q
-from ConvNext_tiny_quantised import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
+#from ConvNext_tiny_quantised import convnext_tiny as convnext_tiny_q
+#from ConvNext_tiny_quantised import ConvNeXt_Tiny_Weights as ConvNeXt_Tiny_Weights_q
 
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -110,7 +110,7 @@ if args.sweep:
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     sweep_config = config['sweep_config']
-    metric = config['metric']
+    sweep_config['metric'] = config['metric']
     sweep_config['parameters'] = config['parameters']
 
     print('Sweep config:')
@@ -151,7 +151,7 @@ def train_model(model, optimizer, image_datasets, criterion, patience, initial_b
 
     epoch = 0
     #while patience >= 0: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
-    while patience >= 0 and epoch < args.max_epochs:
+    while batch_size > args.min_batch_size and epoch < args.max_epochs:
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
 
@@ -168,8 +168,12 @@ def train_model(model, optimizer, image_datasets, criterion, patience, initial_b
         print('Patience: ' + str(patience) + '/' + str(args.patience))
        #If patience gets to 6, half batch size, reintialise dataloader and revert to best model weights to undo any overfitting.
        #Do this for every epoch where patience is less than 6. i.e. if inital batch size = 128, the last epoch will have a batchsize of at most 2.
-        if patience < 6 and batch_size > args.min_batch_size:
+        if patience < 6:
             batch_size = int(batch_size/2)
+            patience = args.patience
+            val_loss_history = []
+            dataloaders_dict, num_classes, patience, val_loss_history = subset_classes_balance(num_classes=num_classes, batch_size=batch_size, patience=patience, val_loss_history=val_loss_history)
+
             print('Batch size: ' + str(batch_size))
             
         if patience <= 40 and patience % 10 == 0:
@@ -318,7 +322,10 @@ def train_model(model, optimizer, image_datasets, criterion, patience, initial_b
                     '__model_parameters__': args                    
                     }       
                 
-                PATH = os.path.join(model_path, args.model_name)
+                if args.sweep == True:
+                    PATH = os.path.join(model_path, args.model_name + '_' + wandb.run.name)
+                else:
+                    PATH = os.path.join(model_path, args.model_name)
                    
                 if args.quantise == False:
                     with open(PATH + '.pkl', 'wb') as f:
@@ -358,12 +365,12 @@ def log_image_table(images, predicted, labels, probs):
         table.add_data(wandb.Image(img[0].numpy()*255), pred, targ, *prob.numpy())
     wandb.log({"predictions_table":table}, commit=False)
 
-def build_optimizer(network, optimizer, learning_rate, eps, weight_decay):
+def build_optimizer(model, optimizer, learning_rate, eps, weight_decay):
     if optimizer == "sgd":
-        optimizer = torch.optim.SGD(network.parameters(),
+        optimizer = torch.optim.SGD(model.parameters(),
                               lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
     elif optimizer == "adam":
-        optimizer = torch.optim.Adam(network.parameters(),
+        optimizer = torch.optim.Adam(model.parameters(),
                                lr=learning_rate, weight_decay=weight_decay, eps=eps)
     return optimizer
 
@@ -375,7 +382,7 @@ def build_datasets(kernel_size, sigma_max, input_size, data_dir):
         'train': transforms.Compose([
             transforms.RandomCrop(input_size, pad_if_needed=True, padding_mode = 'reflect'),
             #transforms.Resize((input_size,input_size)),
-            transforms.GaussianBlur(kernel_size=kernel_size, sigma=(0.1, sigma_max)),
+            #transforms.GaussianBlur(kernel_size=kernel_size, sigma=(0.1, sigma_max)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
         ]),
@@ -576,7 +583,7 @@ def set_batchnorm_momentum(self, momentum):
 
 def subset_classes_balance(num_classes, batch_size, patience, val_loss_history):
     if args.sweep == True:
-         image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=int(wandb.config.input_size), data_dir=data_dir)
+         image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=int(wandb.config.input_size), data_dir=data_dir)
     else:
          image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size, data_dir=data_dir)
 
@@ -653,18 +660,20 @@ initial_bias = torch.FloatTensor(weights).to(device)
 criterion = nn.CrossEntropyLoss()
 
 
-def sweep_train(config=sweep_config):
+def sweep_train():
     # Initialize a new wandb run
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
-    run = wandb.init(config=config)
-
+    run = wandb.init(config=sweep_config)
+ 
     model_ft = build_model(num_classes=num_classes)
     
     model_ft = set_batchnorm_momentum(model_ft, wandb.config.batchnorm_momentum)
     model_ft = model_ft.to(device)  
-    optimizer = build_optimizer(model_ft, wandb.config.optimizer, wandb.config.learning_rate, wandb.config.eps, wandb.config.weight_decay)
-    image_datasets = build_datasets(kernel_size=wandb.config.kernel_size, sigma_max=wandb.config.sigma_max, input_size=int(wandb.config.input_size), data_dir=data_dir)
+    optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
+                                           weight_decay=0, eps=1e-8)
+    #optimizer = build_optimizer(model=model_ft, optimizer=wandb.config.optimizer, learning_rate=1e-5, eps=1e-8, weight_decay=0)
+    image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=int(wandb.config.input_size), data_dir=data_dir)
 
     train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias, num_classes=num_classes)
 
@@ -672,6 +681,8 @@ def train():
     wandb.init(project=args.project_name)
     num_classes = len(os.listdir(os.path.join(data_dir, 'val')))
     model_ft = build_model(num_classes=num_classes)
+    model_ft = set_batchnorm_momentum(model_ft, momentum=0.001)
+
     model_ft = model_ft.to(device)
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
