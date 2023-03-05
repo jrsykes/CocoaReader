@@ -172,8 +172,10 @@ def train_model(model, optimizer, image_datasets, criterion, patience, initial_b
             batch_size = int(batch_size/2)
             patience = args.patience
             val_loss_history = []
-            dataloaders_dict, num_classes, patience, val_loss_history = subset_classes_balance(num_classes=num_classes, batch_size=batch_size, patience=patience, val_loss_history=val_loss_history)
-
+            if args.subset_classes_balance == True:
+                dataloaders_dict, num_classes, patience, val_loss_history = subset_classes_balance(num_classes=num_classes, batch_size=batch_size, patience=patience, val_loss_history=val_loss_history)
+            else:
+                dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=num_workers) for x in ['train', 'val']}
             print('Batch size: ' + str(batch_size))
             
         if patience <= 40 and patience % 10 == 0:
@@ -380,8 +382,8 @@ def build_datasets(kernel_size, sigma_max, input_size, data_dir):
     # Just normalization for validation
     data_transforms = {
         'train': transforms.Compose([
-            transforms.RandomCrop(input_size, pad_if_needed=True, padding_mode = 'reflect'),
-            #transforms.Resize((input_size,input_size)),
+            #transforms.RandomCrop(input_size, pad_if_needed=True, padding_mode = 'reflect'),
+            transforms.Resize((input_size,input_size)),
             #transforms.GaussianBlur(kernel_size=kernel_size, sigma=(0.1, sigma_max)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),

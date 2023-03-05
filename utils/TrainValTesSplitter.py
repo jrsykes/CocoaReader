@@ -7,8 +7,8 @@ import time
 
 
 #%%
-src = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders'
-dest = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders_split'
+# src = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders'
+# dest = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders_split'
 
 
 
@@ -23,7 +23,6 @@ def CopyPlant(destination, img_path):
 			shutil.copy(source, dest)
 	return n
 
-#n_not_plant = CopyPlant(destination=dest, img_path = plant)
 
 def CopyNotPlant(destination, img_path, n_not_plant):
 	images = os.listdir(img_path)
@@ -36,7 +35,6 @@ def CopyNotPlant(destination, img_path, n_not_plant):
 		dest = os.path.join(destination, 'NotPlant', i)
 		shutil.copy(source, dest)
 
-#CopyNotPlant(destination=dest, img_path=not_plant, n_not_plant=n_not_plant)
 
 
 
@@ -56,7 +54,7 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-Randomise_Split(dat = src, destination = dest)
+#Randomise_Split(dat = src, destination = dest)
 
 def combine(original_data, disease_path, healthy_path):
 	os.makedirs(disease_path, exist_ok = True)
@@ -77,11 +75,45 @@ def combine(original_data, disease_path, healthy_path):
 
 def CopySubset(source, destination):
 	images = os.listdir(source)
-	images = random.sample(images, 545)	
+	images = random.sample(images, 400)	
 	for i in images:
 		src = os.path.join(source, i)
 		dest = os.path.join(destination, i)
 		shutil.copy(src, dest)
+	
+CopySubset(source = '/local/scratch/jrs596/dat/all_cocoa_images', 
+	   destination = '/local/scratch/jrs596/dat/subset_cocoa_images')
+
+def CopySubsetForNotCacoa(dat, destination):
+	#list all images in subdirectories of dat
+	images = []
+	for dir_ in os.listdir(dat):
+		for image in os.listdir(os.path.join(dat, dir_)):
+			images.append(os.path.join(dir_, image))
+
+	print("Number of images: ", len(images))
+	images = random.sample(images, 1000)	
+
+	train = images[:int(len(images)*0.8)]
+	val = images[int(len(images)*0.8):int(len(images)*0.9)]
+	test = images[int(len(images)*0.9):]
+
+	for i in train:
+		#split file path
+		dir_, file = os.path.split(i)
+		source = os.path.join(dat, i)
+		dest = os.path.join(destination, 'train', 'NotCocoa', file)
+		shutil.copy(source, dest)
+	for i in val:
+		dir_, file = os.path.split(i)
+		source = os.path.join(dat, i)
+		dest = os.path.join(destination, 'val','NotCocoa', file)
+		shutil.copy(source, dest)
+	for i in test:
+		dir_, file = os.path.split(i)
+		source = os.path.join(dat, i)
+		dest = os.path.join(destination, 'test','NotCocoa', file)
+		shutil.copy(source, dest)
 	
 
 def Image_checker(dir_):
@@ -123,8 +155,31 @@ def Randomise_combine_subset(dat, destination):
 			shutil.copy(source, dest)								
 		
 
+def cocoa_image_complier(dat, destination):
+	for dir_ in os.listdir(dat):
+		images = os.listdir(os.path.join(dat, dir_))
+		random.shuffle(images)
+
+		train = images[:int(len(images)*0.8)]
+		val = images[int(len(images)*0.8):int(len(images)*0.9)]
+		test = images[int(len(images)*0.9):]
+
+	
+		for i in train:
+			source = os.path.join(dat, dir_, i)
+			dest_ = os.path.join(destination, 'train', dir_, i)
+			shutil.copy(source, dest_)
+		for i in val:
+			source = os.path.join(dat, dir_, i)
+			dest_ = os.path.join(destination, 'val', dir_, i)
+			shutil.copy(source, dest_)
+		for i in test:
+			source = os.path.join(dat, dir_, i)
+			dest_ = os.path.join(destination, 'test', dir_, i)
+			shutil.copy(source, dest_)
+
+
 #%%
 
-#Image_checker('/local/scratch/jrs596/dat/FAIGB_Combined_FinalSplit/FullTrainHealthy')
-
+cocoa_image_complier(dat="/local/scratch/jrs596/dat/EcuadorImages_EL_LowRes/Combined", destination="/local/scratch/jrs596/dat/split_cocoa_images2")
 # %%

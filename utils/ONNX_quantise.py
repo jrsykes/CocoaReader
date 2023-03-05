@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 import onnxruntime
 import torch
-from torchvision import models, datasets, transforms
+#from torchvision import models, datasets, transforms
 
 from onnxruntime.quantization import quantize_static, CalibrationDataReader, QuantType
 import os
@@ -10,11 +10,11 @@ import onnx
 import onnxoptimizer
 from onnxsim import simplify
 
-image_height = 750
-image_width = 750
-model_name = 'CocoaNet18_DN'
+image_height = 277
+image_width = 277
+model_name = 'CocoaNet18_V1.3'
 root = '/local/scratch/jrs596/dat/models/'
-img_path = '/local/scratch/jrs596/dat/compiled_cocoa_images/NotPlant/ILSVRC2012_val_00003410.JPEG'
+img_path = '/local/scratch/jrs596/dat/split_cocoa_images/val/FPR/caca0-3JPG.jpg'
 
 
 # Convert model to ONNX
@@ -30,9 +30,9 @@ def preprocess_image(image_path, height, width, channels=3):
     image_data = np.expand_dims(image_data, 0)
     return image_data
 
-image_file = "/local/scratch/jrs596/dat/FPR.jpg"
+#image_file = "/local/scratch/jrs596/dat/FPR.jpg"
 
-x = preprocess_image(image_file, image_height, image_width)
+x = preprocess_image(img_path, image_height, image_width)
 x = torch.tensor(x)
 torch_out = model(x)
 
@@ -99,6 +99,7 @@ def preprocess_func(images_folder, height, width, size_limit=0):
         image_filepath = images_folder + '/' + image_name
         image_data = preprocess_image(image_filepath, height, width)
         unconcatenated_batch_data.append(image_data)
+    print('Aqui')
     ex_batch = np.expand_dims(unconcatenated_batch_data, axis=0)
     batch_data = np.concatenate(ex_batch, axis=0)
     
