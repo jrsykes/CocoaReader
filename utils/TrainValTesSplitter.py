@@ -54,7 +54,10 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-#Randomise_Split(dat = src, destination = dest)
+src = '/local/scratch/jrs596/dat/EcuadorImage_LowRes_17_03_23_SureUnsure/Sure'
+dest ='/local/scratch/jrs596/dat/EcuadorImage_LowRes_17_03_23_SureUnsure/Sure'
+
+Randomise_Split(dat = src, destination = dest)
 
 def combine(original_data, disease_path, healthy_path):
 	os.makedirs(disease_path, exist_ok = True)
@@ -81,8 +84,8 @@ def CopySubset(source, destination):
 		dest = os.path.join(destination, i)
 		shutil.copy(src, dest)
 	
-CopySubset(source = '/local/scratch/jrs596/dat/all_cocoa_images', 
-	   destination = '/local/scratch/jrs596/dat/subset_cocoa_images')
+#CopySubset(source = '/local/scratch/jrs596/dat/all_cocoa_images', 
+#	   destination = '/local/scratch/jrs596/dat/subset_cocoa_images')
 
 def CopySubsetForNotCacoa(dat, destination):
 	#list all images in subdirectories of dat
@@ -181,5 +184,5 @@ def cocoa_image_complier(dat, destination):
 
 #%%
 
-cocoa_image_complier(dat="/local/scratch/jrs596/dat/EcuadorImages_EL_LowRes/Combined", destination="/local/scratch/jrs596/dat/split_cocoa_images2")
+#cocoa_image_complier(dat="/local/scratch/jrs596/dat/EcuadorImages_EL_LowRes/Combined", destination="/local/scratch/jrs596/dat/split_cocoa_images2")
 # %%

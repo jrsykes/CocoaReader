@@ -46,13 +46,13 @@ def eval(model, image_datasets, weights_dict):
 			file_name = dataloader.dataset.samples[i][0].split('/')[-1]
 			if preds.item() != labels.item():
 				weights_dict[file_name] = weights_dict[file_name] * 1.1
-			else:
-				weights_dict[file_name] = 1
-				
+
+			moved_count = 0	
 			if weights_dict[file_name] > 1.3:
 				file_path = dataloader.dataset.samples[i][0]
-				os.makedirs(os.path.join("/local/scratch/jrs596/dat/incorrect", str(labels.item())), exist_ok=True)
-				shutil.move(file_path, os.path.join("/local/scratch/jrs596/dat/incorrect", str(labels.item()), file_name))
+				os.makedirs(os.path.join("/local/scratch/jrs596/dat/AdaBoost/incorrect2", str(labels.item())), exist_ok=True)
+				shutil.move(file_path, os.path.join("/local/scratch/jrs596/dat/AdaBoost/incorrect2", str(labels.item()), file_name))
+				moved_count += 1
 			y = np.zeros(n_classes)
 			y[labels] = 1
 			x = torch.sigmoid(outputs[0]).cpu().detach().numpy()
@@ -75,7 +75,7 @@ def eval(model, image_datasets, weights_dict):
 		#get f1 score
 		F1 = metrics.f1_score(lables_list, preds_list, average='weighted')
 		
-	return weights_dict, F1, auc, acc, epoch_loss
+	return weights_dict, F1, auc, acc, epoch_loss, moved_count
 
 
 	

@@ -4,6 +4,7 @@ from __future__ import division
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from torchvision import datasets, models, transforms
@@ -15,10 +16,12 @@ import random
 import pickle
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models import ConvNeXt_Tiny_Weights, ResNet18_Weights, ResNet50_Weights, ResNeXt101_32X8D_Weights
+from torchvision.models import ResNet18_Weights, ResNet50_Weights ,ConvNeXt_Tiny_Weights
 from torch.utils.mobile_optimizer import optimize_for_mobile
 import argparse
 import yaml
+from sklearn.decomposition import PCA
+
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='model',
@@ -43,7 +46,7 @@ parser.add_argument('--custom_pretrained_weights', type=str,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=8,
                         help='Initial batch size')
 parser.add_argument('--max_epochs', type=int, default=500,
                         help='n epochs before early stopping')
@@ -65,6 +68,10 @@ parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
 parser.add_argument('--remove_batch_norm', action='store_true', default=False,
                         help='Deactivate all batchnorm layers?')
+parser.add_argument('--split_image', action='store_true', default=True,
+                        help='Split image into smaller chunks?')
+parser.add_argument('--n_tokens', type=int, default=4,
+                        help='Sqrt of number of tokens to split image into')
 
 
 args = parser.parse_args()
@@ -75,31 +82,12 @@ def setup(args):
     #Set environment variables for wandb sweep
     os.environ['WANDB_CACHE_DIR'] = os.path.join(args.root, 'WANDB_CACHE')
     os.environ['WANDB_DIR'] = os.path.join(args.root, 'WANDB_DIR')
-
     #Define some variable and paths
     os.environ['TORCH_HOME'] = os.path.join(args.root, "TORCH_HOME")
+    
     data_dir = os.path.join(args.root, args.data_dir)
     num_classes= len(os.listdir(data_dir + '/train'))
 
-    if args.sweep:
-        with open(args.sweep_config) as file:
-            config = yaml.load(file, Loader=yaml.FullLoader)
-
-        sweep_config = config['sweep_config']
-        sweep_config['metric'] = config['metric']
-        sweep_config['parameters'] = config['parameters']
-
-        print('Sweep config:')
-        pprint.pprint(sweep_config)
-        print()
-
-        if args.sweep_id is None:
-            sweep_id = wandb.sweep(sweep_config, project=args.project_name, entity="frankslab")
-        else:
-            sweep_id = args.sweep_id
-
-        print("Sweep ID: ", sweep_id)
-        print()
     
     ### Calculate and set bias for final layer based on imbalance in dataset classes
     dir_ = os.path.join(data_dir, 'train')
@@ -118,7 +106,8 @@ def setup(args):
     criterion = nn.CrossEntropyLoss()
     return data_dir, num_classes, initial_bias, criterion
 
-def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial_bias, weights_dict, batch_size=args.batch_size):   
+
+def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial_bias, input_size, n_tokens, batch_size, AttNet, ANoptimizer):   
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
@@ -153,6 +142,7 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
         for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()  # Set model to training mode
+                AttNet.train()
                #Experimental. Remove batch norm layer from Resnet if specified.
                 if args.remove_batch_norm == True:
                     print('BatchNorm layers deactivated')
@@ -163,7 +153,8 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                     quantized_model = torch.quantization.convert(model.eval(), inplace=False)
                     quantized_model.eval()
                 model.eval()   # Set model to evaluate mode
-               
+                AttNet.eval()
+
             running_loss = 0.0
             running_corrects = 0
             running_precision = 0
@@ -178,21 +169,37 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
+
+                    #split images in bacth into 16 non-overlapping chunks then recombine into bacth
+                    if args.split_image == True:
+                        
+                        #split batch into list of tensors
+                        inputs = torch.split(inputs, 1, dim=0)
+                        #print(inputs[0].shape)
+                        token_size = int(input_size / n_tokens)
+                        x, y, h ,w = 0, 0, token_size, token_size
+                        ims = []
+                        for t in inputs:
+                            #crop im to 16 non-overlapping 277x277 tensors
+                            for i in range(n_tokens):
+                                for j in range(n_tokens):
+                                    t.squeeze_(0)
+                                    im1 = t[:, x:x+h, y:y+w]
+                                    ims.append(im1)
+                                    y += w
+                                y = 0
+                                x += h
+                            x, y, h ,w = 0, 0, token_size, token_size
+                        #convert list of tensors into a batch tensor of shape (512, 3, 277, 277)
+                        inputs = torch.stack(ims, dim=0)
+                    
                     #Load images and lables from current batch onto GPU(s)
                     inputs = inputs.to(device)
                     labels = labels.to(device)
                     # zero the parameter gradients
                     optimizer.zero_grad()       
+                    ANoptimizer.zero_grad()
 
-                    if phase == 'train':
-                        #get list of file names from bacth
-                        file_names = dataloaders_dict[phase].dataset.samples[idx*batch_size:(idx+1)*batch_size]
-                        file_names = [os.path.basename(x[0]) for x in file_names]
-                        #search weights dict for weights for each file in batch
-                        weights = [weights_dict[x] for x in file_names]
-                        #mean weight for batch
-                        weights = torch.tensor(weights).to(device).float()
-                        weights = weights.mean()
                     # forward
                     # track history if only in train
                     with torch.set_grad_enabled(phase == 'train'):
@@ -205,37 +212,73 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                             outputs = quantized_model(inputs)
                         else:
                             outputs = model(inputs)
-                       
+
+                        #use PCA to reduce dimensionality of output to 32x2
+                        if args.split_image == True:
+                            #old_output_shell = outputs[0:batch_size,0:num_classes]
+                            new_batch = []
+                            for i in range(batch_size):
+                                outputs_ = outputs[i*n_tokens**2:(i+1)*n_tokens**2]
+
+                                #Use PCA to reduce dimensionality of output to 32x2
+                                # X = outputs_.detach().cpu().numpy()
+                                # pca = PCA(n_components=num_classes)
+                                # pca.fit(X)
+                                # outputs_ = torch.from_numpy(pca.singular_values_).to(device)
+                                # new_batch.append(outputs_)
+                                
+                                #Take output of token with highest probability of disease (binary)
+                                #max_index = torch.argmax(outputs_[:,0])
+                                #outputs_ = outputs_[max_index.item()]
+                                
+                                #flatten outputs_
+                                outputs_ = outputs_.view(-1)
+                                #unsqueeze outputs_
+                                outputs_ = outputs_.unsqueeze(0)
+                                outputs_ = AttNet(outputs_)
+                                
+
+                                #Take mean of all outputs
+                                #outputs_ = outputs_.mean(dim=0)
+                                
+                                new_batch.append(outputs_)
+
+
+                            outputs = torch.stack(new_batch, dim=0).squeeze(1)
+        
+                            #add gradient to new outputs
+                            #outputs.requires_grad = True
+
                        #Calculate loss and other model metrics
                         loss = criterion(outputs, labels)
-                        if phase == 'train':
-                            loss = loss*weights
+                        # if phase == 'train' and weights_dict is not None:
+                        #     loss = loss*weights
                             
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
                        
-                       #Add precision, recall or f1-score to loss with weight. Experimental. Doesn't seem to work in practice.
-                       #loss += (1-stats_out['recall'])#*0.4   
+                  
                        # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
-                            optimizer.step()    
+                            optimizer.step()  
+                            ANoptimizer.step() 
                             if args.quantise == True:
                                 if epoch > 3:
                                     model.apply(torch.quantization.disable_observer)
-                                if epoch > 2:
+                                if epoch >= 3:
                                     model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
                    
                    #Calculate statistics
                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
                    #running totals for these metrics by the total number of training or validation samples. This controls for 
                    #the effect of batch size and the fact that the size of the last batch will less than args.batch_size
-                    running_loss += loss.item() * inputs.size(0)
+                    running_loss += loss.item() * batch_size #inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
-                    running_precision += stats_out['precision'] * inputs.size(0)
-                    running_recall += stats_out['recall'] * inputs.size(0)
-                    running_f1 += stats_out['f1-score'] * inputs.size(0)    
+                    running_precision += stats_out['precision'] * batch_size # inputs.size(0)
+                    running_recall += stats_out['recall'] * batch_size #inputs.size(0)
+                    running_f1 += stats_out['f1-score'] * batch_size # inputs.size(0)    
 
                     bar.next()  
            #Calculate statistics for epoch
@@ -250,12 +293,12 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
             # Save statistics to tensorboard log
             
 
-
            # Save model and update best weights only if recall has improved
             if phase == 'val' and epoch_f1 > best_f1:
                 best_f1 = epoch_f1
                 best_f1_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())  
+                model_out = model
                # Save only the model weights for easy loading into a new model
                 final_out = {
                     'model': best_model_wts,
@@ -295,8 +338,8 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
-    print('Recall of saved model: {:4f}'.format(best_f1))
-    
+    print('F1 of saved model: {:4f}'.format(best_f1))
+    return model_out
 
 
 def build_optimizer(model, optimizer, learning_rate, eps, weight_decay):
@@ -311,7 +354,7 @@ def build_optimizer(model, optimizer, learning_rate, eps, weight_decay):
 
 def build_datasets(kernel_size, sigma_max, input_size, data_dir):
     # Data augmentation and normalization for training
-    # Just normalization for validation
+    # Just normalization for device
     data_transforms = {
         'train': transforms.Compose([
             #transforms.RandomCrop(input_size, pad_if_needed=True, padding_mode = 'reflect'),
@@ -336,6 +379,8 @@ if args.quantise == True:
     device = torch.device("cpu")
 else:
     device = torch.device("cuda")
+    
+
 
 
 def Remove_module_from_layers(unpickled_model_wts):
@@ -473,27 +518,56 @@ def set_batchnorm_momentum(self, momentum):
             m.momentum = momentum
     return self
 
+class AttentionNet(nn.Module):
+    def __init__(self, num_classes, num_tokens):
+        super(AttentionNet, self).__init__()
+        #apply muti-AttentionNet head
+        self.AttentionNet = nn.MultiheadAttention(embed_dim=num_classes*num_tokens**2, num_heads=num_tokens**2)
+        #apply linear layer
+        self.fc = nn.Linear(num_classes*num_tokens**2, num_classes)
+
+    def forward(self, x):
+        #apply AttentionNet
+        x, _ = self.AttentionNet(x, x, x)
+        #apply linear layer
+        x = self.fc(x)
+        #apply relu activation
+        x = F.relu(x)
+        return x
 
 def sweep_train():
+
     # Initialize a new wandb run
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
+    data_dir, num_classes, initial_bias, criterion = setup(args)
+
     run = wandb.init(config=sweep_config)
  
     model_ft = build_model(num_classes=num_classes)
     
-    model_ft = set_batchnorm_momentum(model_ft, wandb.config.batchnorm_momentum)
+    model_ft = set_batchnorm_momentum(model_ft, momentum=0.001)
     model_ft = model_ft.to(device)  
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
     #optimizer = build_optimizer(model=model_ft, optimizer=wandb.config.optimizer, learning_rate=1e-5, eps=1e-8, weight_decay=0)
     image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=int(wandb.config.input_size), data_dir=data_dir)
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
 
-    train_model(model=model_ft, optimizer=optimizer, image_datasets=image_datasets, criterion=criterion, patience=args.patience, initial_bias=initial_bias)
+    AttNet = AttentionNet(num_classes=num_classes, num_tokens=wandb.config.n_tokens)
+    # in_feat = int(num_classes*wandb.config.n_tokens**2)
+    # AttNet.fc = nn.Linear(in_feat, num_classes)
+    # AttNet.AttentionNet = nn.MultiHeadAttentionNet(num_classes, wandb.config.n_tokens**2)
+    AttNet = AttNet.to(device)
 
-def train(weights_dict, args_override=None):
-    if args_override is not None:
-        args = args_override
+    ANoptimizer = torch.optim.Adam(AttNet.parameters(),
+                               lr=1e-5, weight_decay=0, eps=1e-8)
+    
+    train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=int(wandb.config.input_size), n_tokens=wandb.config.n_tokens, batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
+
+def train(args_override=None):
+    #if args_override is not None:
+       # args = args_override
 
     data_dir, num_classes, initial_bias, criterion = setup(args)
 
@@ -506,16 +580,43 @@ def train(weights_dict, args_override=None):
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
     image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size, data_dir=data_dir)
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2) for x in ['train', 'val']}
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
 
-    train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, weights_dict=weights_dict)
+    AttNet = AttentionNet(num_classes=num_classes, num_tokens=args.n_tokens)
+    # in_feat = int(num_classes*args.n_tokens**2)
+    # AttNet.fc = nn.Linear(in_feat, num_classes)
+    # AttNet.AttentionNet = nn.MultiHeadAttentionNet(num_classes, args.n_tokens**2)
+    AttNet = AttNet.to(device)
 
-    return model_ft, image_datasets
+    ANoptimizer = torch.optim.Adam(AttNet.parameters(),
+                               lr=1e-5, weight_decay=0, eps=1e-8)
 
-# if args.sweep == True:
-#     wandb.agent(sweep_id,
-#         project=args.project_name, 
-#         function=sweep_train,
-#         count=args.sweep_count)
-# else:
-#     train()
+    model_out = train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size,  AttNet=AttNet, ANoptimizer=ANoptimizer)
+    
+    return model_out, image_datasets
+
+
+
+if args.sweep == True:
+    with open(args.sweep_config) as file:
+        config = yaml.load(file, Loader=yaml.FullLoader)
+        sweep_config = config['sweep_config']
+        sweep_config['metric'] = config['metric']
+        sweep_config['parameters'] = config['parameters']
+    
+        print('Sweep config:')
+        pprint.pprint(sweep_config)
+        print()
+        if args.sweep_id is None:
+            sweep_id = wandb.sweep(sweep_config, project=args.project_name, entity="frankslab")
+        else:
+            sweep_id = args.sweep_id
+        print("Sweep ID: ", sweep_id)
+        print()
+    
+    wandb.agent(sweep_id,
+            project=args.project_name, 
+            function=sweep_train,
+            count=args.sweep_count)
+else:
+    train()

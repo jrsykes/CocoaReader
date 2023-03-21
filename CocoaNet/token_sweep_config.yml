@@ -1,0 +1,13 @@
+sweep_config:
+  method: random
+metric:
+  name: Best_F1
+  goal: maximize
+parameters:
+    input_size:
+        distribution: uniform
+        min: 200
+        max: 800
+    n_tokens:
+        values: [1, 2, 3, 4, 5]        
+      

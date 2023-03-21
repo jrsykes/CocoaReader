@@ -7,9 +7,9 @@ import os
 import pandas as pd
 import torch
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/Eval')
+sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet')
 from Torch_Custom_CNNs2 import train
-from AdaBoostEval import eval
+from EvalLable import eval
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='model',
@@ -48,43 +48,33 @@ parser.add_argument('--learning_rate', type=float, default=1e-5,
                         help='Learning rate, Default:1e-5')
 parser.add_argument('--eps', type=float, default=1e-8,
                         help='eps, Default:1e-8')
-parser.add_argument('--input_size', type=int, default=277,
+parser.add_argument('--input_size', type=int, default=1108,
                         help='image input size')
-parser.add_argument('--arch', type=str, default='resnet50',
+parser.add_argument('--arch', type=str, default='convnext_tiny',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
 parser.add_argument('--remove_batch_norm', action='store_true', default=False,
                         help='Deactivate all batchnorm layers?')
-
+parser.add_argument('--split_image', action='store_true', default=True,
+                        help='Split image into smaller chunks?')
 
 args = parser.parse_args()
 
-weights_dict = {}
-
-for dir_ in os.listdir(os.path.join(args.root, args.data_dir, "train")):
-    for filename in os.listdir(os.path.join(args.root, args.data_dir, "train", dir_)):
-        weights_dict[filename] = 1
-
 
 major_epoch = 0
-moved_count, AdaB_patience, acc = 1, 5, 0.1
-while moved_count > 0 or AdaB_patience > 0:
+moved_count = 1
+while moved_count > 0:
 #train the model
     print()
+    major_epoch += 1
     print('Major epoch: ', str(major_epoch))
-    model, image_datasets = train(weights_dict=weights_dict, args_override = args)
-    PATH = "/local/scratch/jrs596/dat/models/AdaBoost/" + args.model_name + str(major_epoch)
+    model, _ = train(args_override = args)
+    PATH = "/local/scratch/jrs596/dat/models/SemiSup/" + args.model_name + str(major_epoch)
     torch.save(model.module, PATH + '.pth') 
 
-    weights_dict, F1, auc, acc, loss, moved_count = eval(model=model, image_datasets=image_datasets['train'], weights_dict=weights_dict)
-    if moved_count > 0:
-        AdaB_patience -= 1
-    else:
-        AdaB_patience = 5
-    if acc == 1:
-        break
-    major_epoch += 1
+    moved_count = eval(model=model, moved_count=moved_count)
+    
     
 
 

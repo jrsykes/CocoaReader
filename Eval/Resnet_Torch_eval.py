@@ -8,33 +8,15 @@ import time
 import numpy as np
 #import cv2
 
-model_path = '/local/scratch/jrs596/dat/models/CocoaNet18_sweep_silvery-sweep-26.pth'
-data_dir = "/local/scratch/jrs596/dat/split_cocoa_images_min"
-quantized = False
-
+data_dir = "/local/scratch/jrs596/dat/EcuadorImages_EL_LowRes_split"
 n_classes = len(os.listdir(os.path.join(data_dir, 'train')))
 
-if quantized == False:
-	model = torch.load(model_path)
-else:
-	model = torch.jit.load(model_path)
-
-model.eval()
-
-if quantized == False:
-	device = torch.device("cuda:0")
-else:
-	device = torch.device("cpu")
-
-model = model.to(device)
-
-input_size = 287
+input_size = 277
 batch_size = 1
 criterion = nn.CrossEntropyLoss()
 
 data_transforms = {
     'train': transforms.Compose([
-#        transforms.RandomResizedCrop(input_size),
         transforms.Resize((input_size,input_size)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
@@ -58,6 +40,9 @@ dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size
 
 
 
+
+
+
 def eval(model, dataloaders_dict):
 	lables_list = []
 	preds_list = []	
@@ -70,7 +55,7 @@ def eval(model, dataloaders_dict):
 	running_auc = 0
 
 	#df = pd.DataFrame(columns=['image_id','healthy','multiple_diseases','rust','scab'])
-	for phase in ['train', 'val']:
+	for phase in ['val']:
 		running_auc = 0
 		running_loss = 0.0
 		lables_list = []
@@ -241,12 +226,29 @@ def quant_eval2(model, img_loader):
 
 start = time.time()
 
+
+model_path = '/local/scratch/jrs596/dat/models/CocoaNet18_SemiSup..pth'
+quantized = False
+
+if quantized == False:
+	model = torch.load(model_path)
+else:
+	model = torch.jit.load(model_path)
+
+model.eval()
+
+if quantized == False:
+	device = torch.device("cuda:0")
+else:
+	device = torch.device("cpu")
+
+model = model.to(device)
+
 if quantized == True:
 	#quant_eval(model, dataloaders_dict['val'])
 	quant_eval2(model, dataloaders_dict)
 else:
 	eval(model, dataloaders_dict)
-
 
 print('Time taken: ' + str(time.time()-start))
 
