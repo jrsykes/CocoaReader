@@ -1,6 +1,0 @@
-wandb_version: 1
-
-input_size:
-  value: 871.9991576464078
-n_tokens:
-  value: 1

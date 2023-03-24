@@ -32,7 +32,7 @@ parser.add_argument('--sweep', action='store_true', default=False,
                         help='Run Waits and Biases optimisation sweep')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
-parser.add_argument('--sweep_config', type=str, default=None,
+parser.add_argument('--sweep_config', type=str, default='/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/token_sweep_config.yml',
                         help='.yml sweep configuration file')
 parser.add_argument('--sweep_count', type=int, default=100,
                         help='Number of models to train in sweep')
@@ -68,7 +68,7 @@ parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
 parser.add_argument('--remove_batch_norm', action='store_true', default=False,
                         help='Deactivate all batchnorm layers?')
-parser.add_argument('--split_image', action='store_true', default=True,
+parser.add_argument('--split_image', action='store_true', default=False,
                         help='Split image into smaller chunks?')
 parser.add_argument('--n_tokens', type=int, default=4,
                         help='Sqrt of number of tokens to split image into')
@@ -102,12 +102,13 @@ def setup(args):
 
     initial_bias = torch.FloatTensor(weights).to(device)
 
-    #Optional, weight loss function.
-    criterion = nn.CrossEntropyLoss()
-    return data_dir, num_classes, initial_bias, criterion
+
+    #criterion = nn.CrossEntropyLoss()
+
+    return data_dir, num_classes, initial_bias#, criterion
 
 
-def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial_bias, input_size, n_tokens, batch_size, AttNet, ANoptimizer):   
+def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
@@ -127,7 +128,7 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
         #Ensure minimum number of epochs is met before patience is allow to reduce
         if len(val_loss_history) > args.min_epochs:
            #If the current loss is not at least 0.5% less than the lowest loss recorded, reduce patiece by one epoch
-            if val_loss_history[-1] >= min(val_loss_history)*args.beta:
+            if val_loss_history[-1] > min(val_loss_history)*args.beta:
                 patience -= 1
             elif val_loss_history[-1] == np.nan:
                 patience -= 1
@@ -142,7 +143,8 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
         for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()  # Set model to training mode
-                AttNet.train()
+                if AttNet != None:
+                    AttNet.train()
                #Experimental. Remove batch norm layer from Resnet if specified.
                 if args.remove_batch_norm == True:
                     print('BatchNorm layers deactivated')
@@ -153,7 +155,8 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                     quantized_model = torch.quantization.convert(model.eval(), inplace=False)
                     quantized_model.eval()
                 model.eval()   # Set model to evaluate mode
-                AttNet.eval()
+                if AttNet != None:
+                    AttNet.eval()
 
             running_loss = 0.0
             running_corrects = 0
@@ -198,7 +201,8 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                     labels = labels.to(device)
                     # zero the parameter gradients
                     optimizer.zero_grad()       
-                    ANoptimizer.zero_grad()
+                    if ANoptimizer != None:
+                        ANoptimizer.zero_grad()
 
                     # forward
                     # track history if only in train
@@ -232,9 +236,17 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                                 #outputs_ = outputs_[max_index.item()]
                                 
                                 #flatten outputs_
-                                outputs_ = outputs_.view(-1)
+                                #outputs_ = outputs_.view(-1)
                                 #unsqueeze outputs_
-                                outputs_ = outputs_.unsqueeze(0)
+
+                                #outputs to cpu
+                                outputs_ = outputs_.detach().cpu()
+                                
+                                outputs_flat = torch.empty(0)
+                                for i in range(outputs_.shape[1]):
+                                    outputs_flat = torch.cat((outputs_flat,outputs_[:,i]),0)
+
+                                outputs_ = outputs_flat.to(device).unsqueeze(0)
                                 outputs_ = AttNet(outputs_)
                                 
 
@@ -249,10 +261,24 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                             #add gradient to new outputs
                             #outputs.requires_grad = True
 
+                        # Compute the softmax and inverse softmax outputs for each sample
+                        with torch.no_grad():
+                            softmax_outputs = nn.Softmax(dim=1)(outputs)
+                            inverse_softmax_outputs = 1 / softmax_outputs
+
+                        # Compute the per-sample weights based on the inverse softmax outputs
+                        DFL_weights = inverse_softmax_outputs[range(outputs.size(0)), labels].to(device)
+
                        #Calculate loss and other model metrics
-                        loss = criterion(outputs, labels)
-                        # if phase == 'train' and weights_dict is not None:
-                        #     loss = loss*weights
+                        if args.sweep == True:
+                            if wandb.config.loss_fn == "CrossEntropyLoss":
+                                loss = criterion(outputs, labels)
+                            elif wandb.config.loss_fn == "DynamicFocalLoss":
+                                loss = criterion(outputs, labels, DFL_weights)
+                        else:
+                            loss = criterion(outputs, labels, DFL_weights)
+
+             
                             
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
@@ -263,22 +289,26 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                         if phase == 'train':
                             loss.backward()
                             optimizer.step()  
-                            ANoptimizer.step() 
+                            if ANoptimizer != None:
+                                ANoptimizer.step() 
                             if args.quantise == True:
                                 if epoch > 3:
                                     model.apply(torch.quantization.disable_observer)
                                 if epoch >= 3:
                                     model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
                    
+                        
+
+
                    #Calculate statistics
                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
                    #running totals for these metrics by the total number of training or validation samples. This controls for 
                    #the effect of batch size and the fact that the size of the last batch will less than args.batch_size
-                    running_loss += loss.item() * batch_size #inputs.size(0)
+                    running_loss += loss.item() * args.batch_size # inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
-                    running_precision += stats_out['precision'] * batch_size # inputs.size(0)
-                    running_recall += stats_out['recall'] * batch_size #inputs.size(0)
-                    running_f1 += stats_out['f1-score'] * batch_size # inputs.size(0)    
+                    running_precision += stats_out['precision'] * args.batch_size # inputs.size(0)
+                    running_recall += stats_out['recall'] * args.batch_size # inputs.size(0)
+                    running_f1 += stats_out['f1-score'] * args.batch_size # inputs.size(0)    
 
                     bar.next()  
            #Calculate statistics for epoch
@@ -521,26 +551,88 @@ def set_batchnorm_momentum(self, momentum):
 class AttentionNet(nn.Module):
     def __init__(self, num_classes, num_tokens):
         super(AttentionNet, self).__init__()
+        num_heads = num_classes
+        embed_dim = num_tokens**2*num_classes
+        head_dim = embed_dim//num_heads
+        # define linear transformations for queries, keys, and values
+        self.query_transform = nn.Linear(embed_dim, num_heads * head_dim)
+        self.key_transform = nn.Linear(embed_dim, num_heads * head_dim)
+        self.value_transform = nn.Linear(embed_dim, num_heads * head_dim)
         #apply muti-AttentionNet head
-        self.AttentionNet = nn.MultiheadAttention(embed_dim=num_classes*num_tokens**2, num_heads=num_tokens**2)
+        self.Attention = nn.MultiheadAttention(embed_dim=embed_dim, num_heads=num_heads)
+        #apply layer normalisation
+        self.layernorm = nn.LayerNorm(embed_dim)
         #apply linear layer
-        self.fc = nn.Linear(num_classes*num_tokens**2, num_classes)
+        self.fc1 = nn.Linear(embed_dim, embed_dim)
+        self.fc2 = nn.Linear(embed_dim, num_classes)
+
 
     def forward(self, x):
         #apply AttentionNet
-        x, _ = self.AttentionNet(x, x, x)
+        queries = self.query_transform(x)
+        keys = self.key_transform(x)
+        values = self.value_transform(x)
+        x, _ = self.Attention(queries, keys, values)
+        x = self.fc1(x)
+        #apply layer normalisation
+        x = self.layernorm(x)
         #apply linear layer
-        x = self.fc(x)
+        x = self.fc2(x)
         #apply relu activation
-        x = F.relu(x)
+        x = F.softmax(x, dim=1)
         return x
+
+# class DynamicFocalLoss(nn.Module):
+#     def __init__(self, gamma=2, alpha=None):
+#         super(DynamicFocalLoss, self).__init__()
+#         self.gamma = gamma
+#         self.alpha = alpha
+
+#     def forward(self, inputs, targets, weights=None):
+#         ce_loss = nn.CrossEntropyLoss(reduction='none')(inputs, targets)
+#         pt = torch.exp(-ce_loss)
+#         focal_loss = ((1 - pt) ** self.gamma * ce_loss).mean()
+
+#         if weights is not None:
+#             weighted_focal_loss = weights * focal_loss
+#             return weighted_focal_loss.mean()
+#         else:
+#             return focal_loss.mean()
+
+
+class DynamicFocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2.0):
+        super(DynamicFocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, inputs, targets, weights):
+        # Compute the softmax and log-softmax of the inputs
+        log_softmax_inputs = F.log_softmax(inputs, dim=1)
+        softmax_inputs = torch.exp(log_softmax_inputs)
+
+        # Compute the one-hot targets and weights
+        onehot_targets = F.one_hot(targets, num_classes=inputs.size(1)).float()
+        weights = weights.unsqueeze(1).expand(-1, inputs.size(1))
+
+        # Compute the focal loss for each sample
+        pt = softmax_inputs * onehot_targets + (1 - softmax_inputs) * (1 - onehot_targets)
+        w = self.alpha * onehot_targets * (1 - softmax_inputs) ** self.gamma + \
+            (1 - self.alpha) * (1 - onehot_targets) * softmax_inputs ** self.gamma
+        focal_loss = -w * log_softmax_inputs * weights
+        per_sample_loss = torch.sum(focal_loss, dim=1)
+
+        # Compute the average loss across the batch
+        loss = torch.mean(per_sample_loss)
+
+        return loss
 
 def sweep_train():
 
     # Initialize a new wandb run
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
-    data_dir, num_classes, initial_bias, criterion = setup(args)
+    data_dir, num_classes, initial_bias = setup(args)
 
     run = wandb.init(config=sweep_config)
  
@@ -550,26 +642,30 @@ def sweep_train():
     model_ft = model_ft.to(device)  
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
+
+    if wandb.config.loss_fn == "CrossEntropyLoss":
+        criterion = nn.CrossEntropyLoss()
+    elif wandb.config.loss_fn == "DynamicFocalLoss":
+        criterion = DynamicFocalLoss(alpha=0.25, gamma=2.0)
+    
     #optimizer = build_optimizer(model=model_ft, optimizer=wandb.config.optimizer, learning_rate=1e-5, eps=1e-8, weight_decay=0)
     image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=int(wandb.config.input_size), data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
 
-    AttNet = AttentionNet(num_classes=num_classes, num_tokens=wandb.config.n_tokens)
-    # in_feat = int(num_classes*wandb.config.n_tokens**2)
-    # AttNet.fc = nn.Linear(in_feat, num_classes)
-    # AttNet.AttentionNet = nn.MultiHeadAttentionNet(num_classes, wandb.config.n_tokens**2)
-    AttNet = AttNet.to(device)
+    if args.split_image == True:
+        AttNet = AttentionNet(num_classes=num_classes, num_tokens=wandb.config.n_tokens)
+        AttNet = AttNet.to(device)
+        ANoptimizer = torch.optim.Adam(AttNet.parameters(), lr=1e-5, weight_decay=0, eps=1e-8)
+        train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=int(wandb.config.input_size), batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
 
-    ANoptimizer = torch.optim.Adam(AttNet.parameters(),
-                               lr=1e-5, weight_decay=0, eps=1e-8)
     
-    train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=int(wandb.config.input_size), n_tokens=wandb.config.n_tokens, batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
+    train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=int(wandb.config.input_size), batch_size=args.batch_size)
 
 def train(args_override=None):
     #if args_override is not None:
        # args = args_override
 
-    data_dir, num_classes, initial_bias, criterion = setup(args)
+    data_dir, num_classes, initial_bias = setup(args)
 
     wandb.init(project=args.project_name)
     num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
@@ -579,19 +675,21 @@ def train(args_override=None):
     model_ft = model_ft.to(device)
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
+
+    criterion = DynamicFocalLoss(alpha=0.25, gamma=2.0)
+
     image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size, data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
 
-    AttNet = AttentionNet(num_classes=num_classes, num_tokens=args.n_tokens)
-    # in_feat = int(num_classes*args.n_tokens**2)
-    # AttNet.fc = nn.Linear(in_feat, num_classes)
-    # AttNet.AttentionNet = nn.MultiHeadAttentionNet(num_classes, args.n_tokens**2)
-    AttNet = AttNet.to(device)
-
-    ANoptimizer = torch.optim.Adam(AttNet.parameters(),
+    if args.split_image == True:
+        AttNet = AttentionNet(num_classes=num_classes, num_tokens=args.n_tokens)
+        AttNet = AttNet.to(device)
+        ANoptimizer = torch.optim.Adam(AttNet.parameters(),
                                lr=1e-5, weight_decay=0, eps=1e-8)
+    
+        model_out = train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
 
-    model_out = train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size,  AttNet=AttNet, ANoptimizer=ANoptimizer)
+    model_out = train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     return model_out, image_datasets
 
