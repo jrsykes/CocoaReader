@@ -21,10 +21,11 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 import argparse
 import yaml
 from sklearn.decomposition import PCA
+import torchvision.ops as ops
 
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
-parser.add_argument('--model_name', type=str, default='model',
+parser.add_argument('--model_name', type=str, default='test',
                         help='save name for model')
 parser.add_argument('--project_name', type=str, default=None,
                         help='Name for wandb project')
@@ -46,7 +47,7 @@ parser.add_argument('--custom_pretrained_weights', type=str,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
-parser.add_argument('--batch_size', type=int, default=8,
+parser.add_argument('--batch_size', type=int, default=4,
                         help='Initial batch size')
 parser.add_argument('--max_epochs', type=int, default=500,
                         help='n epochs before early stopping')
@@ -60,7 +61,7 @@ parser.add_argument('--learning_rate', type=float, default=1e-5,
                         help='Learning rate, Default:1e-5')
 parser.add_argument('--eps', type=float, default=1e-8,
                         help='eps, Default:1e-8')
-parser.add_argument('--input_size', type=int, default=224,
+parser.add_argument('--input_size', type=int, default=64,
                         help='image input size')
 parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
@@ -102,10 +103,12 @@ def setup(args):
 
     initial_bias = torch.FloatTensor(weights).to(device)
 
-
+    
     #criterion = nn.CrossEntropyLoss()
+    criterion = DynamicFocalLoss(alpha=wandb.config.alpha, gamma=wandb.config.gamma)
 
-    return data_dir, num_classes, initial_bias#, criterion
+
+    return data_dir, num_classes, initial_bias, criterion
 
 
 def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
@@ -113,7 +116,7 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
     val_loss_history = []
     best_f1 = 0.0
     best_f1_acc = 0.0
-
+    
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -257,29 +260,10 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
 
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
-        
-                            #add gradient to new outputs
-                            #outputs.requires_grad = True
 
-                        # Compute the softmax and inverse softmax outputs for each sample
-                        with torch.no_grad():
-                            softmax_outputs = nn.Softmax(dim=1)(outputs)
-                            inverse_softmax_outputs = 1 / softmax_outputs
 
-                        # Compute the per-sample weights based on the inverse softmax outputs
-                        DFL_weights = inverse_softmax_outputs[range(outputs.size(0)), labels].to(device)
+                        loss = criterion(outputs, labels)
 
-                       #Calculate loss and other model metrics
-                        if args.sweep == True:
-                            if wandb.config.loss_fn == "CrossEntropyLoss":
-                                loss = criterion(outputs, labels)
-                            elif wandb.config.loss_fn == "DynamicFocalLoss":
-                                loss = criterion(outputs, labels, DFL_weights)
-                        else:
-                            loss = criterion(outputs, labels, DFL_weights)
-
-             
-                            
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
@@ -297,8 +281,6 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                                 if epoch >= 3:
                                     model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
                    
-                        
-
 
                    #Calculate statistics
                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
@@ -582,75 +564,64 @@ class AttentionNet(nn.Module):
         x = F.softmax(x, dim=1)
         return x
 
-# class DynamicFocalLoss(nn.Module):
-#     def __init__(self, gamma=2, alpha=None):
-#         super(DynamicFocalLoss, self).__init__()
-#         self.gamma = gamma
-#         self.alpha = alpha
-
-#     def forward(self, inputs, targets, weights=None):
-#         ce_loss = nn.CrossEntropyLoss(reduction='none')(inputs, targets)
-#         pt = torch.exp(-ce_loss)
-#         focal_loss = ((1 - pt) ** self.gamma * ce_loss).mean()
-
-#         if weights is not None:
-#             weighted_focal_loss = weights * focal_loss
-#             return weighted_focal_loss.mean()
-#         else:
-#             return focal_loss.mean()
-
 
 class DynamicFocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2.0):
+    def __init__(self, alpha=1, gamma=2):
         super(DynamicFocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
+        self.weights_dict = {}
 
-    def forward(self, inputs, targets, weights):
-        # Compute the softmax and log-softmax of the inputs
-        log_softmax_inputs = F.log_softmax(inputs, dim=1)
-        softmax_inputs = torch.exp(log_softmax_inputs)
+    def forward(self, inputs, targets):
+        logp = nn.functional.log_softmax(inputs, dim=1)
+        targets_onehot = nn.functional.one_hot(targets, num_classes=inputs.size(-1))
+        targets_onehot = targets_onehot.float()
+        pt = torch.exp(logp) * targets_onehot
+        loss = -self.alpha * (1 - pt)**self.gamma * logp
+        loss = loss.mean()
 
-        # Compute the one-hot targets and weights
-        onehot_targets = F.one_hot(targets, num_classes=inputs.size(1)).float()
-        weights = weights.unsqueeze(1).expand(-1, inputs.size(1))
+        # Update weights_dict based on targets and predictions
+        preds = torch.argmax(inputs, dim=1)
+        for i in range(inputs.size(0)):
+            filename = targets[i]
+            if filename not in self.weights_dict:
+                self.weights_dict[filename] = 1
+            if preds[i] != targets[i]:
+                self.weights_dict[filename] += 1
+            else:
+                self.weights_dict[filename] = 1
 
-        # Compute the focal loss for each sample
-        pt = softmax_inputs * onehot_targets + (1 - softmax_inputs) * (1 - onehot_targets)
-        w = self.alpha * onehot_targets * (1 - softmax_inputs) ** self.gamma + \
-            (1 - self.alpha) * (1 - onehot_targets) * softmax_inputs ** self.gamma
-        focal_loss = -w * log_softmax_inputs * weights
-        per_sample_loss = torch.sum(focal_loss, dim=1)
+        # Apply weights to loss based on weights_dict
+        weighted_loss = torch.zeros(1).to(loss.device)
+        for filename, weight in self.weights_dict.items():
+            if weight > 1:
+                weighted_loss += loss * weight
+            else:
+                weighted_loss += loss
+        weighted_loss /= len(self.weights_dict)
 
-        # Compute the average loss across the batch
-        loss = torch.mean(per_sample_loss)
-
-        return loss
+        return weighted_loss
 
 def sweep_train():
 
     # Initialize a new wandb run
         # If called by wandb.agent, as below,
         # this config will be set by Sweep Controller
-    data_dir, num_classes, initial_bias = setup(args)
 
     run = wandb.init(config=sweep_config)
- 
+    data_dir, num_classes, initial_bias, criterion = setup(args)
+
     model_ft = build_model(num_classes=num_classes)
     
     model_ft = set_batchnorm_momentum(model_ft, momentum=0.001)
     model_ft = model_ft.to(device)  
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
-
-    if wandb.config.loss_fn == "CrossEntropyLoss":
-        criterion = nn.CrossEntropyLoss()
-    elif wandb.config.loss_fn == "DynamicFocalLoss":
-        criterion = DynamicFocalLoss(alpha=0.25, gamma=2.0)
     
     #optimizer = build_optimizer(model=model_ft, optimizer=wandb.config.optimizer, learning_rate=1e-5, eps=1e-8, weight_decay=0)
     image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=int(wandb.config.input_size), data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
+
 
     if args.split_image == True:
         AttNet = AttentionNet(num_classes=num_classes, num_tokens=wandb.config.n_tokens)
@@ -665,9 +636,10 @@ def train(args_override=None):
     #if args_override is not None:
        # args = args_override
 
-    data_dir, num_classes, initial_bias = setup(args)
 
     wandb.init(project=args.project_name)
+    data_dir, num_classes, initial_bias, criterion = setup(args)
+
     num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
     model_ft = build_model(num_classes=num_classes)
     model_ft = set_batchnorm_momentum(model_ft, momentum=0.001)
@@ -676,10 +648,13 @@ def train(args_override=None):
     optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
                                            weight_decay=0, eps=1e-8)
 
-    criterion = DynamicFocalLoss(alpha=0.25, gamma=2.0)
-
     image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size, data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
+
+    weights_dict = {}
+    for i in range(len(image_datasets['train'])):
+        image_path, _ = image_datasets['train'].samples[i]
+        weights_dict[os.path.basename(image_path)] = 1.0
 
     if args.split_image == True:
         AttNet = AttentionNet(num_classes=num_classes, num_tokens=args.n_tokens)

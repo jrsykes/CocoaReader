@@ -7,7 +7,7 @@ python '/home/userfs/j/jrs596/scripts/CocoaReader/utils/Torch_Custom_CNNs2.py' \
         --data_dir 'EcuadorImage_LowRes_17_03_23_SureUnsure/Sure' \
         --min_epochs 10 \
         --max_epochs 500 \
-        --batch_size 4 \
+        --batch_size 10 \
         --patience 5 \
         --project_name 'CocoaNet_token' \
         --arch 'convnext_tiny' \

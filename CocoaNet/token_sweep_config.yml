@@ -6,10 +6,12 @@ metric:
 parameters:
     input_size:
         distribution: uniform
-        min: 200
-        max: 400
-    loss_fn:
-        values: ['CrossEntropyLoss', 'DynamicFocalLoss']
+        min: 270
+        max: 365
+    alpha:
+        values: [0.5, 1, 2, 3, 4]
+    gamma:
+        values: [0, 1, 2, 3, 4]
     
       
       
