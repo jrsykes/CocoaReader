@@ -7,11 +7,11 @@ parameters:
     input_size:
         distribution: uniform
         min: 270
-        max: 365
+        max: 330
     alpha:
-        values: [0.5, 1, 2, 3, 4]
+        values: [1, 1.1, 1.2, 1.3, 1.4, 1.5]
     gamma:
-        values: [0, 1, 2, 3, 4]
+        values: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
     
       
       

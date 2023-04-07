@@ -107,11 +107,17 @@ def setup(args):
     #criterion = nn.CrossEntropyLoss()
     criterion = DynamicFocalLoss(alpha=wandb.config.alpha, gamma=wandb.config.gamma)
 
+    # define your hyperparameters
+    hyperparams = {
+        'learning_rate': 1e-5,
+        'weight_decay': 0.0001,
+        'eps': 1e-8
+        }
 
-    return data_dir, num_classes, initial_bias, criterion
+    return data_dir, num_classes, initial_bias, criterion, hyperparams
 
 
-def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
+def train_model(model, optimizer, hyp_optimizer, hyperparams, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
@@ -124,7 +130,7 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
 
     epoch = 0
     #while patience >= 0: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
-    while patience > 0:
+    while patience > 0 and epoch < args.max_epochs:
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
 
@@ -141,7 +147,8 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
         print('Patience: ' + str(patience) + '/' + str(args.patience))
        #If patience gets to 6, half batch size, reintialise dataloader and revert to best model weights to undo any overfitting.
        #Do this for every epoch where patience is less than 6. i.e. if inital batch size = 128, the last epoch will have a batchsize of at most 2.
-        
+    
+
        #Training and validation loop
         for phase in ['train', 'val']:
             if phase == 'train':
@@ -340,9 +347,22 @@ def train_model(model, optimizer, dataloaders_dict, criterion, patience, initial
                 val_loss_history.append(epoch_loss)
    
             if phase == 'train':
-                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1})  
+                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1,
+                           "hyp_1_lr": optimizer.param_groups[0]['lr'], "hyp_2_lr": hyp_optimizer.param_groups[0]['lr'],
+                           "hyp_1_eps": optimizer.param_groups[0]['eps'], "hyp_2_eps": hyp_optimizer.param_groups[0]['eps'],
+                            "hyp_1_weight_decay": optimizer.param_groups[0]['weight_decay'], "hyp_2_weight_decay": hyp_optimizer.param_groups[0]['weight_decay'],
+                           })  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
+
+        hyp_optimizer.zero_grad()
+        loss = epoch_loss
+        loss.backward()
+        hyp_optimizer.step()
+
+        optimizer = torch.optim.Adam(model.parameters(),
+                               lr=hyp_optimizer.param_groups[0]['lr'], weight_decay=hyp_optimizer.param_groups[0]['weight_decay'], eps=hyp_optimizer.param_groups[0]['eps'])
+          
 
         bar.finish() 
         epoch += 1
@@ -364,14 +384,13 @@ def build_optimizer(model, optimizer, learning_rate, eps, weight_decay):
     return optimizer
 
 
-def build_datasets(kernel_size, sigma_max, input_size, data_dir):
+def build_datasets(input_size, data_dir):
     # Data augmentation and normalization for training
     # Just normalization for device
     data_transforms = {
         'train': transforms.Compose([
             #transforms.RandomCrop(input_size, pad_if_needed=True, padding_mode = 'reflect'),
             transforms.Resize((input_size,input_size)),
-            #transforms.GaussianBlur(kernel_size=kernel_size, sigma=(0.1, sigma_max)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
         ]),
@@ -588,8 +607,8 @@ class DynamicFocalLoss(nn.Module):
                 self.weights_dict[filename] = 1
             if preds[i] != targets[i]:
                 self.weights_dict[filename] += 1
-            else:
-                self.weights_dict[filename] = 1
+            #else:
+             #   self.weights_dict[filename] = 1
 
         # Apply weights to loss based on weights_dict
         weighted_loss = torch.zeros(1).to(loss.device)
@@ -619,7 +638,7 @@ def sweep_train():
                                            weight_decay=0, eps=1e-8)
     
     #optimizer = build_optimizer(model=model_ft, optimizer=wandb.config.optimizer, learning_rate=1e-5, eps=1e-8, weight_decay=0)
-    image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=int(wandb.config.input_size), data_dir=data_dir)
+    image_datasets = build_datasets(input_size=int(wandb.config.input_size), data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
 
 
@@ -638,23 +657,30 @@ def train(args_override=None):
 
 
     wandb.init(project=args.project_name)
-    data_dir, num_classes, initial_bias, criterion = setup(args)
+    data_dir, num_classes, initial_bias, criterion, hyperparams = setup(args)
 
     num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
     model_ft = build_model(num_classes=num_classes)
     model_ft = set_batchnorm_momentum(model_ft, momentum=0.001)
 
     model_ft = model_ft.to(device)
-    optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
-                                           weight_decay=0, eps=1e-8)
+    # optimizer = torch.optim.Adam(model_ft.parameters(), lr=hyper_optimizer['learning_rate'],
+    #                                        weight_decay=hyper_optimizer['weight_decay'], eps=hyper_optimizer['eps'])
+    
+    
+    optimizer = torch.optim.Adam(model_ft.parameters(), lr=hyperparams['learning_rate'],
+                                           weight_decay=hyperparams['weight_decay'], eps=hyperparams['eps'])
+    
+    hyp_optimizer = torch.optim.SGD(hyperparams.values(), lr=1e-5, momentum=0.9, weight_decay=0)
+            
 
     image_datasets = build_datasets(kernel_size=5, sigma_max=2, input_size=args.input_size, data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=os.cpu_count()-2, drop_last=True) for x in ['train', 'val']}
 
-    weights_dict = {}
-    for i in range(len(image_datasets['train'])):
-        image_path, _ = image_datasets['train'].samples[i]
-        weights_dict[os.path.basename(image_path)] = 1.0
+    # weights_dict = {}
+    # for i in range(len(image_datasets['train'])):
+    #     image_path, _ = image_datasets['train'].samples[i]
+    #     weights_dict[os.path.basename(image_path)] = 1.0
 
     if args.split_image == True:
         AttNet = AttentionNet(num_classes=num_classes, num_tokens=args.n_tokens)
@@ -662,9 +688,9 @@ def train(args_override=None):
         ANoptimizer = torch.optim.Adam(AttNet.parameters(),
                                lr=1e-5, weight_decay=0, eps=1e-8)
     
-        model_out = train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
+        model_out = train_model(model=model_ft, optimizer=optimizer, hyp_optimizer=hyp_optimizer, hyperparams=hyperparams, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
 
-    model_out = train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    model_out = train_model(model=model_ft, optimizer=optimizer, hyp_optimizer=hyp_optimizer, hyperparams=hyperparams, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     return model_out, image_datasets
 
