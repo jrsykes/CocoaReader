@@ -11,6 +11,74 @@ import time
 # dest = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders_split'
 
 
+def Organise_Ecuador_Images(root):
+	count = 0
+	other = 0
+	dumby_imgs = ["left1.png", "1.JPG", "20230123_161149.jpg", "PXL_20230122_115658050.jpg", "PXL_20230203_115351448.jpg", "PXL_20230122_093124778.jpg"]
+
+	for d in os.listdir(os.path.join(root, "HandFiltered_Ecuador_images")):
+	    if d != "Demo_files" and d != "ReadMe.txt":
+	        for f in os.listdir(os.path.join(root, "HandFiltered_Ecuador_images", d)):
+	            img_dir = os.path.join(root, "HandFiltered_Ecuador_images", d, f)
+	            image_dirs = os.listdir(img_dir)
+	            for z in image_dirs:
+	                dir = os.path.join(root, "HandFiltered_Ecuador_images", d, f, z)
+	                images = os.listdir(dir)
+	                if z.endswith("Temprano"):
+	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Early")
+	                elif z.endswith("Unsure"):
+	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Unsure")
+	                elif z.endswith("Tarde"):
+	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
+	                elif z == "Sana":
+	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
+	                elif z.startswith("Enfermedad"):
+	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
+	                else:
+	                    other += len(images)
+	                    #print full path of image z
+	                    print("End incorrect")
+	                    print(os.path.join(root, "HandFiltered_Ecuador_images", d, f, z))
+	                    print()
+	
+	                if z.startswith("Monilia"):
+	                    class_ = "FPR"
+	                elif z.startswith("Fitoptora"):
+	                    class_ = "BPR"
+	                elif z.startswith("Escoba"):
+	                    class_ = "WBD"
+	                elif z.startswith("Sana"):
+	                    class_ = "Healthy"
+	                elif z.startswith("Virus"):
+	                    class_ = "Virus"
+	                elif z.startswith("Enfermedad"):
+	                    class_ = "Unknown_disease"
+	                else:
+	                    print("Start incorrect")
+	                    print(os.path.join(root, "HandFiltered_Ecuador_images", d, f, z))
+	                    print()
+
+	                os.makedirs(os.path.join(dest, class_), exist_ok = True)
+	                for i in images:
+	                    if i not in dumby_imgs:
+	                        count += 1
+	                        shutil.copy(os.path.join(dir, i), os.path.join(dest, class_, str(time.time()) + i))
+	                        #open method used to open different extension image file
+	                        #im = Image.open(os.path.join(dir, i)) 
+	                        #im1 = im.resize((1200,1200))
+	                        #im1.save(os.path.join(dest, class_, str(time.time()) + i))
+	                    elif i in dumby_imgs:
+	                        pass
+	                    else:
+	                        other += 1
+	                        print(i)
+	
+	print("Image count: " + str(count))    
+	print("Filtered image count: " + str(other))   
+	print("Total image count: " + str(other + count))   
+
+#root = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data"
+#Organise_Ecuador_Images(root)
 
 def CopyPlant(destination, img_path):
 	n = 0
@@ -54,8 +122,8 @@ def Randomise_Split(dat, destination):
 				dest = os.path.join(destination, split, class_, image)
 				shutil.copy(source, dest)
 
-src = '/local/scratch/jrs596/dat/EcuadorImage_LowRes_17_03_23_SureUnsure/Sure'
-dest ='/local/scratch/jrs596/dat/EcuadorImage_LowRes_17_03_23_SureUnsure/Sure'
+src = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/EcuadorImages_EL_FullRes/Late'
+dest ='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/Late_split'
 
 Randomise_Split(dat = src, destination = dest)
 

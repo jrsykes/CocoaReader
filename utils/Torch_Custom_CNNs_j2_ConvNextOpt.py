@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 from __future__ import division
 
@@ -5,24 +6,18 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 import numpy as np
-from torchvision import datasets, models, transforms
+from torchvision import datasets, transforms
 import time
 import copy
 import wandb
-import pprint
-import random
-import pickle
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models import ResNet18_Weights, ResNet50_Weights, ConvNeXt_Tiny_Weights
-#from torch.utils.mobile_optimizer import optimize_for_mobile
+from torchvision.models.convnext import _convnext, CNBlockConfig
 import argparse
-import yaml
-#from sklearn.decomposition import PCA
-#import torchvision.ops as ops
-
+import random
+import json
+from random_word import RandomWords
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -35,11 +30,11 @@ parser.add_argument('--sweep', action='store_true', default=False,
                         help='Run Waits and Biases optimisation sweep')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
-parser.add_argument('--sweep_config', type=str, default='/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/token_sweep_config.yml',
+parser.add_argument('--sweep_config', type=str, default=None,
                         help='.yml sweep configuration file')
 parser.add_argument('--sweep_count', type=int, default=100,
                         help='Number of models to train in sweep')
-parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat',
+parser.add_argument('--root', type=str, default='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat',
                         help='location of all data')
 parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
@@ -67,7 +62,11 @@ parser.add_argument('--eps', type=float, default=1e-8,
                         help='eps, Default:1e-8')
 parser.add_argument('--input_size', type=int, default=277,
                         help='image input size')
-parser.add_argument('--arch', type=str, default='resnet18',
+parser.add_argument('--alpha', type=float, default=1.4,
+                        help='alpha for dynamic focal loss')
+parser.add_argument('--gamma', type=float, default=1.6,
+                        help='gamma for dynamic focal loss')
+parser.add_argument('--arch', type=str, default='convnext_tiny',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
@@ -84,15 +83,15 @@ print(args)
 
 def setup(args):
     data_dir = os.path.join(args.root, args.data_dir)
-    #Set environment variables for wandb sweep
-    os.environ['WANDB_CACHE_DIR'] = os.path.join(args.root, 'WANDB_CACHE')
-    os.environ['WANDB_DIR'] = os.path.join(args.root, 'WANDB_DIR')
     #Define some variable and paths
     os.environ['TORCH_HOME'] = os.path.join(args.root, "TORCH_HOME")
     
     data_dir = os.path.join(args.root, args.data_dir)
     num_classes= len(os.listdir(data_dir + '/train'))
 
+    # Specify whether to use GPU or cpu. Quantisation aware training is not yet avalable for GPU.
+   
+    device = torch.device("cuda")
     
     ### Calculate and set bias for final layer based on imbalance in dataset classes
     dir_ = os.path.join(data_dir, 'train')
@@ -107,26 +106,10 @@ def setup(args):
 
     initial_bias = torch.FloatTensor(weights).to(device)
 
-    criterion_dict = {'Val': nn.CrossEntropyLoss(), 'Train': DynamicFocalLoss(alpha=1.4, gamma=1.3)}
-
-    # Define the neural network module
-    class HypModel(nn.Module):
-        def __init__(self):
-            super(HypModel, self).__init__()
-            self.lr = nn.Parameter(torch.tensor(0.1))
-            self.wd = nn.Parameter(torch.tensor(0.2))
-            self.eps = nn.Parameter(torch.tensor(0.3))
-
-        def forward(self, x):
-            return torch.matmul(x, self.lr.t()) + self.wd + self.eps
-
-    # Create an instance of the neural network module
-    Hypmodel = HypModel()
-
-    return data_dir, num_classes, initial_bias, criterion_dict, Hypmodel
+    return data_dir, num_classes, initial_bias, device
 
 
-def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, criterion_dict, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
+def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
@@ -135,7 +118,7 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
-    best_model_wts['module.fc.bias'] = initial_bias
+    best_model_wts['module.fc.bias'] = initial_bias.to(device)
 
     epoch = 0
     #while patience >= 0: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
@@ -156,7 +139,6 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
         print('Patience: ' + str(patience) + '/' + str(args.patience))
        #If patience gets to 6, half batch size, reintialise dataloader and revert to best model weights to undo any overfitting.
        #Do this for every epoch where patience is less than 6. i.e. if inital batch size = 128, the last epoch will have a batchsize of at most 2.
-    
 
        #Training and validation loop
         for phase in ['train', 'val']:
@@ -164,15 +146,9 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
                 model.train()  # Set model to training mode
                 if AttNet != None:
                     AttNet.train()
-               #Experimental. Remove batch norm layer from Resnet if specified.
-                if args.remove_batch_norm == True:
-                    print('BatchNorm layers deactivated')
-                    model.apply(deactivate_batchnorm)
+ 
             elif phase == 'val':
                #Model quatisation with quantisation aware training
-                if args.quantise == True:
-                    quantized_model = torch.quantization.convert(model.eval(), inplace=False)
-                    quantized_model.eval()
                 model.eval()   # Set model to evaluate mode
                 if AttNet != None:
                     AttNet.eval()
@@ -229,12 +205,7 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
                        # Get model outputs and calculate loss
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
-                       
-                       #Get predictionas from regular or quantised model
-                        if args.quantise == True and phase == 'val':
-                            outputs = quantized_model(inputs)
-                        else:
-                            outputs = model(inputs)
+                        outputs = model(inputs)
 
                         #use PCA to reduce dimensionality of output to 32x2
                         if args.split_image == True:
@@ -242,23 +213,6 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
                             new_batch = []
                             for i in range(batch_size):
                                 outputs_ = outputs[i*n_tokens**2:(i+1)*n_tokens**2]
-
-                                #Use PCA to reduce dimensionality of output to 32x2
-                                # X = outputs_.detach().cpu().numpy()
-                                # pca = PCA(n_components=num_classes)
-                                # pca.fit(X)
-                                # outputs_ = torch.from_numpy(pca.singular_values_).to(device)
-                                # new_batch.append(outputs_)
-                                
-                                #Take output of token with highest probability of disease (binary)
-                                #max_index = torch.argmax(outputs_[:,0])
-                                #outputs_ = outputs_[max_index.item()]
-                                
-                                #flatten outputs_
-                                #outputs_ = outputs_.view(-1)
-                                #unsqueeze outputs_
-
-                                #outputs to cpu
                                 outputs_ = outputs_.detach().cpu()
                                 
                                 outputs_flat = torch.empty(0)
@@ -267,19 +221,12 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
 
                                 outputs_ = outputs_flat.to(device).unsqueeze(0)
                                 outputs_ = AttNet(outputs_)
-                                
-
-                                #Take mean of all outputs
-                                #outputs_ = outputs_.mean(dim=0)
-                                
+                                                        
                                 new_batch.append(outputs_)
-
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
-
                         loss = criterion_dict[phase](outputs, labels)
-
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
@@ -291,12 +238,7 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
                             optimizer.step()  
                             if ANoptimizer != None:
                                 ANoptimizer.step() 
-                            if args.quantise == True:
-                                if epoch > 3:
-                                    model.apply(torch.quantization.disable_observer)
-                                if epoch >= 3:
-                                    model.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
-                   
+      
 
                    #Calculate statistics
                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
@@ -325,53 +267,21 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
             if phase == 'val' and epoch_f1 > best_f1:
                 best_f1 = epoch_f1
                 best_f1_acc = epoch_acc
+                best_f1_loss = epoch_loss
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
-               # Save only the model weights for easy loading into a new model
-                final_out = {
-                    'model': best_model_wts,
-                    '__author__': 'Jamie R. Sykes',
-                    '__model_name__': args.model_name,
-                    '__model_parameters__': args                    
-                    }       
-                
-                if args.sweep == True:
-                    PATH = os.path.join(args.root, 'models', args.model_name + '_' + wandb.run.name)
-                else:
-                    PATH = os.path.join(args.root, 'models', args.model_name)
-                   
-                if args.quantise == False:
-                    with open(PATH + '.pkl', 'wb') as f:
-                        pickle.dump(final_out, f)       
-                   # Save the whole model with pytorch save function
-                    torch.save(model.module, PATH + '.pth') 
-                # else:
-                #    # Convert the quantized model to torchscipt and optmize for mobile platforms
-                #     torchscript_model = torch.jit.script(quantized_model)
-                #     torch.jit.save(torchscript_model, PATH + '.pth')
-                #     optimized_torchscript_model = optimize_for_mobile(torchscript_model)
-                #     optimized_torchscript_model.save(PATH + "_mobile.pth")
-                #     optimized_torchscript_model._save_for_lite_interpreter(PATH + "_mobile.ptl")    
+    
+                #PATH = os.path.join(args.root, 'models', args.model_name)
+                #torch.save(model.module, PATH + '.pth') 
+  
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
-   
+            
             if phase == 'train':
                 wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1})  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
 
-        # hyp_optimizer.zero_grad()
-        # #convert loss float value to tensor with grad
-        # loss = torch.tensor(epoch_loss, requires_grad=True)
-        # loss.backward()
-        # hyp_optimizer.step()
-
-        # optimizer = torch.optim.Adam(model.parameters(),
-        #                        lr=Hypmodel.state_dict()['lr'].item(), weight_decay=Hypmodel.state_dict()['wd'].item(), eps=Hypmodel.state_dict()['eps'].item())
-        
-        # wandb.log({"hyp_lr": Hypmodel.state_dict()['lr'].item(),
-        #                    "hyp_eps": Hypmodel.state_dict()['eps'].item(),
-        #                     "hyp_weight_decay": Hypmodel.state_dict()['wd'].item()})  
 
         bar.finish() 
         epoch += 1
@@ -380,17 +290,7 @@ def train_model(model, optimizer, hyp_optimizer, Hypmodel, dataloaders_dict, cri
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out
-
-
-def build_optimizer(model, optimizer, learning_rate, eps, weight_decay):
-    if optimizer == "sgd":
-        optimizer = torch.optim.SGD(model.parameters(),
-                              lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
-    elif optimizer == "adam":
-        optimizer = torch.optim.Adam(model.parameters(),
-                               lr=learning_rate, weight_decay=weight_decay, eps=eps)
-    return optimizer
+    return model_out, best_f1, best_f1_loss
 
 
 def build_datasets(input_size, data_dir):
@@ -414,14 +314,8 @@ def build_datasets(input_size, data_dir):
     image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
     return image_datasets
 
-# Specify whether to use GPU or cpu. Quantisation aware training is not yet avalable for GPU.
-if args.quantise == True:
-    device = torch.device("cpu")
-else:
-    device = torch.device("cuda")
+
     
-
-
 
 def Remove_module_from_layers(unpickled_model_wts):
     new_keys = []
@@ -431,126 +325,37 @@ def Remove_module_from_layers(unpickled_model_wts):
         unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)#    
     return unpickled_model_wts
 
-def build_model(num_classes):
-    #If checkpoint weights file exists, load those weights.
-    if args.cont_train == True and os.path.exists(os.path.join(args.root, 'models', args.model_name + '.pkl')) == True:
-        print('Loading checkpoint weights')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.model_name + '.pkl'), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
+def build_model(num_classes, config):
 
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
+    # Define your custom block settings
+    my_block_settings = [
+        CNBlockConfig(config['one'], config['two'], 3),
+        CNBlockConfig(config['two'], config['three'], 3),
+        CNBlockConfig(config['three'], config['four'], config['five']),
+        CNBlockConfig(config['four'], None, 3)
+    ]
 
-        model_ft.load_state_dict(unpickled_model_wts)
+    # Define a new function that calls _convnext() with the modified arguments
+    def my_convnext(block_setting, *args, **kwargs):
+        kwargs['block_setting'] = block_setting
+        return _convnext(*args, **kwargs)
 
-    #Chose which model architecture to use and whether to load ImageNet weights or custom weights
-    elif args.custom_pretrained == False:
-        if args.arch == 'convnext_tiny':
-            print('Loaded ConvNext Tiny with pretrained IN weights')
-            model_ft = models.convnext_tiny(weights = ConvNeXt_Tiny_Weights.DEFAULT)
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet18':
-            print('Loaded ResNet18 with pretrained IN weights')
-            model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet50':
-            print('Loaded ResNet50 with pretrained IN weights')
-            model_ft = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        else:
-            print("Architecture name not recognised")
-            exit(0)
-    # Load custom pretrained weights    
+    # Call my_convnext with your custom block settings
+    model = my_convnext(
+        block_setting=my_block_settings, 
+        stochastic_depth_prob=0.1,
+        weights = None,
+        progress=False,
+        layer_scale=1e-6,
+        num_classes=1000,
+        block=None, 
+        norm_layer=None
+    )
 
-    else:
-        print('\nLoading custom pre-trained weights with: ')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.custom_pretrained_weights), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
+    in_feat = model.classifier[2].in_features
+    model.classifier[2] = torch.nn.Linear(in_feat, num_classes)
         
-        if args.arch == 'convnext_tiny':
-            print('\tConvNeXt tiny architecture\n')
-            if args.quantise == False:
-                model_ft = models.convnext_tiny(weights= None)
-            else:
-                model_ft = convnext_tiny_q(weights = None)
-            out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-            
-        elif args.arch == 'resnet18':
-            print('\tResnet18 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet18(weights= None)
-            else:
-                model_ft = models.quantization.resnet18(weights=None)   
-
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes)
-        
-        elif args.arch == 'resnet50':
-            print('\tResnet50 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet50(weights= None)
-            else:
-                model_ft = models.quantization.resnet50(weights=None)   
-
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes) 
-        else:
-            print("Architecture name not recognised")
-            exit(0) 
-        
-    #Run model on all avalable GPUs
-    if args.quantise == False:
-        model_ft = nn.DataParallel(model_ft)
-    else:
-        #model_ft.fuse_model()
-        model_ft.eval()
-        model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
-        model_ft.train()    
-
-    if args.quantise == True:
-        print('Training with Quantization Aware Training on CPU')
-        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-        torch.quantization.prepare_qat(model_ft, inplace=True)
-
-    return model_ft
-
-#Used in model quantisation to fuse layers
-def fuse_model(self):
-        for m in self.modules():
-            if type(m) == ConvBNReLU:
-                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
-            if type(m) == InvertedResidual:
-                for idx in range(len(m.conv)):
-                    if type(m.conv[idx]) == nn.Conv2d:
-                        torch.quantization.fuse_modules(m.conv, [str(idx), str(idx + 1)], inplace=True)
-
-
-#Experimental. Used to deactivate batch normalisation layers in Resnets
-def deactivate_batchnorm(m):
-    if isinstance(m, nn.BatchNorm2d):
-        m.reset_parameters()
-        with torch.no_grad():
-            m.weight.fill_(1.0)
-            m.bias.zero_()
+    return model #nn.DataParallel(model)
 
 def set_batchnorm_momentum(self, momentum):
     for m in self.modules():
@@ -616,8 +421,6 @@ class DynamicFocalLoss(nn.Module):
                 self.weights_dict[filename] = 1
             if preds[i] != targets[i]:
                 self.weights_dict[filename] += 1
-            #else:
-             #   self.weights_dict[filename] = 1
 
         # Apply weights to loss based on weights_dict
         weighted_loss = torch.zeros(1).to(loss.device)
@@ -630,98 +433,89 @@ class DynamicFocalLoss(nn.Module):
 
         return weighted_loss
 
-def sweep_train():
 
-    # Initialize a new wandb run
-        # If called by wandb.agent, as below,
-        # this config will be set by Sweep Controller
+def train(config):
 
-    run = wandb.init(config=sweep_config)
-    data_dir, num_classes, initial_bias, criterion = setup(args)
+    # # Save the dictionary as an artifact
+    # with wandb.init().use_artifact("config") as artifact:
+    #     with artifact.new_file("config.json", mode="w") as file:
+    #         wandb.write_artifact(config, file)
 
-    model_ft = build_model(num_classes=num_classes)
+    data_dir, num_classes, initial_bias, device = setup(args)
+
+    criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(alpha=args.alpha, gamma=args.gamma)}
     
-    model_ft = set_batchnorm_momentum(model_ft, momentum=0.001)
-    model_ft = model_ft.to(device)  
-    optimizer = torch.optim.Adam(model_ft.parameters(), lr=1e-5,
-                                           weight_decay=0, eps=1e-8)
-    
-    #optimizer = build_optimizer(model=model_ft, optimizer=wandb.config.optimizer, learning_rate=1e-5, eps=1e-8, weight_decay=0)
-    image_datasets = build_datasets(input_size=int(wandb.config.input_size), data_dir=data_dir)
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=2, drop_last=True) for x in ['train', 'val']}
-
-
-    if args.split_image == True:
-        AttNet = AttentionNet(num_classes=num_classes, num_tokens=wandb.config.n_tokens)
-        AttNet = AttNet.to(device)
-        ANoptimizer = torch.optim.Adam(AttNet.parameters(), lr=1e-5, weight_decay=0, eps=1e-8)
-        train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=int(wandb.config.input_size), batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
-
-    
-    train_model(model=model_ft, optimizer=optimizer, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=int(wandb.config.input_size), batch_size=args.batch_size)
-
-def train(args_override=None):
-    #if args_override is not None:
-       # args = args_override
-
-
-    wandb.init(project=args.project_name, name=args.run_name)
-    data_dir, num_classes, initial_bias, criterion_dict, Hypmodel = setup(args)
-
     num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
-    model_ft = build_model(num_classes=num_classes)
-    model_ft = set_batchnorm_momentum(model_ft, momentum=0.001)
+    model_ft = build_model(num_classes=num_classes, config=config)
 
     model_ft = model_ft.to(device)
-    optimizer = torch.optim.Adam(model_ft.parameters(), lr=args.learning_rate,
+
+    
+    optimizer = torch.optim.AdamW(model_ft.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
     
-    #optimizer = torch.optim.Adam(model_ft.parameters(), lr=Hypmodel.state_dict()['lr'].item(), weight_decay=Hypmodel.state_dict()['wd'].item(), eps=Hypmodel.state_dict()['eps'].item())
-    
-    hyp_optimizer = torch.optim.SGD(Hypmodel.parameters(), lr=1e-5, momentum=0.9, weight_decay=0)
 
     image_datasets = build_datasets(input_size=args.input_size, data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=2, drop_last=True) for x in ['train', 'val']}
 
-    # weights_dict = {}
-    # for i in range(len(image_datasets['train'])):
-    #     image_path, _ = image_datasets['train'].samples[i]
-    #     weights_dict[os.path.basename(image_path)] = 1.0
 
-    if args.split_image == True:
-        AttNet = AttentionNet(num_classes=num_classes, num_tokens=args.n_tokens)
-        AttNet = AttNet.to(device)
-        ANoptimizer = torch.optim.Adam(AttNet.parameters(),
-                               lr=1e-5, weight_decay=0, eps=1e-8)
+    trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
-        model_out = train_model(model=model_ft, optimizer=optimizer, hyp_optimizer=hyp_optimizer, Hypmodel=Hypmodel, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=AttNet, ANoptimizer=ANoptimizer)
+    return trained_model, best_f1, best_f1_loss
 
-    model_out = train_model(model=model_ft, optimizer=optimizer, hyp_optimizer=hyp_optimizer, Hypmodel=Hypmodel, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+def sample_from_log_distribution(min_val, max_val, size=1, base=10):
+    """
+    Generate random samples from a log distribution between min_val and max_val.
+
+    Args:
+        min_val (float): Minimum value of the log distribution.
+        max_val (float): Maximum value of the log distribution.
+        size (int, optional): Number of random samples to generate. Defaults to 1.
+        base (float, optional): Base of the logarithm. Defaults to 10.
+
+    Returns:
+        numpy.ndarray: An array of random samples from the log distribution.
+    """
+    log_min = np.log(min_val) / np.log(base)
+    log_max = np.log(max_val) / np.log(base)
+    log_samples = np.random.uniform(log_min, log_max, size=size)
+    return base ** log_samples
+
+def main():
+
+    run_name = RandomWords().get_random_word() + '_run_' + str(time.time())[-2:]
+    wandb.init(project=args.project_name, name=run_name)
+
+    #stochastic_depth_prob = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    config = {'loss': 0, 'f1': 0, 'one': random.randint(67,105), 'two': random.randint(134,216), 
+              'three': random.randint(269,422), 'four': random.randint(538,845), 'five': random.randint(2,27)}
+
+
+    _, best_f1, best_f1_loss = train(config)
+    config['loss'] = best_f1_loss
+    config['f1'] = best_f1
+
+    out_file = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/ConvNextOpt_results.json"
     
-    return model_out, image_datasets
+    # Load the JSON file as a dictionary, if it exists
+    try:
+        with open(out_file, 'r') as f:
+            file_contents = f.read()
+            if file_contents:
+                data = json.loads(file_contents)
+            else:
+                data = {}
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
 
-
-
-if args.sweep == True:
-    with open(args.sweep_config) as file:
-        config = yaml.load(file, Loader=yaml.FullLoader)
-        sweep_config = config['sweep_config']
-        sweep_config['metric'] = config['metric']
-        sweep_config['parameters'] = config['parameters']
+    # Append more data to the dictionary
+    data[wandb.run.name] = config
     
-        print('Sweep config:')
-        pprint.pprint(sweep_config)
-        print()
-        if args.sweep_id is None:
-            sweep_id = wandb.sweep(sweep_config, project=args.project_name, entity="frankslab")
-        else:
-            sweep_id = args.sweep_id
-        print("Sweep ID: ", sweep_id)
-        print()
-    
-    wandb.agent(sweep_id,
-            project=args.project_name, 
-            function=sweep_train,
-            count=args.sweep_count)
-else:
-    train()
+    # Save the updated dictionary back to the JSON file
+    with open(out_file, 'w') as f:
+        json.dump(data, f)
+
+        
+if __name__ == "__main__":
+    # You can change the number of GPUs per trial here:
+    main()

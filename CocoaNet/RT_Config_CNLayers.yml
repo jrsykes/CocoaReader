@@ -1,0 +1,9 @@
+config:
+    b0: tune.loguniform(32, 64)
+    b1: tune.loguniform(64, 256)
+    b2: tune.loguniform(256, 512)
+    b3: tune.loguniform(512, 1024)
+    c0 : tune.loguniform(3, 6)
+    c1 : tune.loguniform(4, 8)
+    c2 : tune.loguniform(6, 10)
+    c3 : tune.loguniform(3, 6)

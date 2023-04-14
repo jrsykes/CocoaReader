@@ -1,0 +1,6 @@
+config:
+    lr: (1e-6, 1e-3),
+    weigth_decay: (1e-4, 1e-1),
+    alpha: tune.choice([1.1, 1.3]),
+    gamma: tune.choice([1.1, 1.3]),
+    input_size: tune.sample_from(lambda _: np.random.randint(60, 64))
