@@ -7,7 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, models
+from torchvision.models import ConvNeXt_Tiny_Weights
 import time
 import copy
 import wandb
@@ -109,7 +110,7 @@ def setup(args):
     return data_dir, num_classes, initial_bias, device
 
 
-def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
+def train_model(model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
@@ -125,7 +126,7 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
     while patience > 0 and epoch < args.max_epochs:
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
-
+        step  = 0
         #Ensure minimum number of epochs is met before patience is allow to reduce
         if len(val_loss_history) > args.min_epochs:
            #If the current loss is not at least 0.5% less than the lowest loss recorded, reduce patiece by one epoch
@@ -226,7 +227,8 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
-                        loss = criterion_dict[phase](outputs, labels)
+                        loss = criterion(outputs, labels)
+
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
@@ -322,12 +324,12 @@ def Remove_module_from_layers(unpickled_model_wts):
     for key, value in unpickled_model_wts.items():
         new_keys.append(key.replace('module.', ''))
     for i in new_keys:
-        unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)#    
+        unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
     return unpickled_model_wts
 
 def build_model(num_classes, config):
 
-    # Define your custom block settings
+    # # # Define your custom block settings
     my_block_settings = [
         CNBlockConfig(config['one'], config['two'], 3),
         CNBlockConfig(config['two'], config['three'], 3),
@@ -351,6 +353,8 @@ def build_model(num_classes, config):
         block=None, 
         norm_layer=None
     )
+
+    #model = models.convnext_tiny(weights = None)
 
     in_feat = model.classifier[2].in_features
     model.classifier[2] = torch.nn.Linear(in_feat, num_classes)
@@ -399,29 +403,25 @@ class AttentionNet(nn.Module):
 
 
 class DynamicFocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2):
+    def __init__(self, delta=1, dataloader=None):
         super(DynamicFocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
+        self.delta = delta
+        self.dataloader = dataloader
         self.weights_dict = {}
 
-    def forward(self, inputs, targets):
-        logp = nn.functional.log_softmax(inputs, dim=1)
-        targets_onehot = nn.functional.one_hot(targets, num_classes=inputs.size(-1))
-        targets_onehot = targets_onehot.float()
-        pt = torch.exp(logp) * targets_onehot
-        loss = -self.alpha * (1 - pt)**self.gamma * logp
-        loss = loss.mean()
-
+    def forward(self, inputs, targets, step):
+        loss = nn.CrossEntropyLoss()(inputs, targets)
         # Update weights_dict based on targets and predictions
         preds = torch.argmax(inputs, dim=1)
         for i in range(inputs.size(0)):
-            filename = targets[i]
+            #get filename from dataset
+            filename = self.dataloader.dataset.samples[step + i][0].split("/")[-1]
             if filename not in self.weights_dict:
                 self.weights_dict[filename] = 1
             if preds[i] != targets[i]:
-                self.weights_dict[filename] += 1
-
+                self.weights_dict[filename] += self.delta
+        step += inputs.size(0)
+        
         # Apply weights to loss based on weights_dict
         weighted_loss = torch.zeros(1).to(loss.device)
         for filename, weight in self.weights_dict.items():
@@ -431,19 +431,13 @@ class DynamicFocalLoss(nn.Module):
                 weighted_loss += loss
         weighted_loss /= len(self.weights_dict)
 
-        return weighted_loss
+        return weighted_loss, step
 
 
 def train(config):
 
-    # # Save the dictionary as an artifact
-    # with wandb.init().use_artifact("config") as artifact:
-    #     with artifact.new_file("config.json", mode="w") as file:
-    #         wandb.write_artifact(config, file)
-
     data_dir, num_classes, initial_bias, device = setup(args)
 
-    criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(alpha=args.alpha, gamma=args.gamma)}
     
     num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
     model_ft = build_model(num_classes=num_classes, config=config)
@@ -455,11 +449,12 @@ def train(config):
                                             weight_decay=args.weight_decay, eps=args.eps)
     
 
-    image_datasets = build_datasets(input_size=args.input_size, data_dir=data_dir)
+    image_datasets = build_datasets(input_size=config['input_size'], data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=2, drop_last=True) for x in ['train', 'val']}
+    
+    criterion = nn.CrossEntropyLoss()
 
-
-    trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     return trained_model, best_f1, best_f1_loss
 
@@ -483,37 +478,32 @@ def sample_from_log_distribution(min_val, max_val, size=1, base=10):
 
 def main():
 
-    run_name = RandomWords().get_random_word() + '_run_' + str(time.time())[-2:]
-    wandb.init(project=args.project_name, name=run_name)
+    if args.run_name is None:
+        run_name = RandomWords().get_random_word() + '_run_' + str(time.time())[-2:]
+        wandb.init(project=args.project_name, name=run_name)
+    else:
+        wandb.init(project=args.project_name, name=args.run_name)
+        run_name = args.run_name
 
     #stochastic_depth_prob = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
-    config = {'loss': 0, 'f1': 0, 'one': random.randint(67,105), 'two': random.randint(134,216), 
-              'three': random.randint(269,422), 'four': random.randint(538,845), 'five': random.randint(2,27)}
+    config = {'args': args, 'loss': 0, 'f1': 0, 'input_size': random.randint(250,350), 'one': random.randint(91,101), 'two': random.randint(187,197), 
+              'three': random.randint(379,389), 'four': random.randint(763,773), 'five': random.randint(6,12)}
+    # config = {'loss': 0, 'f1': 0, 'one': 97, 'two': 192, 
+    #           'three': 384, 'four': 768, 'five': 9}
 
 
     _, best_f1, best_f1_loss = train(config)
     config['loss'] = best_f1_loss
     config['f1'] = best_f1
 
-    out_file = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/ConvNextOpt_results.json"
+    #make directory if it doesn't exist
+    os.makedirs(os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name), exist_ok=True)
+    out_file = os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name, run_name + ".json")
     
-    # Load the JSON file as a dictionary, if it exists
-    try:
-        with open(out_file, 'r') as f:
-            file_contents = f.read()
-            if file_contents:
-                data = json.loads(file_contents)
-            else:
-                data = {}
-    except (FileNotFoundError, json.JSONDecodeError):
-        data = {}
-
-    # Append more data to the dictionary
-    data[wandb.run.name] = config
     
     # Save the updated dictionary back to the JSON file
     with open(out_file, 'w') as f:
-        json.dump(data, f)
+        json.dump(config, f)
 
         
 if __name__ == "__main__":

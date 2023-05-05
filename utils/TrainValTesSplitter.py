@@ -15,69 +15,65 @@ def Organise_Ecuador_Images(root):
 	count = 0
 	other = 0
 	dumby_imgs = ["left1.png", "1.JPG", "20230123_161149.jpg", "PXL_20230122_115658050.jpg", "PXL_20230203_115351448.jpg", "PXL_20230122_093124778.jpg"]
-
 	for d in os.listdir(os.path.join(root, "HandFiltered_Ecuador_images")):
-	    if d != "Demo_files" and d != "ReadMe.txt":
-	        for f in os.listdir(os.path.join(root, "HandFiltered_Ecuador_images", d)):
-	            img_dir = os.path.join(root, "HandFiltered_Ecuador_images", d, f)
-	            image_dirs = os.listdir(img_dir)
-	            for z in image_dirs:
-	                dir = os.path.join(root, "HandFiltered_Ecuador_images", d, f, z)
-	                images = os.listdir(dir)
-	                if z.endswith("Temprano"):
-	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Early")
-	                elif z.endswith("Unsure"):
-	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Unsure")
-	                elif z.endswith("Tarde"):
-	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
-	                elif z == "Sana":
-	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
-	                elif z.startswith("Enfermedad"):
-	                    dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
-	                else:
-	                    other += len(images)
-	                    #print full path of image z
-	                    print("End incorrect")
-	                    print(os.path.join(root, "HandFiltered_Ecuador_images", d, f, z))
-	                    print()
-	
-	                if z.startswith("Monilia"):
-	                    class_ = "FPR"
-	                elif z.startswith("Fitoptora"):
-	                    class_ = "BPR"
-	                elif z.startswith("Escoba"):
-	                    class_ = "WBD"
-	                elif z.startswith("Sana"):
-	                    class_ = "Healthy"
-	                elif z.startswith("Virus"):
-	                    class_ = "Virus"
-	                elif z.startswith("Enfermedad"):
-	                    class_ = "Unknown_disease"
-	                else:
-	                    print("Start incorrect")
-	                    print(os.path.join(root, "HandFiltered_Ecuador_images", d, f, z))
-	                    print()
+		if d != "Demo_files" and d != "ReadMe.txt":
+			for f in os.listdir(os.path.join(root, "HandFiltered_Ecuador_images", d)):
+				img_dir = os.path.join(root, "HandFiltered_Ecuador_images", d, f)
+				image_dirs = os.listdir(img_dir)
+				for z in image_dirs:
+					dir = os.path.join(root, "HandFiltered_Ecuador_images", d, f, z)
+					images = os.listdir(dir)
+					dest = os.path.join(root, "EcuadorImages_All")
+					# if z.endswith("Temprano"):
+					# 	dest = os.path.join(root, "EcuadorImages_EL_FullRes/Early")
+					# elif z.endswith("Unsure"):
+					# 	dest = os.path.join(root, "EcuadorImages_EL_FullRes/Unsure")
+					# elif z.endswith("Tarde"):
+					# 	dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
+					# elif z == "Sana":
+					# 	dest = os.path.join(root, "EcuadorImages_EL_FullRes/Late")
+					# else:
+					# 	other += len(images)
+					# 	print("End incorrect")
+					# 	print(os.path.join(root, "HandFiltered_Ecuador_images", d, f, z))
+					# 	print()
 
-	                os.makedirs(os.path.join(dest, class_), exist_ok = True)
-	                for i in images:
-	                    if i not in dumby_imgs:
-	                        count += 1
-	                        shutil.copy(os.path.join(dir, i), os.path.join(dest, class_, str(time.time()) + i))
-	                        #open method used to open different extension image file
-	                        #im = Image.open(os.path.join(dir, i)) 
-	                        #im1 = im.resize((1200,1200))
-	                        #im1.save(os.path.join(dest, class_, str(time.time()) + i))
-	                    elif i in dumby_imgs:
-	                        pass
-	                    else:
-	                        other += 1
-	                        print(i)
+					if z.startswith("Monilia"):
+						class_ = "FPR"
+					elif z.startswith("Fitoptora"):
+						class_ = "BPR"
+					elif z.startswith("Escoba"):
+						class_ = "WBD"
+					elif z.startswith("Sana"):
+						class_ = "Healthy"
+					elif z.startswith("Virus"):
+						class_ = "Virus"
+					else:
+						print("Start incorrect")
+						print(os.path.join(root, "HandFiltered_Ecuador_images", d, f, z))
+						print()
+					os.makedirs(os.path.join(dest, class_), exist_ok = True)
+					for i in images:
+						if i not in dumby_imgs:
+							count += 1
+							#shutil.copy(os.path.join(dir, i), os.path.join(dest, class_, str(time.time()) + i))
+							#make symbolic link
+							os.symlink(os.path.join(dir, i), os.path.join(dest, class_, str(time.time()) + i))
+							#open method used to open different extension image file
+							#im = Image.open(os.path.join(dir, i)) 
+							#im1 = im.resize((1200,1200))
+							#im1.save(os.path.join(dest, class_, str(time.time()) + i))
+						elif i in dumby_imgs:
+							pass
+						else:
+							other += 1
+							print(i)
 	
 	print("Image count: " + str(count))    
 	print("Filtered image count: " + str(other))   
 	print("Total image count: " + str(other + count))   
 
-#root = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data"
+root = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data"
 #Organise_Ecuador_Images(root)
 
 def CopyPlant(destination, img_path):
@@ -85,7 +81,7 @@ def CopyPlant(destination, img_path):
 	for i in os.listdir(img_path):
 		for j in os.listdir(os.path.join(img_path,i)):
 			n += 1
-			source = os.path.join(plant,i,j)
+			source = os.path.join('plant',i,j)
 			os.makedirs(os.path.join(destination, 'Plant'), exist_ok = True)
 			dest = os.path.join(destination, 'Plant', j + '.jpeg')
 			shutil.copy(source, dest)
@@ -111,19 +107,21 @@ def Randomise_Split(dat, destination):
 		images = os.listdir(os.path.join(dat, class_))
 		random.shuffle(images)
 
-		dat_dict = {'train': images[:int(len(images)*0.9)], 
+		dat_dict = {'train': images[:-10], 
 			#'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
-			'val': images[int(len(images)*0.9):]}										
+			'val': images[-10:]}										
 		
 		for split, im_list in dat_dict.items():
 			os.makedirs(os.path.join(destination, split, class_), exist_ok = True)
+			
 			for image in im_list:
 				source = os.path.join(dat, class_, image)
 				dest = os.path.join(destination, split, class_, image)
-				shutil.copy(source, dest)
+				#shutil.copy(source, dest)
+				os.symlink(source, dest)
 
-src = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/EcuadorImages_EL_FullRes/Late'
-dest ='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/Late_split'
+src = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/IR_RGB_Comp_data/compiled_IR'
+dest ='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/IR_RGB_Comp_data_split/IR'
 
 Randomise_Split(dat = src, destination = dest)
 

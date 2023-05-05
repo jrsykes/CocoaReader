@@ -1,25 +1,12 @@
-#%%
-# importing the module
-import json
-import time
+import os
 
-#start time
-start_time = time.time()
-# Opening JSON file
-with open('/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/ConvNextOpt_results_1.json') as json_file:
-    data = json.load(json_file)
+delta_lst = [0.8, 1, 1.2, 1.4, 1.6, 1.8, 2]
 
-# # Save the updated dictionary back to the JSON file
-# with open('/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/ConvNextOpt_results_test.json', 'w') as f:
-#         json.dump(data, f)
-#end time
-end_time = time.time()
+#get slurm job number
+job_id = os.environ["SLURM_ARRAY_TASK_ID"]
+print(job_id)
+job_id = int(job_id[-1:])
 
-print("Time taken to run this cell :", end_time-start_time)
+print(job_id)
 
-#%%
-# print()
-print(data.keys())
-
-# [print(data['saul_run_13'])]
-# #%%
+print(delta_lst[job_id])

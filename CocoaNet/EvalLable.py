@@ -8,9 +8,9 @@ import numpy as np
 import shutil
 from torchvision import transforms, datasets
 
-input_size = 1108
 
-def eval(model, moved_count):
+
+def eval(model, moved_count, input_size):
 	print()
 	print('Evaluating model...')
 	device = torch.device("cuda:0")

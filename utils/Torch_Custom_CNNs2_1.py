@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 from __future__ import division
 
@@ -6,14 +7,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from torchvision import datasets, models, transforms
+from torchvision import datasets, transforms, models
+from torchvision.models import ConvNeXt_Tiny_Weights
 import time
-import wandb
 import copy
-import pickle
+import wandb
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models import ResNet18_Weights, ResNet50_Weights, ConvNeXt_Tiny_Weights
+from torchvision.models.convnext import _convnext, CNBlockConfig
 import argparse
 import random
 import json
@@ -62,6 +63,10 @@ parser.add_argument('--eps', type=float, default=1e-8,
                         help='eps, Default:1e-8')
 parser.add_argument('--input_size', type=int, default=277,
                         help='image input size')
+parser.add_argument('--alpha', type=float, default=1.4,
+                        help='alpha for dynamic focal loss')
+parser.add_argument('--gamma', type=float, default=1.6,
+                        help='gamma for dynamic focal loss')
 parser.add_argument('--arch', type=str, default='convnext_tiny',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true', default=False,
@@ -81,12 +86,7 @@ def setup(args):
     data_dir = os.path.join(args.root, args.data_dir)
     #Define some variable and paths
     os.environ['TORCH_HOME'] = os.path.join(args.root, "TORCH_HOME")
-        #Set environment variables for wandb sweep
-    os.environ['WANDB_CACHE_DIR'] = os.path.join(args.root, 'WANDB_CACHE')
-    os.environ['WANDB_DIR'] = os.path.join(args.root, 'WANDB_DIR')
-
-
-    #Define some variable and paths
+    
     data_dir = os.path.join(args.root, args.data_dir)
     num_classes= len(os.listdir(data_dir + '/train'))
 
@@ -126,7 +126,7 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
     while patience > 0 and epoch < args.max_epochs:
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
-        step = 0
+        step  = 0
         #Ensure minimum number of epochs is met before patience is allow to reduce
         if len(val_loss_history) > args.min_epochs:
            #If the current loss is not at least 0.5% less than the lowest loss recorded, reduce patiece by one epoch
@@ -227,12 +227,12 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
-                        loss = criterion_dict[phase](outputs, labels)
-                        # if phase == 'train':
-                        #     loss, step = criterion_dict['train'](outputs, labels, step)
-                        # else:
-                        #     loss = criterion_dict[phase](outputs, labels)
-                        
+                        #loss = criterion_dict[phase](outputs, labels)
+                        if phase == 'train':
+                            loss, step = criterion_dict[phase](outputs, labels, step)
+                        else:
+                            loss = criterion_dict[phase](outputs, labels)
+
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
@@ -277,8 +277,8 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
     
-                #PATH = os.path.join(args.root, 'models', args.model_name)
-                #torch.save(model.module, PATH + '.pth') 
+                PATH = os.path.join(args.root, 'models', args.model_name)
+                torch.save(model.module, PATH + '.pth') 
   
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -304,7 +304,6 @@ def build_datasets(input_size, data_dir):
     # Just normalization for device
     data_transforms = {
         'train': transforms.Compose([
-            #transforms.RandomCrop(input_size, pad_if_needed=True, padding_mode = 'reflect'),
             transforms.Resize((input_size,input_size)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
@@ -328,7 +327,7 @@ def Remove_module_from_layers(unpickled_model_wts):
     for key, value in unpickled_model_wts.items():
         new_keys.append(key.replace('module.', ''))
     for i in new_keys:
-        unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)#    
+        unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
     return unpickled_model_wts
 
 def build_model(num_classes):
@@ -336,9 +335,9 @@ def build_model(num_classes):
     if args.cont_train == True and os.path.exists(os.path.join(args.root, 'models', args.model_name + '.pkl')) == True:
         print('Loading checkpoint weights')
         pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.model_name + '.pkl'), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model']).module
+        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
 
-        #unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
+        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
 
         model_ft.load_state_dict(unpickled_model_wts)
 
@@ -417,6 +416,20 @@ def build_model(num_classes):
             print("Architecture name not recognised")
             exit(0) 
         
+    #Run model on all avalable GPUs
+    if args.quantise == False:
+        model_ft = nn.DataParallel(model_ft)
+    else:
+        #model_ft.fuse_model()
+        model_ft.eval()
+        model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
+        model_ft.train()    
+
+    if args.quantise == True:
+        print('Training with Quantization Aware Training on CPU')
+        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
+        torch.quantization.prepare_qat(model_ft, inplace=True)
+
     return model_ft
 
 def set_batchnorm_momentum(self, momentum):
@@ -493,7 +506,6 @@ class DynamicFocalLoss(nn.Module):
 
 
 def train():
-
     data_dir, num_classes, initial_bias, device = setup(args)
     
     num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
@@ -501,69 +513,29 @@ def train():
 
     model_ft = model_ft.to(device)
 
-    
     optimizer = torch.optim.AdamW(model_ft.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
-    
 
     image_datasets = build_datasets(input_size=args.input_size, data_dir=data_dir)
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=2, drop_last=True) for x in ['train', 'val']}
     
-    # delta_lst = [0.8, 1, 1.2, 1.4, 1.6, 1.8, 2]
-    # #get slurm job number
-    # job_id = os.environ["SLURM_ARRAY_TASK_ID"]
-    # job_id = int(job_id[-1:])
-
-    #criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=delta_lst[job_id-1], dataloader=dataloaders_dict['train'])}
-    criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': nn.CrossEntropyLoss()}
-
+    criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=1.2, dataloader=dataloaders_dict['train'])}
 
     trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
-    return trained_model, best_f1, best_f1_loss
-
-def sample_from_log_distribution(min_val, max_val, size=1, base=10):
-    """
-    Generate random samples from a log distribution between min_val and max_val.
-
-    Args:
-        min_val (float): Minimum value of the log distribution.
-        max_val (float): Maximum value of the log distribution.
-        size (int, optional): Number of random samples to generate. Defaults to 1.
-        base (float, optional): Base of the logarithm. Defaults to 10.
-
-    Returns:
-        numpy.ndarray: An array of random samples from the log distribution.
-    """
-    log_min = np.log(min_val) / np.log(base)
-    log_max = np.log(max_val) / np.log(base)
-    log_samples = np.random.uniform(log_min, log_max, size=size)
-    return base ** log_samples
-
-def main():
-    
-    run_name = RandomWords().get_random_word() + '_run_' + str(time.time())[-2:]
-    wandb.init(project=args.project_name, name=run_name)
-
-    #job_id = os.environ["SLURM_ARRAY_TASK_ID"]
-    #job_id = int(job_id[-1:])
-    #delta_lst = [0.8, 1, 1.2, 1.4, 1.6, 1.8, 2]
-    #config = {'Delta': delta_lst[job_id-1]}
-
-    _, best_f1, best_f1_loss = train()
-    #config['loss'] = best_f1_loss
-    #config['f1'] = best_f1
-    ##make directory if it doesn't exist
-    #os.makedirs(os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name), exist_ok=True)
-    #out_file = os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name, run_name + ".json")
-    #
- #
-    ## Save the updated dictionary back to the JSON file
-    #with open(out_file, 'w') as f:
-    #    json.dump(config, f)
+    return trained_model, best_f1, best_f1_loss, args.input_size
 
 
+# def main():
 
-if __name__ == "__main__":
-    # You can change the number of GPUs per trial here:
-    main()
+#     if args.run_name is None:
+#         run_name = RandomWords().get_random_word() + '_run_' + str(time.time())[-2:]
+#         wandb.init(project=args.project_name, name=run_name)
+#     else:
+#         wandb.init(project=args.project_name, name=args.run_name)
+#         run_name = args.run_name
+
+#     _, best_f1, best_f1_loss = train()
+        
+# if __name__ == "__main__":
+#     main()

@@ -14,10 +14,10 @@
 # set number of GPUs
 #SBATCH --gres=gpu:1
 
-##SBATCH --array=1-7
+#SBATCH --array=1-40
 
 # set maximum number of tasks to run in parallel
-##SBATCH --ntasks=7
+#SBATCH --ntasks=40
 
 # mail alert at start, end and abortion of execution
 #SBATCH --mail-type=ALL
@@ -35,15 +35,14 @@ source activate convnext
 export WANDB_MODE=offline
 
 
-python /jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts/CocoaReader/utils/Torch_Custom_CNNs_j2_HypOpt.py \
+python /jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts/CocoaReader/utils/Torch_Custom_CNNs_j2_ConvNextOpt.py \
         --model_name 'CocoaNext_Opt' \
-        --project_name 'ConvNext_DFLoss_FullData' \
+        --project_name 'ConvNextOpt_FullData' \
         --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
         --data_dir 'Ecuador_data/split_All' \
-        --input_size 320 \
         --min_epochs 10 \
         --max_epochs 200 \
-        --batch_size 32 \
+        --batch_size 64 \
         --patience 10 \
         --learning_rate 7.97193898713692e-05 \
         --weight_decay 0.00024296468323252175

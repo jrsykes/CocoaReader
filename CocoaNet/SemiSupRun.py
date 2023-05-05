@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet')
-from Torch_Custom_CNNs2 import train
+from Torch_Custom_CNNs2_1 import train
 from EvalLable import eval
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
@@ -69,11 +69,11 @@ while moved_count > 0:
     print()
     major_epoch += 1
     print('Major epoch: ', str(major_epoch))
-    model, _ = train(args_override = args)
+    model, f1, loss, input_size = train(args_override = args)
     PATH = "/local/scratch/jrs596/dat/models/SemiSup/" + args.model_name + str(major_epoch)
     torch.save(model.module, PATH + '.pth') 
 
-    moved_count = eval(model=model, moved_count=moved_count)
+    moved_count = eval(model=model, moved_count=moved_count, input_size=input_size)
     
     
 
