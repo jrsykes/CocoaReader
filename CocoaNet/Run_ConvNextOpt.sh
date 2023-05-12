@@ -14,10 +14,10 @@
 # set number of GPUs
 #SBATCH --gres=gpu:1
 
-#SBATCH --array=1-40
+#SBATCH --array=1-17
 
 # set maximum number of tasks to run in parallel
-#SBATCH --ntasks=40
+#SBATCH --ntasks=17
 
 # mail alert at start, end and abortion of execution
 #SBATCH --mail-type=ALL

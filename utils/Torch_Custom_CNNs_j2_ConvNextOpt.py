@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from torchvision import datasets, transforms, models
-from torchvision.models import ConvNeXt_Tiny_Weights
+from torchvision import datasets, transforms #, models
+#from torchvision.models import ConvNeXt_Tiny_Weights
 import time
 import copy
 import wandb
@@ -317,7 +317,7 @@ def build_datasets(input_size, data_dir):
     return image_datasets
 
 
-    
+  
 
 def Remove_module_from_layers(unpickled_model_wts):
     new_keys = []
@@ -349,15 +349,15 @@ def build_model(num_classes, config):
         weights = None,
         progress=False,
         layer_scale=1e-6,
-        num_classes=1000,
+        num_classes=num_classes,
         block=None, 
         norm_layer=None
     )
 
     #model = models.convnext_tiny(weights = None)
 
-    in_feat = model.classifier[2].in_features
-    model.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+    #in_feat = model.classifier[2].in_features
+    #model.classifier[2] = torch.nn.Linear(in_feat, num_classes)
         
     return model #nn.DataParallel(model)
 
@@ -486,7 +486,7 @@ def main():
         run_name = args.run_name
 
     #stochastic_depth_prob = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
-    config = {'args': args, 'loss': 0, 'f1': 0, 'input_size': random.randint(250,350), 'one': random.randint(91,101), 'two': random.randint(187,197), 
+    config = {'loss': 0, 'f1': 0, 'input_size': random.randint(250,350), 'one': random.randint(91,101), 'two': random.randint(187,197), 
               'three': random.randint(379,389), 'four': random.randint(763,773), 'five': random.randint(6,12)}
     # config = {'loss': 0, 'f1': 0, 'one': 97, 'two': 192, 
     #           'three': 384, 'four': 768, 'five': 9}
