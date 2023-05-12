@@ -21,7 +21,7 @@ def eval(model, moved_count, input_size):
             transforms.Resize((input_size,input_size)),
             transforms.ToTensor()])
     
-	image_dataset = datasets.ImageFolder('/local/scratch/jrs596/dat/EcuadorImages_EL_LowRes_split/Early', data_transforms)
+	image_dataset = datasets.ImageFolder('/local/scratch/jrs596/dat/EcuadorImages_ED_FullRes+WebData/Dificult', data_transforms)
 	dataloader = torch.utils.data.DataLoader(image_dataset, batch_size=1, shuffle=False, num_workers=os.cpu_count()-2, drop_last=True)
 
 	for i, (inputs, labels) in enumerate(dataloader,0 ):

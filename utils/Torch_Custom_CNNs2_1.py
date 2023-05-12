@@ -8,17 +8,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from torchvision import datasets, transforms, models
-from torchvision.models import ConvNeXt_Tiny_Weights
+#from torchvision.models import ConvNeXt_Tiny_Weights
 import time
 import copy
 import wandb
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models.convnext import _convnext, CNBlockConfig
+#from torchvision.models.convnext import _convnext, CNBlockConfig
 import argparse
-import random
-import json
-from random_word import RandomWords
+
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -208,7 +206,7 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
                        # but in testing we only consider the final output.
                         outputs = model(inputs)
 
-                        #use PCA to reduce dimensionality of output to 32x2
+                        #Reduce dimensionality of output to 32x2
                         if args.split_image == True:
                             #old_output_shell = outputs[0:batch_size,0:num_classes]
                             new_batch = []
@@ -277,8 +275,8 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
     
-                PATH = os.path.join(args.root, 'models', args.model_name)
-                torch.save(model.module, PATH + '.pth') 
+                # PATH = os.path.join(args.root, 'models', args.model_name)
+                # torch.save(model.module, PATH + '.pth') 
   
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -304,12 +302,12 @@ def build_datasets(input_size, data_dir):
     # Just normalization for device
     data_transforms = {
         'train': transforms.Compose([
-            transforms.Resize((input_size,input_size)),
+            #transforms.Resize((input_size,input_size)), #Images already compressed to 330x330
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
         ]),
         'val': transforms.Compose([
-            transforms.Resize((input_size,input_size)),
+            #transforms.Resize((input_size,input_size)),
             transforms.ToTensor(),
         ]),
     }   
@@ -322,121 +320,121 @@ def build_datasets(input_size, data_dir):
 
     
 
-def Remove_module_from_layers(unpickled_model_wts):
-    new_keys = []
-    for key, value in unpickled_model_wts.items():
-        new_keys.append(key.replace('module.', ''))
-    for i in new_keys:
-        unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
-    return unpickled_model_wts
+# def Remove_module_from_layers(unpickled_model_wts):
+#     new_keys = []
+#     for key, value in unpickled_model_wts.items():
+#         new_keys.append(key.replace('module.', ''))
+#     for i in new_keys:
+#         unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
+#     return unpickled_model_wts
 
-def build_model(num_classes):
-    #If checkpoint weights file exists, load those weights.
-    if args.cont_train == True and os.path.exists(os.path.join(args.root, 'models', args.model_name + '.pkl')) == True:
-        print('Loading checkpoint weights')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.model_name + '.pkl'), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
+# def build_model(num_classes):
+#     #If checkpoint weights file exists, load those weights.
+#     if args.cont_train == True and os.path.exists(os.path.join(args.root, 'models', args.model_name + '.pkl')) == True:
+#         print('Loading checkpoint weights')
+#         pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.model_name + '.pkl'), "rb"))
+#         unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
 
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
+#         unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
 
-        model_ft.load_state_dict(unpickled_model_wts)
+#         model_ft.load_state_dict(unpickled_model_wts)
 
-    #Chose which model architecture to use and whether to load ImageNet weights or custom weights
-    elif args.custom_pretrained == False:
-        if args.arch == 'convnext_tiny':
-            print('Loaded ConvNext Tiny with pretrained IN weights')
-            model_ft = models.convnext_tiny(weights = ConvNeXt_Tiny_Weights.DEFAULT)
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet18':
-            print('Loaded ResNet18 with pretrained IN weights')
-            model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet50':
-            print('Loaded ResNet50 with pretrained IN weights')
-            model_ft = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        else:
-            print("Architecture name not recognised")
-            exit(0)
-    # Load custom pretrained weights    
+#     #Chose which model architecture to use and whether to load ImageNet weights or custom weights
+#     elif args.custom_pretrained == False:
+#         if args.arch == 'convnext_tiny':
+#             print('Loaded ConvNext Tiny with pretrained IN weights')
+#             model_ft = models.convnext_tiny(weights = ConvNeXt_Tiny_Weights.DEFAULT)
+#             in_feat = model_ft.classifier[2].in_features
+#             model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+#         elif args.arch == 'resnet18':
+#             print('Loaded ResNet18 with pretrained IN weights')
+#             model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+#             in_feat = model_ft.fc.in_features
+#             model_ft.fc = nn.Linear(in_feat, num_classes)
+#         elif args.arch == 'resnet50':
+#             print('Loaded ResNet50 with pretrained IN weights')
+#             model_ft = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+#             in_feat = model_ft.fc.in_features
+#             model_ft.fc = nn.Linear(in_feat, num_classes)
+#         else:
+#             print("Architecture name not recognised")
+#             exit(0)
+#     # Load custom pretrained weights    
 
-    else:
-        print('\nLoading custom pre-trained weights with: ')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.custom_pretrained_weights), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
+#     else:
+#         print('\nLoading custom pre-trained weights with: ')
+#         pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.custom_pretrained_weights), "rb"))
+#         unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
+#         unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
         
-        if args.arch == 'convnext_tiny':
-            print('\tConvNeXt tiny architecture\n')
-            if args.quantise == False:
-                model_ft = models.convnext_tiny(weights= None)
-            else:
-                model_ft = convnext_tiny_q(weights = None)
-            out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+#         if args.arch == 'convnext_tiny':
+#             print('\tConvNeXt tiny architecture\n')
+#             if args.quantise == False:
+#                 model_ft = models.convnext_tiny(weights= None)
+#             else:
+#                 model_ft = convnext_tiny_q(weights = None)
+#             out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
+#             in_feat = model_ft.classifier[2].in_features
+#             model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
+#             #Load custom weights
+#             model_ft.load_state_dict(unpickled_model_wts)
+#             #Delete final linear layer and replace to match n classes in the dataset
+#             model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
             
-        elif args.arch == 'resnet18':
-            print('\tResnet18 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet18(weights= None)
-            else:
-                model_ft = models.quantization.resnet18(weights=None)   
+#         elif args.arch == 'resnet18':
+#             print('\tResnet18 architecture\n')
+#             if args.quantise == False:
+#                 model_ft = models.resnet18(weights= None)
+#             else:
+#                 model_ft = models.quantization.resnet18(weights=None)   
 
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes)
+#             in_feat = model_ft.fc.in_features
+#             out_feat = unpickled_model_wts['fc.weight'].size()[0]
+#             model_ft.fc = nn.Linear(in_feat, out_feat)
+#             #Load custom weights
+#             model_ft.load_state_dict(unpickled_model_wts)
+#             #Delete final linear layer and replace to match n classes in the dataset
+#             model_ft.fc = torch.nn.Linear(in_feat, num_classes)
         
-        elif args.arch == 'resnet50':
-            print('\tResnet50 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet50(weights= None)
-            else:
-                model_ft = models.quantization.resnet50(weights=None)   
+#         elif args.arch == 'resnet50':
+#             print('\tResnet50 architecture\n')
+#             if args.quantise == False:
+#                 model_ft = models.resnet50(weights= None)
+#             else:
+#                 model_ft = models.quantization.resnet50(weights=None)   
 
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes) 
-        else:
-            print("Architecture name not recognised")
-            exit(0) 
+#             in_feat = model_ft.fc.in_features
+#             out_feat = unpickled_model_wts['fc.weight'].size()[0]
+#             model_ft.fc = nn.Linear(in_feat, out_feat)
+#             #Load custom weights
+#             model_ft.load_state_dict(unpickled_model_wts)
+#             #Delete final linear layer and replace to match n classes in the dataset
+#             model_ft.fc = torch.nn.Linear(in_feat, num_classes) 
+#         else:
+#             print("Architecture name not recognised")
+#             exit(0) 
         
-    #Run model on all avalable GPUs
-    if args.quantise == False:
-        model_ft = nn.DataParallel(model_ft)
-    else:
-        #model_ft.fuse_model()
-        model_ft.eval()
-        model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
-        model_ft.train()    
+#     #Run model on all avalable GPUs
+#     if args.quantise == False:
+#         model_ft = nn.DataParallel(model_ft)
+#     else:
+#         #model_ft.fuse_model()
+#         model_ft.eval()
+#         model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
+#         model_ft.train()    
 
-    if args.quantise == True:
-        print('Training with Quantization Aware Training on CPU')
-        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-        torch.quantization.prepare_qat(model_ft, inplace=True)
+#     if args.quantise == True:
+#         print('Training with Quantization Aware Training on CPU')
+#         model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
+#         torch.quantization.prepare_qat(model_ft, inplace=True)
 
-    return model_ft
+#     return model_ft
 
-def set_batchnorm_momentum(self, momentum):
-    for m in self.modules():
-        if type(m) == nn.BatchNorm2d:
-            m.momentum = momentum
-    return self
+# def set_batchnorm_momentum(self, momentum):
+#     for m in self.modules():
+#         if type(m) == nn.BatchNorm2d:
+#             m.momentum = momentum
+#     return self
 
 class AttentionNet(nn.Module):
     def __init__(self, num_classes, num_tokens):
@@ -505,25 +503,31 @@ class DynamicFocalLoss(nn.Module):
         return weighted_loss, step
 
 
-def train():
+def train(args_override=None, model=None):
+    if args_override is not None:
+        args = args_override
+
+    wandb.init(project=args.project_name)
+    
     data_dir, num_classes, initial_bias, device = setup(args)
     
-    num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
-    model_ft = build_model(num_classes=num_classes)
+    #num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
+    #model_ft = build_model(num_classes=num_classes)
 
-    model_ft = model_ft.to(device)
+    model = model.to(device)
 
-    optimizer = torch.optim.AdamW(model_ft.parameters(), lr=args.learning_rate,
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
 
     image_datasets = build_datasets(input_size=args.input_size, data_dir=data_dir)
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=2, drop_last=True) for x in ['train', 'val']}
+
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=True) for x in ['train', 'val']}
     
     criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=1.2, dataloader=dataloaders_dict['train'])}
 
-    trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    trained_model, best_f1, best_f1_loss = train_model(model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
-    return trained_model, best_f1, best_f1_loss, args.input_size
+    return trained_model, best_f1, best_f1_loss
 
 
 # def main():

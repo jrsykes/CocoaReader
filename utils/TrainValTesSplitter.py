@@ -73,7 +73,7 @@ def Organise_Ecuador_Images(root):
 	print("Filtered image count: " + str(other))   
 	print("Total image count: " + str(other + count))   
 
-root = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data"
+#root = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data"
 #Organise_Ecuador_Images(root)
 
 def CopyPlant(destination, img_path):
@@ -102,28 +102,53 @@ def CopyNotPlant(destination, img_path, n_not_plant):
 
 
 
-def Randomise_Split(dat, destination):
-	for class_ in os.listdir(dat):
-		images = os.listdir(os.path.join(dat, class_))
+def Randomise_Split(root, destination):
+	for class_ in os.listdir(root):
+		images = os.listdir(os.path.join(root, class_))
 		random.shuffle(images)
 
-		dat_dict = {'train': images[:-10], 
+		dat_dict = {'train': images[:int(len(images)*0.9)], 
 			#'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
-			'val': images[-10:]}										
+			'val': images[int(len(images)*0.9):]}										
 		
 		for split, im_list in dat_dict.items():
-			os.makedirs(os.path.join(destination, split, class_), exist_ok = True)
+			#os.makedirs(os.path.join(root, split, class_), exist_ok = True)
 			
 			for image in im_list:
-				source = os.path.join(dat, class_, image)
-				dest = os.path.join(destination, split, class_, image)
+				source = os.path.join(root, class_, image)
+				dest = os.path.join(destination, split, class_)
+				os.makedirs(dest, exist_ok = True)
+				#open image and compress to 330x330 pixels
+				im = Image.open(os.path.join(source))
+				im1 = im.resize((330,330))
+				im1.save(os.path.join(dest, image))
+
 				#shutil.copy(source, dest)
-				os.symlink(source, dest)
+				#os.symlink(source, dest)
 
-src = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/IR_RGB_Comp_data/compiled_IR'
-dest ='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/Ecuador_data/IR_RGB_Comp_data_split/IR'
+#root = '/local/scratch/jrs596/dat/EcuadorWebImages_EasyDif_FinalClean/Easy'
+#destination = '/local/scratch/jrs596/dat/EcuadorWebImages_EasyDif_FinalClean_SplitCompress/Easy'
 
-Randomise_Split(dat = src, destination = dest)
+#Randomise_Split(root, destination)
+
+def compress_copy(root, destination):
+	for class_ in os.listdir(root):
+		images = os.listdir(os.path.join(root, class_))
+
+		for image in images:
+			source = os.path.join(root, class_, image)
+			dest = os.path.join(destination, class_)
+			os.makedirs(os.path.join(dest), exist_ok = True)
+			#open image and compress to 330x330 pixels
+			im = Image.open(os.path.join(source))
+			im1 = im.resize((330,330))
+			im1.save(os.path.join(dest, image))
+		
+
+source = '/local/scratch/jrs596/dat/EcuadorWebImages_EasyDif_FinalClean/Unsure'
+destination = '/local/scratch/jrs596/dat/EcuadorWebImages_EasyDif_FinalClean_SplitCompress/Unsure'
+
+compress_copy(source, destination)
 
 def combine(original_data, disease_path, healthy_path):
 	os.makedirs(disease_path, exist_ok = True)
