@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from torchvision import datasets, transforms #, models
-#from torchvision.models import ConvNeXt_Tiny_Weights
+from torchvision import datasets, transforms, models
+from torchvision.models import ConvNeXt_Tiny_Weights
 import time
 import copy
 import wandb
@@ -260,6 +260,8 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
             epoch_precision = (running_precision) / n         
             epoch_recall = (running_recall) / n        
             epoch_f1 = (running_f1) / n 
+            AIC_ = AIC(model=model, train_loader=dataloaders_dict['train'], loss=epoch_loss)
+            
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
             # Save statistics to tensorboard log
@@ -270,6 +272,7 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
                 best_f1 = epoch_f1
                 best_f1_acc = epoch_acc
                 best_f1_loss = epoch_loss
+                best_f1_AIC = AIC_
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
     
@@ -280,7 +283,8 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
                 val_loss_history.append(epoch_loss)
             
             if phase == 'train':
-                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1})  
+                
+                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "AIC": AIC_})  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
 
@@ -292,8 +296,15 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss
+    return model_out, best_f1, best_f1_loss, best_f1_AIC
 
+def AIC(model, train_loader, loss):
+    #get number of model peramaters from the model
+    k = sum(p.numel() for p in model.parameters() if p.requires_grad)   
+    #size of training dataset
+    N = len(train_loader.dataset)
+    AIC_ = -2/N*loss+2*k/N
+    return AIC_
 
 def build_datasets(input_size, data_dir):
     # Data augmentation and normalization for training
@@ -353,12 +364,7 @@ def build_model(num_classes, config):
         block=None, 
         norm_layer=None
     )
-
-    #model = models.convnext_tiny(weights = None)
-
-    #in_feat = model.classifier[2].in_features
-    #model.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-        
+  
     return model #nn.DataParallel(model)
 
 def set_batchnorm_momentum(self, momentum):
@@ -454,7 +460,7 @@ def train(config):
     
     criterion = nn.CrossEntropyLoss()
 
-    trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=config['input_size'], n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     return trained_model, best_f1, best_f1_loss
 
@@ -486,15 +492,20 @@ def main():
         run_name = args.run_name
 
     #stochastic_depth_prob = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
-    config = {'loss': 0, 'f1': 0, 'input_size': random.randint(250,350), 'one': random.randint(91,101), 'two': random.randint(187,197), 
+    config = {'loss': 0, 'f1': 0, 'input_size': 320, 'one': random.randint(91,101), 'two': random.randint(187,197), 
               'three': random.randint(379,389), 'four': random.randint(763,773), 'five': random.randint(6,12)}
-    # config = {'loss': 0, 'f1': 0, 'one': 97, 'two': 192, 
-    #           'three': 384, 'four': 768, 'five': 9}
+    #config = {'loss': 0, 'f1': 0, 'input_size': 330, 'one': 96, 'two': 192, 
+     #          'three': 384, 'four': 768, 'five': 9}
 
 
-    _, best_f1, best_f1_loss = train(config)
+    trained_model, best_f1, best_f1_loss, best_f1_AIC = train(config)
+  
+    n_parameters = sum(p.numel() for p in trained_model.parameters() if p.requires_grad)   
+
+    config['n_parameters'] = n_parameters
     config['loss'] = best_f1_loss
     config['f1'] = best_f1
+    config['AIC'] = best_f1_AIC
 
     #make directory if it doesn't exist
     os.makedirs(os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name), exist_ok=True)
