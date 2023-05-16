@@ -1,16 +1,18 @@
 source activate convnext
 
 
-python '/home/userfs/j/jrs596/scripts/CocoaReader/utils/Torch_Custom_CNNs2.py' \
-        --model_name 'CocoaConvNext_sweep' \
+python '/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/SemiSupRun.py' \
+        --model_name 'CocoaConvNext_SS' \
+        --project_name 'CocoaConvNext_SS' \
         --root '/local/scratch/jrs596/dat/' \
-        --data_dir 'EcuadorImage_LowRes_17_03_23_SureUnsure/Sure' \
+        --data_dir 'EcuadorWebImages_EasyDif_FinalClean_SplitCompress/Easy' \
+        --input_size 330 \
         --min_epochs 10 \
-        --max_epochs 30 \
+        --max_epochs 100 \
         --batch_size 32 \
-        --patience 5 \
-        --project_name 'CocoaNet_token' \
+        --patience 10 \
         --arch 'convnext_tiny' \
-        --sweep \
-        --sweep_config '/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/token_sweep_config.yml'
+        --learning_rate 7.97193898713692e-05 \
+        --weight_decay 0.00024296468323252175
+
 
