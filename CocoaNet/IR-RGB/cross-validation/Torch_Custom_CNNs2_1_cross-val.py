@@ -3,7 +3,8 @@ from __future__ import print_function
 from __future__ import division
 
 import os
-import PIL.Image as Image
+import yaml
+import pprint
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,10 +19,11 @@ from progress.bar import Bar
 #from torchvision.models.convnext import _convnext, CNBlockConfig
 import argparse
 import pickle
-from random_words import RandomWords
+import json
 import sys
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-from RGBChannelMixer import CrossTalkColorGrading
+from ColorGradingLayer import CGResNet18
+from collections import Counter
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -64,6 +66,8 @@ parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Learning rate, Default:1e-5')
 parser.add_argument('--eps', type=float, default=1e-8,
                         help='eps, Default:1e-8')
+parser.add_argument('--batchnorm_momentum', type=float, default=1e-1,
+                        help='Batch norm momentum hyperparameter for resnets, Default:1e-1')
 parser.add_argument('--input_size', type=int, default=277,
                         help='image input size')
 parser.add_argument('--delat', type=float, default=1.4,
@@ -89,16 +93,15 @@ def setup(args):
     data_dir = os.path.join(args.root, args.data_dir)
     #Define some variable and paths
     os.environ['TORCH_HOME'] = os.path.join(args.root, "TORCH_HOME")
-    
-    data_dir = os.path.join(args.root, args.data_dir)
-    num_classes= len(os.listdir(data_dir + '/train'))
+
+    num_classes= len(os.listdir(data_dir + '/fold_0/train'))
 
     # Specify whether to use GPU or cpu. Quantisation aware training is not yet avalable for GPU.
    
     device = torch.device("cuda")
     
     ### Calculate and set bias for final layer based on imbalance in dataset classes
-    dir_ = os.path.join(data_dir, 'train')
+    dir_ = os.path.join(data_dir, 'fold_0' ,'train')
     list_cats = []
     for i in sorted(os.listdir(dir_)):
         _, _, files = next(os.walk(os.path.join(dir_, i)))
@@ -113,23 +116,28 @@ def setup(args):
     return data_dir, num_classes, initial_bias, device
 
 
-def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
-    since = time.time()
+def train_model(model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None, num_classes=None):   
     val_loss_history = []
     best_f1 = 0.0
     best_f1_acc = 0.0
-    
+    best_train_metrics = {'loss': 0.0, 'acc': 0.0, 'f1': 0.0, 'recall': 0.0, 'precision': 0.0, 'BPR_F1': 0, 'FPR_F1': 0, 'Healthy_F1': 0, 'WBD_F1': 0}
+    best_val_metrics = {'loss': 0.0, 'acc': 0.0, 'f1': 0.0, 'recall': 0.0, 'precision': 0.0, 'BPR_F1': 0, 'FPR_F1': 0, 'Healthy_F1': 0, 'WBD_F1': 0}
+
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     best_model_wts = copy.deepcopy(model.state_dict())
     best_model_wts['module.fc.bias'] = initial_bias.to(device)
 
+    class_counts = class_count(dataloaders_dict)
+    
     epoch = 0
     #while patience >= 0: # Run untill validation loss has not improved for n epochs equal to patience variable and batchsize has decaed to 1
     while patience > 0 and epoch < args.max_epochs:
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
         step  = 0
+        class_f1_scores = {'0': 0, '1': 0, '2': 0, '3': 0}
+
         #Ensure minimum number of epochs is met before patience is allow to reduce
         if len(val_loss_history) > args.min_epochs:
            #If the current loss is not at least 0.5% less than the lowest loss recorded, reduce patiece by one epoch
@@ -167,11 +175,10 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
             n = len(dataloaders_dict[phase].dataset)
            #Begin training
             print(phase)
+            
             #n_steps_per_epoch = len(dataloaders_dict['train'].dataset)/batch_size
             with Bar('Learning...', max=n/batch_size+1) as bar:
-               
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
-
                     #split images in bacth into 16 non-overlapping chunks then recombine into bacth
                     if args.split_image == True:
                         
@@ -230,19 +237,12 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
-                        if args.criterion == 'crossentropy':
-                            loss = criterion_dict[phase](outputs, labels)
-                        elif args.criterion == 'DFLOSS':
-                            if phase == 'train':
-                                loss, step = criterion_dict[phase](outputs, labels, step)
-                            else:
-                                loss = criterion_dict[phase](outputs, labels)
-
+                        loss = criterion(outputs, labels)
+          
                         _, preds = torch.max(outputs, 1)    
-                        stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-                        stats_out = stats['weighted avg']
-                       
-                  
+                        stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)                      
+                        stats_out = stats['weighted avg']                 
+
                        # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
@@ -255,36 +255,52 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
                    #running totals for these metrics by the total number of training or validation samples. This controls for 
                    #the effect of batch size and the fact that the size of the last batch will less than args.batch_size
-                    running_loss += loss.item() * args.batch_size # inputs.size(0)
+                    current_batch_size = len(labels)
+                    running_loss += loss.item() * current_batch_size 
                     running_corrects += torch.sum(preds == labels.data) 
-                    running_precision += stats_out['precision'] * args.batch_size # inputs.size(0)
-                    running_recall += stats_out['recall'] * args.batch_size # inputs.size(0)
-                    running_f1 += stats_out['f1-score'] * args.batch_size # inputs.size(0)    
+                    running_precision += stats_out['precision'] * current_batch_size 
+                    running_recall += stats_out['recall'] * current_batch_size 
+                    running_f1 += stats_out['f1-score'] * current_batch_size 
+                    
+                    #get per class f1 scores from stats dictionary
+                    for i in range(num_classes):
+                        try: 
+                            class_f1_scores[str(i)] += stats[str(i)]['f1-score'] * stats[str(i)]['support']
+                        except:
+                            pass
 
+                    
                     bar.next()  
            #Calculate statistics for epoch
             n = len(dataloaders_dict[phase].dataset)
-            epoch_loss = float(running_loss / n)
+            
+            epoch_loss = float(running_loss / n) 
             epoch_acc = float(running_corrects.double() / n)
             epoch_precision = (running_precision) / n         
             epoch_recall = (running_recall) / n        
             epoch_f1 = (running_f1) / n 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
-            # Save statistics to tensorboard log
             
+            #Calculate per class f1 scores
+            for key in class_f1_scores.keys():
+               class_f1_scores[key] = class_f1_scores[key] / class_counts[phase][int(key)]
+            
+            # Save statistics to wandb log
+            if phase == 'train':
+                current_train_metrics = {'epoch': epoch, 'loss': epoch_loss, 'acc': epoch_acc, 'precision': epoch_precision, 'recall': epoch_recall, 'f1': epoch_f1,
+                                         'BPR_F1': class_f1_scores['0'], 'FPR_F1': class_f1_scores['1'], 'Healthy_F1': class_f1_scores['2'], 'WBD_F1': class_f1_scores['3']}
 
            # Save model and update best weights only if recall has improved
             if phase == 'val' and epoch_f1 > best_f1:
                 best_f1 = epoch_f1
                 best_f1_acc = epoch_acc
-                best_f1_loss = epoch_loss
-                best_model_wts = copy.deepcopy(model.state_dict())  
-                model_out = model
-    
-                PATH = os.path.join(args.root, 'models', args.model_name)
-                torch.save(model.module, PATH + '.pth') 
-  
+                #define best train metrics dictionary
+                best_train_metrics = current_train_metrics
+                #define best val metrics dictionary
+                best_val_metrics = {'epoch': epoch, 'loss': epoch_loss, 'acc': epoch_acc, 'precision': epoch_precision, 'recall': epoch_recall, 'f1': epoch_f1,
+                                    'BPR_F1': class_f1_scores['0'], 'FPR_F1': class_f1_scores['1'], 'Healthy_F1': class_f1_scores['2'], 'WBD_F1': class_f1_scores['3']}
+            
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
             
@@ -296,39 +312,55 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
 
         bar.finish() 
         epoch += 1
-        
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Acc of saved model: {:4f}'.format(best_f1_acc))
-    print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss
+
+    PATH = os.path.join('/local/scratch/jrs596/dat/IR_RGB_Comp_data/cross-val_models', wandb.run.name)    
+    torch.save(model.module, PATH + '.pth') 
+    
+    return best_train_metrics, best_val_metrics
+
+def class_count(dataloaders_dict):
+    train_class_counts = Counter()
+    val_calss_counts = Counter()
+
+    for _, labels in dataloaders_dict['train']:
+        train_class_counts.update(Counter(labels.numpy()))
+    
+    for _, labels in dataloaders_dict['val']:
+        val_calss_counts.update(Counter(labels.numpy()))
+
+    class_counts = {'train': train_class_counts, 'val': val_calss_counts}
+    return class_counts
 
 
-def build_datasets(input_size, data_dir, matrix):
+
+
+def build_datasets(input_size, data_dir):
     # Data augmentation and normalization for training
     # Just normalization for device
     
-    matrix = [[1.20626902580261, 0.69084495306015, -0.367000162601471], 
-              [0.864837288856506, 0.967565953731537, 0.168635278940201], 
-              [-0.376707583665848, 0.264213144779205,-1.11190068721771]]
+    # matrix = torch.tensor([[1.20626902580261, 0.69084495306015, -0.367000162601471], 
+    #           [0.864837288856506, 0.967565953731537, 0.168635278940201], 
+    #           [-0.376707583665848, 0.264213144779205,-1.11190068721771]])
     
     data_transforms = {
         'train': transforms.Compose([
-            transforms.Resize((input_size,input_size)), 
+            #transforms.Resize((input_size,input_size)), 
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
-            CrossTalkColorGrading(matrix)
+            #CrossTalkColorGrading(matrix)
 
         ]),
         'val': transforms.Compose([
-            transforms.Resize((input_size,input_size)),
+            #transforms.Resize((input_size,input_size)),
             transforms.ToTensor(),
-            CrossTalkColorGrading(matrix)
+            #CrossTalkColorGrading(matrix)
         ]),
     }   
 
     print("Initializing Datasets and Dataloaders...")
     # Create training and validation datasets
+    
+
     image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
     return image_datasets
 
@@ -343,106 +375,33 @@ def Remove_module_from_layers(unpickled_model_wts):
         unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
     return unpickled_model_wts
 
-def build_model(num_classes):
-    #If checkpoint weights file exists, load those weights.
-    if args.cont_train == True and os.path.exists(os.path.join(args.root, 'models', args.model_name + '.pkl')) == True:
-        print('Loading checkpoint weights')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.model_name + '.pkl'), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
-
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
-
-        model_ft.load_state_dict(unpickled_model_wts)
-
-    #Chose which model architecture to use and whether to load ImageNet weights or custom weights
-    elif args.custom_pretrained == False:
-        if args.arch == 'convnext_tiny':
-            print('Loaded ConvNext Tiny with pretrained IN weights')
-            model_ft = models.convnext_tiny(weights = ConvNeXt_Tiny_Weights.DEFAULT)
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet18':
-            print('Loaded ResNet18 with pretrained IN weights')
-            model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet50':
-            print('Loaded ResNet50 with pretrained IN weights')
-            model_ft = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        else:
-            print("Architecture name not recognised")
-            exit(0)
+def build_model(num_classes, device):
+    
+    if args.arch == 'convnext_tiny':
+        print('Loaded ConvNext Tiny with pretrained IN weights')
+        model_ft = models.convnext_tiny(weights = None)
+        in_feat = model_ft.classifier[2].in_features
+        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet18':
+        print('Loaded ResNet18 with pretrained IN weights')
+        model_ft = models.resnet18(weights=None)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet50':
+        print('Loaded ResNet50 with pretrained IN weights')
+        model_ft = models.resnet50(weights=None)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+    elif args.arch == 'CGresnet18':
+        model_ft = CGResNet18(num_classes=num_classes)
+    else:
+        print("Architecture name not recognised")
+        exit(0)
     # Load custom pretrained weights    
 
-    else:
-        print('\nLoading custom pre-trained weights with: ')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.custom_pretrained_weights), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
-        
-        if args.arch == 'convnext_tiny':
-            print('\tConvNeXt tiny architecture\n')
-            if args.quantise == False:
-                model_ft = models.convnext_tiny(weights= None)
-            else:
-                model_ft = convnext_tiny_q(weights = None)
-            out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-            
-        elif args.arch == 'resnet18':
-            print('\tResnet18 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet18(weights= None)
-            else:
-                model_ft = models.quantization.resnet18(weights=None)   
-
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes)
-        
-        elif args.arch == 'resnet50':
-            print('\tResnet50 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet50(weights= None)
-            else:
-                model_ft = models.quantization.resnet50(weights=None)   
-
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes) 
-        else:
-            print("Architecture name not recognised")
-            exit(0) 
-        
-    #Run model on all avalable GPUs
-    if args.quantise == False:
-        model_ft = nn.DataParallel(model_ft)
-    else:
-        #model_ft.fuse_model()
-        model_ft.eval()
-        model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
-        model_ft.train()    
-
-    if args.quantise == True:
-        print('Training with Quantization Aware Training on CPU')
-        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-        torch.quantization.prepare_qat(model_ft, inplace=True)
-
+    model_ft = nn.DataParallel(model_ft)
+    model_ft = set_batchnorm_momentum(model_ft, momentum=args.batchnorm_momentum)
+    model_ft = model_ft.to(device)
     return model_ft
 
 def set_batchnorm_momentum(self, momentum):
@@ -518,52 +477,100 @@ class DynamicFocalLoss(nn.Module):
         return weighted_loss, step
 
 
-def train(args_override=None, model=None, run_name=None):
-    if args_override is not None:
-        args = args_override
-
-    wandb.init(project=args.project_name)
-    
+def train():
     data_dir, num_classes, initial_bias, device = setup(args)
-    
-    if model is None:
-        model = build_model(num_classes=num_classes)
+    criterion = nn.CrossEntropyLoss()
 
-    if args.arch != 'convnext_tiny':
-        model = set_batchnorm_momentum(model, momentum=0.001)
-
-    model = model.to(device)
-
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
-                                            weight_decay=args.weight_decay, eps=args.eps)
-
-    image_datasets = build_datasets(input_size=args.input_size, data_dir=data_dir)
-
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=True) for x in ['train', 'val']}
-    
-    if args.criterion == 'crossentropy':
-        criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': nn.CrossEntropyLoss()}
-    elif args.criterion == 'DFLOSS':
-        criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=1.2, dataloader=dataloaders_dict['train'])}
-    
-
-    trained_model, best_f1, best_f1_loss = train_model(model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
-    
-    return trained_model, best_f1, best_f1_loss
-
-
-def main():
-
-    if args.run_name is None:
-        run_name = RandomWords().random_word() + '_' + str(time.time())[-2:]
-        wandb.init(project=args.project_name, name=run_name)
-    else:
-        run_name = args.run_name + '_' + RandomWords().random_word() + '_' + str(time.time())[-2:]
-        wandb.init(project=args.project_name, name=args.run_name)
+    # Initialize lists to store results
+    train_metrics_dict = {'loss': [], 'f1': [], 'acc': [], 'precision': [], 'recall': [], 'BPR_F1': [], 'FPR_F1': [], 'Healthy_F1': [], 'WBD_F1': []}
+    val_metrics_dict = {'loss': [], 'f1': [], 'acc': [], 'precision': [], 'recall': [], 'BPR_F1': [], 'FPR_F1': [], 'Healthy_F1': [], 'WBD_F1': []}
         
-    
-    _, _, _ = train(args_override=args, run_name=run_name)
-    
+    for fold in range(10):
+        print(f'Fold {fold}')
+        model = build_model(num_classes, device)
+
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
+                                                weight_decay=args.weight_decay, eps=args.eps)
+
         
-if __name__ == "__main__":
-    main()
+        wandb.init(project=args.project_name, name=args.run_name+f'_fold_{fold}')
+   
+        # Create training and validation datasets using the current fold
+        image_datasets = build_datasets(input_size=args.input_size, data_dir=os.path.join(data_dir, f'fold_{fold}'))
+    
+        # Create dataloaders for the training and validation datasets
+        dataloaders_dict = {
+            'train': torch.utils.data.DataLoader(image_datasets['train'], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=False),
+            'val': torch.utils.data.DataLoader(image_datasets['val'], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=False)
+        }
+
+        # Train the model and store the results
+        best_train_metrics, best_val_metrics = train_model(
+            model=model,
+            optimizer=optimizer,
+            device=device,
+            dataloaders_dict=dataloaders_dict,
+            criterion=criterion,
+            patience=args.patience,
+            initial_bias=initial_bias,
+            input_size=None,
+            n_tokens=None,
+            batch_size=args.batch_size,
+            AttNet=None,
+            ANoptimizer=None,
+            num_classes=num_classes
+        )
+
+        wandb.finish()
+
+        # Store the results for this fold
+        for metric in train_metrics_dict:
+            train_metrics_dict[metric].append(best_train_metrics[metric])
+        for metric in val_metrics_dict:
+            val_metrics_dict[metric].append(best_val_metrics[metric])                                                   
+                                                       
+    #Divide all values in the dictionaries by 10 to get the mean
+    mean_train_metrics_dict = {}
+    mean_val_metrics_dict = {}
+
+    for metric in train_metrics_dict:
+        mean_train_metrics_dict[metric] = np.mean(train_metrics_dict[metric])
+    for metric in val_metrics_dict:
+        mean_val_metrics_dict[metric] = np.mean(val_metrics_dict[metric])
+
+    #Calculate standard error metrics dict
+    train_se_metrics_dict = {}
+    val_se_metrics_dict = {}
+
+    for metric in train_metrics_dict:
+        train_se_metrics_dict[metric] = np.std(train_metrics_dict[metric]) / np.sqrt(len(train_metrics_dict[metric]))
+    for metric in val_metrics_dict:
+        val_se_metrics_dict[metric] = np.std(val_metrics_dict[metric]) / np.sqrt(len(val_metrics_dict[metric]))
+
+
+    print()
+    print(f'Mean train metrics: {mean_train_metrics_dict}')
+    print(f'Standard error train metrics: {train_se_metrics_dict}')
+    print()
+    print(f'Mean val metrics: {mean_val_metrics_dict}')
+    print(f'Standard error val metrics: {val_se_metrics_dict}')
+    print()
+          
+    run = wandb.init(project=args.project_name)
+    artifact = wandb.Artifact(args.run_name + '_results', type='dataset')
+
+    # Log the results as wandb artifacts
+    mean_dict = {'train_mean_metrics': mean_train_metrics_dict, 'val_mean_metrics': mean_val_metrics_dict,
+                     'train_se_metrics': train_se_metrics_dict, 'val_se_metrics': val_se_metrics_dict}
+    
+    with open(args.run_name + '_results_dict.json', 'w') as f:
+        json.dump(mean_dict, f)
+
+    artifact.add_file(args.run_name + '_results_dict.json')
+    run.log_artifact(artifact)
+
+    wandb.finish()
+    os.remove(args.run_name + '_results_dict.json')
+
+train()
+

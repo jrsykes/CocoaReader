@@ -1,45 +1,26 @@
+#%%
+import json
+import wandb
+import os
+
+mean_train_metrics_dict = {'loss': 0.07613806964363903, 'f1': 0.9977126328955597, 'acc': 0.9956349206349205, 'precision': 1.0, 'recall': 0.9956349206349205}                                                                                                                              
+mean_val_metrics_dict = {'loss': 1.5738358855247498, 'f1': 0.10796883671883672, 'acc': 0.08928571428571427, 'precision': 0.2425595238095238, 'recall': 0.08928571428571427}    
+
+project_name = 'IR-RGB_sweep'
+run_name = 'RGB_cross-val'
+
+run = wandb.init(project=project_name)
+artifact = wandb.Artifact(project_name + '_results', type='dataset')
+# Log the results as wandb artifacts
+results_dict = {'train_metrics': mean_train_metrics_dict, 'val_metrics': mean_val_metrics_dict}
+
+with open(run_name + 'results_dict.json', 'w') as f:
+    json.dump(results_dict, f)
+
+#artifact.add_file(run_name + 'results_dict.json')
+#run.log_artifact(artifact)
+wandb.finish()
 
 
-from torchvision import models
-
-# config = {'loss': 0, 'f1': 0, 'input_size': random.randint(250,350), 'one': random.randint(91,101), 'two': random.randint(187,197), 
-#               'three': random.randint(379,389), 'four': random.randint(763,773), 'five': random.randint(6,12)}
-
-# def build_model(num_classes, config):
-
-#     # # # Define your custom block settings
-#     my_block_settings = [
-#         CNBlockConfig(config['one'], config['two'], 3),
-#         CNBlockConfig(config['two'], config['three'], 3),
-#         CNBlockConfig(config['three'], config['four'], config['five']),
-#         CNBlockConfig(config['four'], None, 3)
-#     ]
-
-#     # Define a new function that calls _convnext() with the modified arguments
-#     def my_convnext(block_setting, *args, **kwargs):
-#         kwargs['block_setting'] = block_setting
-#         return _convnext(*args, **kwargs)
-
-#     # Call my_convnext with your custom block settings
-#     model = my_convnext(
-#         block_setting=my_block_settings, 
-#         stochastic_depth_prob=0.1,
-#         weights = None,
-#         progress=False,
-#         layer_scale=1e-6,
-#         num_classes=1000,
-#         block=None, 
-#         norm_layer=None
-#     )
-
-
-#     in_feat = model.classifier[2].in_features
-#     model.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-        
-#     return model #nn.DataParallel(model)
-
-# model = build_model(2, config)
-
-model = models.convnext_tiny(weights = None)
-
-print(model.parameters())
+os.remove(run_name + 'results_dict.json')
+#%%

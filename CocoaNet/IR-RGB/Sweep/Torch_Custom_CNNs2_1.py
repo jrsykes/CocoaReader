@@ -1,9 +1,9 @@
-
 from __future__ import print_function
 from __future__ import division
 
 import os
-import PIL.Image as Image
+import yaml
+import pprint
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,15 +18,17 @@ from progress.bar import Bar
 #from torchvision.models.convnext import _convnext, CNBlockConfig
 import argparse
 import pickle
-from random_words import RandomWords
 import sys
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-from RGBChannelMixer import CrossTalkColorGrading
+#from RGBChannelMixer import CrossTalkColorGrading
+from ColorGradingLayer import CGResNet18
+from ConvNeXt_Simple import ConvNeXt_simple, ConvNeXt_simple2
+from torchvision.models.convnext import _convnext, CNBlockConfig
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
                         help='save name for model')
-parser.add_argument('--project_name', type=str, default=None,
+parser.add_argument('--project_name', type=str, default='test',
                         help='Name for wandb project')
 parser.add_argument('--run_name', type=str, default=None,
                         help='Name for wandb run')
@@ -34,11 +36,11 @@ parser.add_argument('--sweep', action='store_true', default=False,
                         help='Run Waits and Biases optimisation sweep')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
-parser.add_argument('--sweep_config', type=str, default=None,
+parser.add_argument('--sweep_config', type=str, default="/home/userfs/j/jrs596/scripts/CocoaReader/utils/ConvNextSimpleCG_config.yml",
                         help='.yml sweep configuration file')
 parser.add_argument('--sweep_count', type=int, default=100,
                         help='Number of models to train in sweep')
-parser.add_argument('--root', type=str, default='/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat',
+parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat/',
                         help='location of all data')
 parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
@@ -48,9 +50,9 @@ parser.add_argument('--custom_pretrained_weights', type=str,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
-parser.add_argument('--batch_size', type=int, default=4,
+parser.add_argument('--batch_size', type=int, default=21,
                         help='Initial batch size')
-parser.add_argument('--max_epochs', type=int, default=500,
+parser.add_argument('--max_epochs', type=int, default=2,
                         help='n epochs before early stopping')
 parser.add_argument('--min_epochs', type=int, default=10,
                         help='n epochs before loss is assesed for early stopping')
@@ -58,17 +60,21 @@ parser.add_argument('--patience', type=int, default=1,
                         help='n epochs to run without improvment in loss')
 parser.add_argument('--beta', type=float, default=1.00,
                         help='minimum required per cent improvment in validation loss')
-parser.add_argument('--learning_rate', type=float, default=1e-5,
+parser.add_argument('--learning_rate', type=float, default=1e-3,
                         help='Learning rate, Default:1e-5')
+parser.add_argument('--l1_lambda', type=float, default=1e-5,
+                        help='l1_lambda for regularization, Default:1e-5')
 parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Learning rate, Default:1e-5')
-parser.add_argument('--eps', type=float, default=1e-8,
+parser.add_argument('--eps', type=float, default=1e-6,
                         help='eps, Default:1e-8')
-parser.add_argument('--input_size', type=int, default=277,
+parser.add_argument('--batchnorm_momentum', type=float, default=1e-1,
+                        help='Batch norm momentum hyperparameter for resnets, Default:1e-1')
+parser.add_argument('--input_size', type=int, default=400,
                         help='image input size')
-parser.add_argument('--delat', type=float, default=1.4,
-                        help='delat for dynamic focal loss')
-parser.add_argument('--arch', type=str, default='convnext_tiny',
+parser.add_argument('--delta', type=float, default=1.4,
+                        help='delta for dynamic focal loss')
+parser.add_argument('--arch', type=str, default='ConvNeXt_simple',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
@@ -113,11 +119,12 @@ def setup(args):
     return data_dir, num_classes, initial_bias, device
 
 
-def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
+def train_model(model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
     best_f1_acc = 0.0
+    best_f1_AIC = 0.0
     
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
@@ -230,14 +237,10 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
-                        if args.criterion == 'crossentropy':
-                            loss = criterion_dict[phase](outputs, labels)
-                        elif args.criterion == 'DFLOSS':
-                            if phase == 'train':
-                                loss, step = criterion_dict[phase](outputs, labels, step)
-                            else:
-                                loss = criterion_dict[phase](outputs, labels)
-
+                        #loss = criterion(outputs, labels)
+                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
+                        loss = criterion(outputs, labels) + args.l1_lambda * l1_norm
+                        
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
@@ -269,6 +272,8 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
             epoch_precision = (running_precision) / n         
             epoch_recall = (running_recall) / n        
             epoch_f1 = (running_f1) / n 
+            AIC_ = AIC(model=model, loss=epoch_loss)
+
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
             # Save statistics to tensorboard log
@@ -279,17 +284,18 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
                 best_f1 = epoch_f1
                 best_f1_acc = epoch_acc
                 best_f1_loss = epoch_loss
+                best_f1_AIC = AIC_ #recod the best training AIC, not val
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
     
-                PATH = os.path.join(args.root, 'models', args.model_name)
-                torch.save(model.module, PATH + '.pth') 
+                # PATH = os.path.join(args.root, 'models', args.model_name)
+                # torch.save(model.module, PATH + '.pth') 
   
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
             
             if phase == 'train':
-                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1})  
+                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "AIC": AIC_, "Best AIC": best_f1_AIC})  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
 
@@ -297,33 +303,44 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion_dict, pati
         bar.finish() 
         epoch += 1
         
+    #matrix = model_out.module.color_grading.matrix
+    #save matrix tensor as csv
+    #matrix = matrix.detach().cpu().numpy()
+    #np.savetxt(os.path.join(args.root, 'IR_RGB_Comp_data', 'best_matrix_sweep', wandb.run.name + '_matrix.csv'), matrix, delimiter=",")
+
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
     return model_out, best_f1, best_f1_loss
 
+def AIC(model, loss):
+    #get number of model peramaters from the model
+    k = sum(p.numel() for p in model.parameters() if p.requires_grad)   
 
-def build_datasets(input_size, data_dir, matrix):
+    AIC_ = 2*k - 2*np.log(loss)
+    return AIC_
+
+def build_datasets(input_size, data_dir):
     # Data augmentation and normalization for training
     # Just normalization for device
     
-    matrix = [[1.20626902580261, 0.69084495306015, -0.367000162601471], 
-              [0.864837288856506, 0.967565953731537, 0.168635278940201], 
-              [-0.376707583665848, 0.264213144779205,-1.11190068721771]]
+    # matrix = torch.tensor([[1.20626902580261, 0.69084495306015, -0.367000162601471], 
+    #           [0.864837288856506, 0.967565953731537, 0.168635278940201], 
+    #           [-0.376707583665848, 0.264213144779205,-1.11190068721771]])
     
     data_transforms = {
         'train': transforms.Compose([
-            transforms.Resize((input_size,input_size)), 
+            #transforms.Resize((input_size,input_size)), 
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor(),
-            CrossTalkColorGrading(matrix)
+            #CrossTalkColorGrading(matrix)
 
         ]),
         'val': transforms.Compose([
-            transforms.Resize((input_size,input_size)),
+            #transforms.Resize((input_size,input_size)),
             transforms.ToTensor(),
-            CrossTalkColorGrading(matrix)
+            #CrossTalkColorGrading(matrix)
         ]),
     }   
 
@@ -343,106 +360,69 @@ def Remove_module_from_layers(unpickled_model_wts):
         unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
     return unpickled_model_wts
 
-def build_model(num_classes):
-    #If checkpoint weights file exists, load those weights.
-    if args.cont_train == True and os.path.exists(os.path.join(args.root, 'models', args.model_name + '.pkl')) == True:
-        print('Loading checkpoint weights')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.model_name + '.pkl'), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])  
 
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)    
 
-        model_ft.load_state_dict(unpickled_model_wts)
 
-    #Chose which model architecture to use and whether to load ImageNet weights or custom weights
-    elif args.custom_pretrained == False:
-        if args.arch == 'convnext_tiny':
-            print('Loaded ConvNext Tiny with pretrained IN weights')
-            model_ft = models.convnext_tiny(weights = ConvNeXt_Tiny_Weights.DEFAULT)
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet18':
-            print('Loaded ResNet18 with pretrained IN weights')
-            model_ft = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        elif args.arch == 'resnet50':
-            print('Loaded ResNet50 with pretrained IN weights')
-            model_ft = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-            in_feat = model_ft.fc.in_features
-            model_ft.fc = nn.Linear(in_feat, num_classes)
-        else:
-            print("Architecture name not recognised")
-            exit(0)
+
+def build_model(num_classes, input_size):
+    
+    if args.arch == 'convnext_tiny':
+        print('Loaded ConvNext Tiny with pretrained IN weights')
+        model_ft = models.convnext_tiny(weights = None)
+        in_feat = model_ft.classifier[2].in_features
+        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet18':
+        print('Loaded ResNet18 with pretrained IN weights')
+        model_ft = models.resnet18(weights=None)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+    elif args.arch == 'resnet50':
+        print('Loaded ResNet50 with pretrained IN weights')
+        model_ft = models.resnet50(weights=None)
+        in_feat = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(in_feat, num_classes)
+    elif args.arch == 'CGresnet18':
+        model_ft = CGResNet18(num_classes=num_classes)
+    elif args.arch == 'convnext_simple2':
+    
+        config_dict = {'num_classes': num_classes, 'input_size': args.input_size,
+                       'dim_2': round(wandb.config.dim_2 / 3) * 3, 'dim_3': round(wandb.config.dim_3 / 3) * 3, 
+                       'nodes_1': wandb.config.nodes_1 , 'nodes_2': wandb.config.nodes_2,
+                       'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
+                       'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
+        }
+        # config_dict = {'num_classes': 4, 'input_size': 400,
+        #        'dim_2': 15, 'dim_3': 18,
+        #        'nodes_1': 30 , 'nodes_2': 12,
+        #        'kernel_1': 3, 'kernel_2': 1,
+        #         'kernel_3': 3, 'kernel_4': 1
+        #        }
+        
+        model_ft = ConvNeXt_simple2(config_dict, input_size=input_size)
+
+    elif args.arch == 'convnext_simple':
+        config_dict = {'num_classes': num_classes, 'input_size': args.input_size,
+                       'layer_scale': wandb.config.layer_scale, 'stochastic_depth_prob': wandb.config.stochastic_depth_prob,
+                          'dim_1': wandb.config.dim_2, 'dim_2': wandb.config.dim_3, 
+                          'nodes_1': wandb.config.nodes_1 , 'nodes_2': wandb.config.nodes_2,
+                          'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
+                          'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
+                          'kernel_5': wandb.config.kernel_5, 'kernel_6': wandb.config.kernel_6,
+          }
+        # config_dict = {'num_classes': 4, 'input_size': 400,
+        #        'dim_1': 28, 'dim_2': 32,
+        #        'nodes_1': 114 , 'nodes_2': 138,
+        #        'kernel_1': 4, 'kernel_2': 4,
+        #         'kernel_3': 4, 'kernel_4': 2,
+        #         'kernel_5': 7, 'kernel_6': 5
+        #        }
+        
+        model_ft = ConvNeXt_simple(config_dict)
+                       
+    else:
+        print("Architecture name not recognised")
+        exit(0)
     # Load custom pretrained weights    
-
-    else:
-        print('\nLoading custom pre-trained weights with: ')
-        pretrained_model_wts = pickle.load(open(os.path.join(args.root, 'models', args.custom_pretrained_weights), "rb"))
-        unpickled_model_wts = copy.deepcopy(pretrained_model_wts['model'])
-        unpickled_model_wts = Remove_module_from_layers(unpickled_model_wts)
-        
-        if args.arch == 'convnext_tiny':
-            print('\tConvNeXt tiny architecture\n')
-            if args.quantise == False:
-                model_ft = models.convnext_tiny(weights= None)
-            else:
-                model_ft = convnext_tiny_q(weights = None)
-            out_feat = unpickled_model_wts['classifier.2.weight'].size()[0]
-            in_feat = model_ft.classifier[2].in_features
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-            
-        elif args.arch == 'resnet18':
-            print('\tResnet18 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet18(weights= None)
-            else:
-                model_ft = models.quantization.resnet18(weights=None)   
-
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes)
-        
-        elif args.arch == 'resnet50':
-            print('\tResnet50 architecture\n')
-            if args.quantise == False:
-                model_ft = models.resnet50(weights= None)
-            else:
-                model_ft = models.quantization.resnet50(weights=None)   
-
-            in_feat = model_ft.fc.in_features
-            out_feat = unpickled_model_wts['fc.weight'].size()[0]
-            model_ft.fc = nn.Linear(in_feat, out_feat)
-            #Load custom weights
-            model_ft.load_state_dict(unpickled_model_wts)
-            #Delete final linear layer and replace to match n classes in the dataset
-            model_ft.fc = torch.nn.Linear(in_feat, num_classes) 
-        else:
-            print("Architecture name not recognised")
-            exit(0) 
-        
-    #Run model on all avalable GPUs
-    if args.quantise == False:
-        model_ft = nn.DataParallel(model_ft)
-    else:
-        #model_ft.fuse_model()
-        model_ft.eval()
-        model_ft = torch.quantization.fuse_modules(model_ft, [['conv1', 'bn1', 'relu']])
-        model_ft.train()    
-
-    if args.quantise == True:
-        print('Training with Quantization Aware Training on CPU')
-        model_ft.qconfig = torch.quantization.get_default_qat_qconfig('qnnpack')
-        torch.quantization.prepare_qat(model_ft, inplace=True)
-
     return model_ft
 
 def set_batchnorm_momentum(self, momentum):
@@ -518,20 +498,17 @@ class DynamicFocalLoss(nn.Module):
         return weighted_loss, step
 
 
-def train(args_override=None, model=None, run_name=None):
-    if args_override is not None:
-        args = args_override
+def train():
 
-    wandb.init(project=args.project_name)
-    
+    run = wandb.init(project=args.project_name)
+
     data_dir, num_classes, initial_bias, device = setup(args)
-    
-    if model is None:
-        model = build_model(num_classes=num_classes)
 
-    if args.arch != 'convnext_tiny':
-        model = set_batchnorm_momentum(model, momentum=0.001)
+    model = build_model(num_classes, input_size=args.input_size)
 
+    model = nn.DataParallel(model)
+
+    #model = set_batchnorm_momentum(model, momentum=wandb.config.batchnorm_momentum)
     model = model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
@@ -541,29 +518,33 @@ def train(args_override=None, model=None, run_name=None):
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=True) for x in ['train', 'val']}
     
-    if args.criterion == 'crossentropy':
-        criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': nn.CrossEntropyLoss()}
-    elif args.criterion == 'DFLOSS':
-        criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=1.2, dataloader=dataloaders_dict['train'])}
-    
+    criterion = nn.CrossEntropyLoss()
 
-    trained_model, best_f1, best_f1_loss = train_model(model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion_dict=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=args.input_size, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    
+    trained_model, best_f1, best_f1_loss = train_model(model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     return trained_model, best_f1, best_f1_loss
 
+if args.sweep == True:
+    with open(args.sweep_config) as file:
+        config = yaml.load(file, Loader=yaml.FullLoader)
+        sweep_config = config['sweep_config']
+        sweep_config['metric'] = config['metric']
+        sweep_config['parameters'] = config['parameters']
 
-def main():
+        print('Sweep config:')
+        pprint.pprint(sweep_config)
+        print()
+        if args.sweep_id is None:
+            sweep_id = wandb.sweep(sweep_config, project=args.project_name, entity="frankslab")
+        else:
+            sweep_id = args.sweep_id
+        print("Sweep ID: ", sweep_id)
+        print()
 
-    if args.run_name is None:
-        run_name = RandomWords().random_word() + '_' + str(time.time())[-2:]
-        wandb.init(project=args.project_name, name=run_name)
-    else:
-        run_name = args.run_name + '_' + RandomWords().random_word() + '_' + str(time.time())[-2:]
-        wandb.init(project=args.project_name, name=args.run_name)
-        
-    
-    _, _, _ = train(args_override=args, run_name=run_name)
-    
-        
-if __name__ == "__main__":
-    main()
+    wandb.agent(sweep_id,
+            project=args.project_name, 
+            function=train,
+            count=args.sweep_count)
+else:
+    train()

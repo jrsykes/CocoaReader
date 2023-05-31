@@ -106,7 +106,7 @@ def Randomise_Split(root, destination):
 	for class_ in os.listdir(root):
 		images = os.listdir(os.path.join(root, class_))
 		random.shuffle(images)
-		images = images[:800]
+		#images = images[:800]
 
 		dat_dict = {'train': images[:int(len(images)*0.9)], 
 			#'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
@@ -120,15 +120,15 @@ def Randomise_Split(root, destination):
 				dest = os.path.join(destination, split, class_)
 				os.makedirs(dest, exist_ok = True)
 				#open image and compress to 330x330 pixels
-				#im = Image.open(os.path.join(source))
-				#im1 = im.resize((330,330))
-				#im1.save(os.path.join(dest, image))
+				im = Image.open(os.path.join(source))
+				im1 = im.resize((500,500))
+				im1.save(os.path.join(dest, image))
 
 				#shutil.copy(source, dest)
-				os.symlink(source, os.path.join(dest, image))
+				#os.symlink(source, os.path.join(dest, image))
 
-root = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/EcuadorWebImages_EasyDif_FinalClean/Easy'
-destination = '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/EcuadorWebImages_EasyDif_FinalClean_SplitEasy'
+root = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/compiled_IR'
+destination = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/IR_split_500'
 
 Randomise_Split(root, destination)
 
