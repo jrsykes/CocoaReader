@@ -7,18 +7,22 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from torchvision import datasets, transforms, models
-from torchvision.models import ConvNeXt_Tiny_Weights
+from torchvision import datasets, transforms#, models
+#from torchvision.models import ConvNeXt_Tiny_Weights
 import time
 import copy
 import wandb
 from sklearn import metrics
 from progress.bar import Bar
-from torchvision.models.convnext import _convnext, CNBlockConfig
+#from torchvision.models.convnext import _convnext, CNBlockConfig
 import argparse
 import random
 import json
 from random_word import RandomWords
+import sys
+sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
+from ConvNeXt_Simple import ConvNeXt_simple, ConvNeXt_simple2
+from DynamicFocalLoss import DynamicFocalLoss
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -57,6 +61,8 @@ parser.add_argument('--beta', type=float, default=1.00,
                         help='minimum required per cent improvment in validation loss')
 parser.add_argument('--learning_rate', type=float, default=1e-5,
                         help='Learning rate, Default:1e-5')
+parser.add_argument('--l1_lambda', type=float, default=1e-5,
+                        help='l1_lambda for regularization, Default:1e-5')
 parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Learning rate, Default:1e-5')
 parser.add_argument('--eps', type=float, default=1e-8,
@@ -77,6 +83,7 @@ parser.add_argument('--split_image', action='store_true', default=False,
                         help='Split image into smaller chunks?')
 parser.add_argument('--n_tokens', type=int, default=4,
                         help='Sqrt of number of tokens to split image into')
+
 
 
 args = parser.parse_args()
@@ -115,6 +122,7 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
     val_loss_history = []
     best_f1 = 0.0
     best_f1_acc = 0.0
+    train_f1 = 0.0
     
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
@@ -227,7 +235,15 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
-                        loss = criterion(outputs, labels)
+
+                        if phase == 'train':
+                            loss, step = criterion[phase](outputs, labels, step)
+                        else:
+                            loss = criterion[phase](outputs, labels)
+
+                        #Add L1 regularisation to loss
+                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
+                        loss += args.l1_lambda * l1_norm
 
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
@@ -259,8 +275,10 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
             epoch_acc = float(running_corrects.double() / n)
             epoch_precision = (running_precision) / n         
             epoch_recall = (running_recall) / n        
-            epoch_f1 = (running_f1) / n 
-            AIC_ = AIC(model=model, train_loader=dataloaders_dict['train'], loss=epoch_loss)
+            epoch_f1 = (running_f1) / n
+            if phase == 'train':
+                train_f1 = epoch_f1 
+            AIC_ = AIC(model=model, loss=epoch_loss)
             
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
@@ -273,6 +291,7 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
                 best_f1_acc = epoch_acc
                 best_f1_loss = epoch_loss
                 best_f1_AIC = AIC_
+                best_train_f1 = train_f1
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
     
@@ -296,14 +315,15 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss, best_f1_AIC
 
-def AIC(model, train_loader, loss):
+    return model_out, best_f1, best_f1_loss, best_f1_AIC, best_train_f1
+    
+
+def AIC(model, loss):
     #get number of model peramaters from the model
     k = sum(p.numel() for p in model.parameters() if p.requires_grad)   
-    #size of training dataset
-    N = len(train_loader.dataset)
-    AIC_ = -2/N*loss+2*k/N
+
+    AIC_ = 2*k - 2*np.log(loss)
     return AIC_
 
 def build_datasets(input_size, data_dir):
@@ -338,34 +358,7 @@ def Remove_module_from_layers(unpickled_model_wts):
         unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
     return unpickled_model_wts
 
-def build_model(num_classes, config):
 
-    # # # Define your custom block settings
-    my_block_settings = [
-        CNBlockConfig(config['one'], config['two'], 3),
-        CNBlockConfig(config['two'], config['three'], 3),
-        CNBlockConfig(config['three'], config['four'], config['five']),
-        CNBlockConfig(config['four'], None, 3)
-    ]
-
-    # Define a new function that calls _convnext() with the modified arguments
-    def my_convnext(block_setting, *args, **kwargs):
-        kwargs['block_setting'] = block_setting
-        return _convnext(*args, **kwargs)
-
-    # Call my_convnext with your custom block settings
-    model = my_convnext(
-        block_setting=my_block_settings, 
-        stochastic_depth_prob=0.1,
-        weights = None,
-        progress=False,
-        layer_scale=1e-6,
-        num_classes=num_classes,
-        block=None, 
-        norm_layer=None
-    )
-  
-    return model #nn.DataParallel(model)
 
 def set_batchnorm_momentum(self, momentum):
     for m in self.modules():
@@ -408,104 +401,60 @@ class AttentionNet(nn.Module):
         return x
 
 
-class DynamicFocalLoss(nn.Module):
-    def __init__(self, delta=1, dataloader=None):
-        super(DynamicFocalLoss, self).__init__()
-        self.delta = delta
-        self.dataloader = dataloader
-        self.weights_dict = {}
-
-    def forward(self, inputs, targets, step):
-        loss = nn.CrossEntropyLoss()(inputs, targets)
-        # Update weights_dict based on targets and predictions
-        preds = torch.argmax(inputs, dim=1)
-        for i in range(inputs.size(0)):
-            #get filename from dataset
-            filename = self.dataloader.dataset.samples[step + i][0].split("/")[-1]
-            if filename not in self.weights_dict:
-                self.weights_dict[filename] = 1
-            if preds[i] != targets[i]:
-                self.weights_dict[filename] += self.delta
-        step += inputs.size(0)
-        
-        # Apply weights to loss based on weights_dict
-        weighted_loss = torch.zeros(1).to(loss.device)
-        for filename, weight in self.weights_dict.items():
-            if weight > 1:
-                weighted_loss += loss * weight
-            else:
-                weighted_loss += loss
-        weighted_loss /= len(self.weights_dict)
-
-        return weighted_loss, step
 
 
-def train(config):
+def train():
 
     data_dir, num_classes, initial_bias, device = setup(args)
 
-    
-    num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
-    model_ft = build_model(num_classes=num_classes, config=config)
+    config = {'num_classes': num_classes, 'input_size': args.input_size,
+                'stochastic_depth_prob': np.random.uniform(0.0001, 0.001), 'layer_scale': 0.3,
+                'dim_1': random.randint(14,60), 'dim_2': random.randint(14,60), 
+                'nodes_1': random.randint(64,130), 'nodes_2': random.randint(64,130),
+                'kernel_1': random.randint(1,7), 'kernel_2': random.randint(1,7),
+                'kernel_3': random.randint(1,7), 'kernel_4': random.randint(1,7),
+                'kernel_5': random.randint(1,7), 'kernel_6': random.randint(1,7),
+      }
+
+    model_ft = ConvNeXt_simple(config)
 
     model_ft = model_ft.to(device)
-
     
     optimizer = torch.optim.AdamW(model_ft.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
     
 
     image_datasets = build_datasets(input_size=config['input_size'], data_dir=data_dir)
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=2, drop_last=True) for x in ['train', 'val']}
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=True) for x in ['train', 'val']}
     
-    criterion = nn.CrossEntropyLoss()
+    #criterion = nn.CrossEntropyLoss()
+    criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=1.2, dataloader=dataloaders_dict['train'])}
 
-    trained_model, best_f1, best_f1_loss = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=config['input_size'], n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
-    
-    return trained_model, best_f1, best_f1_loss
+    trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1 = train_model(model=model_ft, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion_dict, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+ 
+    return trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, config
 
-def sample_from_log_distribution(min_val, max_val, size=1, base=10):
-    """
-    Generate random samples from a log distribution between min_val and max_val.
 
-    Args:
-        min_val (float): Minimum value of the log distribution.
-        max_val (float): Maximum value of the log distribution.
-        size (int, optional): Number of random samples to generate. Defaults to 1.
-        base (float, optional): Base of the logarithm. Defaults to 10.
-
-    Returns:
-        numpy.ndarray: An array of random samples from the log distribution.
-    """
-    log_min = np.log(min_val) / np.log(base)
-    log_max = np.log(max_val) / np.log(base)
-    log_samples = np.random.uniform(log_min, log_max, size=size)
-    return base ** log_samples
 
 def main():
 
     if args.run_name is None:
-        run_name = RandomWords().get_random_word() + '_run_' + str(time.time())[-2:]
-        wandb.init(project=args.project_name, name=run_name)
+        run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
+        wandb.init(project=args.project_name, name=run_name, mode="offline")
     else:
-        wandb.init(project=args.project_name, name=args.run_name)
+        wandb.init(project=args.project_name, name=args.run_name, mode="offline")
         run_name = args.run_name
 
-    #stochastic_depth_prob = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
-    config = {'loss': 0, 'f1': 0, 'input_size': 320, 'one': random.randint(91,101), 'two': random.randint(187,197), 
-              'three': random.randint(379,389), 'four': random.randint(763,773), 'five': random.randint(6,12)}
-    #config = {'loss': 0, 'f1': 0, 'input_size': 330, 'one': 96, 'two': 192, 
-     #          'three': 384, 'four': 768, 'five': 9}
-
-
-    trained_model, best_f1, best_f1_loss, best_f1_AIC = train(config)
+    trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, config = train()
   
     n_parameters = sum(p.numel() for p in trained_model.parameters() if p.requires_grad)   
-
+    
     config['n_parameters'] = n_parameters
     config['loss'] = best_f1_loss
+
     config['f1'] = best_f1
     config['AIC'] = best_f1_AIC
+    config['train_f1'] = best_train_f1
 
     #make directory if it doesn't exist
     os.makedirs(os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name), exist_ok=True)

@@ -34,7 +34,7 @@ class ConvNeXt_simple(nn.Module):
 
         self.color_grading = CrossTalkColorGrading(matrix='Best')
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=config_dict['dim_1'], kernel_size=config_dict['kernel_1'], padding='same') 
-        self.cnblock1 = CNBlock(dim=config_dict['dim_1'], kernel_3=config_dict['kernel_3'], kernel_4=config_dict['kernel_4'], layer_scale=config_dict['layer_scale'], stochastic_depth_prob=config_dict['stochastic_depth_prob'])
+        self.cnblock1 = CNBlock(dim=config_dict['dim_1'], kernel_3=config_dict['kernel_3'], kernel_4=config_dict['kernel_4'], stochastic_depth_prob=config_dict['stochastic_depth_prob'])
         self.pool = nn.AvgPool2d(2, 2)
         self.conv2 = nn.Conv2d(in_channels=config_dict['dim_1'], out_channels=config_dict['dim_2'], kernel_size=config_dict['kernel_2'], padding='same')
         self.cnblock2 = CNBlock(dim=config_dict['dim_2'], kernel_3=config_dict['kernel_5'], kernel_4=config_dict['kernel_6'], layer_scale=config_dict['layer_scale'], stochastic_depth_prob=config_dict['stochastic_depth_prob'])
