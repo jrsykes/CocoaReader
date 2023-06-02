@@ -21,8 +21,17 @@ import json
 from random_word import RandomWords
 import sys
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-from ConvNeXt_Simple import ConvNeXt_simple, ConvNeXt_simple2
+from ConvNeXt_Simple import ConvNeXt_simple, DisNet_Nano
 from DynamicFocalLoss import DynamicFocalLoss
+
+## Set random seeds for reproducibility
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.manual_seed(42)
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -401,7 +410,8 @@ class AttentionNet(nn.Module):
         return x
 
 
-
+def worker_init_fn(worker_id):
+    np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 def train():
 
@@ -410,13 +420,15 @@ def train():
     config = {'num_classes': num_classes, 'input_size': args.input_size,
                 'stochastic_depth_prob': np.random.uniform(0.0001, 0.001), 'layer_scale': 0.3,
                 'dim_1': random.randint(14,60), 'dim_2': random.randint(14,60), 
+                'dim_3': random.randint(14,60), 'dim_4': random.randint(14,60),
                 'nodes_1': random.randint(64,130), 'nodes_2': random.randint(64,130),
                 'kernel_1': random.randint(1,7), 'kernel_2': random.randint(1,7),
                 'kernel_3': random.randint(1,7), 'kernel_4': random.randint(1,7),
                 'kernel_5': random.randint(1,7), 'kernel_6': random.randint(1,7),
+                'kernel_7': random.randint(1,7), 'kernel_8': random.randint(1,7),
       }
 
-    model_ft = ConvNeXt_simple(config)
+    model_ft = DisNet_Nano(config)
 
     model_ft = model_ft.to(device)
     
@@ -425,7 +437,7 @@ def train():
     
 
     image_datasets = build_datasets(input_size=config['input_size'], data_dir=data_dir)
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=True) for x in ['train', 'val']}
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=worker_init_fn, drop_last=True) for x in ['train', 'val']}
     
     #criterion = nn.CrossEntropyLoss()
     criterion_dict = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=1.2, dataloader=dataloaders_dict['train'])}

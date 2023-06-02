@@ -47,6 +47,6 @@ python /jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts/CocoaReader/utils/Torch_C
         --patience 10 \
         --learning_rate 1e-3 \
         --weight_decay 1e-4 \
-        --arch 'convnext_simple' 
+        --arch 'DisNet_Nano' \
 
 
