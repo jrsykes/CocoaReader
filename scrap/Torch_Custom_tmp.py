@@ -23,6 +23,16 @@ sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 #from RGBChannelMixer import CrossTalkColorGrading
 from ColorGradingLayer import CGResNet18
 from ConvNeXt_Simple import ConvNeXt_simple, ConvNeXt_simple2
+from DynamicFocalLoss import DynamicFocalLoss
+
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.manual_seed(42)
+
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -237,9 +247,14 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
+                        if phase == 'train':
+                            loss, step = criterion[phase](outputs, labels, step)
+                        else:
+                            loss = criterion[phase](outputs, labels)
                         #loss = criterion(outputs, labels)
+
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
-                        loss = criterion(outputs, labels) + args.l1_lambda * l1_norm
+                        loss += args.l1_lambda * l1_norm
                         
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
@@ -301,7 +316,6 @@ def train_model(model, optimizer, device, dataloaders_dict, criterion, patience,
                 wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1, "AIC": AIC_, "Best AIC": best_f1_AIC})  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
-
 
         bar.finish() 
         epoch += 1
@@ -386,39 +400,18 @@ def build_model(num_classes, input_size):
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif args.arch == 'CGresnet18':
         model_ft = CGResNet18(num_classes=num_classes)
-    elif args.arch == 'convnext_simple2':
-    
-        config_dict = {'num_classes': num_classes, 'input_size': args.input_size,
-                       'dim_2': round(wandb.config.dim_2 / 3) * 3, 'dim_3': round(wandb.config.dim_3 / 3) * 3, 
-                       'nodes_1': wandb.config.nodes_1 , 'nodes_2': wandb.config.nodes_2,
-                       'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
-                       'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
-        }
-        # config_dict = {'num_classes': 4, 'input_size': 400,
-        #        'dim_2': 15, 'dim_3': 18,
-        #        'nodes_1': 30 , 'nodes_2': 12,
-        #        'kernel_1': 3, 'kernel_2': 1,
-        #         'kernel_3': 3, 'kernel_4': 1
-        #        }
-        
-        model_ft = ConvNeXt_simple2(config_dict, input_size=input_size)
+ 
 
     elif args.arch == 'convnext_simple':
-        config_dict = {'num_classes': num_classes, 'input_size': args.input_size,
-                       'layer_scale': 0.3, 'stochastic_depth_prob': wandb.config.stochastic_depth_prob,
-                          'dim_1': wandb.config.dim_2, 'dim_2': wandb.config.dim_3, 
-                          'nodes_1': wandb.config.nodes_1 , 'nodes_2': wandb.config.nodes_2,
-                          'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
-                          'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
-                          'kernel_5': wandb.config.kernel_5, 'kernel_6': wandb.config.kernel_6,
-          }
-        # config_dict = {'num_classes': 4, 'input_size': 400,
-        #        'dim_1': 28, 'dim_2': 32,
-        #        'nodes_1': 114 , 'nodes_2': 138,
-        #        'kernel_1': 4, 'kernel_2': 4,
-        #         'kernel_3': 4, 'kernel_4': 2,
-        #         'kernel_5': 7, 'kernel_6': 5
-        #        }
+ 
+        config_dict = {'num_classes': 4, 'input_size': 400,
+                'layer_scale': 0.3, 'stochastic_depth_prob': 0.001,
+               'dim_1': 25, 'dim_2': 32,
+               'nodes_1': 128 , 'nodes_2': 119,
+               'kernel_1': 5, 'kernel_2': 7,
+                'kernel_3': 2, 'kernel_4': 3,
+                'kernel_5': 2, 'kernel_6': 1
+               }
         
         model_ft = ConvNeXt_simple(config_dict)
                        
@@ -468,38 +461,8 @@ class AttentionNet(nn.Module):
         x = F.softmax(x, dim=1)
         return x
 
-
-class DynamicFocalLoss(nn.Module):
-    def __init__(self, delta=1, dataloader=None):
-        super(DynamicFocalLoss, self).__init__()
-        self.delta = delta
-        self.dataloader = dataloader
-        self.weights_dict = {}
-
-    def forward(self, inputs, targets, step):
-        loss = nn.CrossEntropyLoss()(inputs, targets)
-        # Update weights_dict based on targets and predictions
-        preds = torch.argmax(inputs, dim=1)
-        for i in range(inputs.size(0)):
-            #get filename from dataset
-            filename = self.dataloader.dataset.samples[step + i][0].split("/")[-1]
-            if filename not in self.weights_dict:
-                self.weights_dict[filename] = 1
-            if preds[i] != targets[i]:
-                self.weights_dict[filename] += self.delta
-        step += inputs.size(0)
-        
-        # Apply weights to loss based on weights_dict
-        weighted_loss = torch.zeros(1).to(loss.device)
-        for filename, weight in self.weights_dict.items():
-            if weight > 1:
-                weighted_loss += loss * weight
-            else:
-                weighted_loss += loss
-        weighted_loss /= len(self.weights_dict)
-
-        return weighted_loss, step
-
+def worker_init_fn(worker_id):
+    np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 def train():
 
@@ -511,7 +474,6 @@ def train():
 
     model = nn.DataParallel(model)
 
-    #model = set_batchnorm_momentum(model, momentum=wandb.config.batchnorm_momentum)
     model = model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
@@ -519,13 +481,13 @@ def train():
 
     image_datasets = build_datasets(input_size=args.input_size, data_dir=data_dir)
 
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=True) for x in ['train', 'val']}
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=worker_init_fn, drop_last=True) for x in ['train', 'val']}
     
-    criterion = nn.CrossEntropyLoss()
-
+    criterion = {'val': nn.CrossEntropyLoss(), 'train': DynamicFocalLoss(delta=args.delta, dataloader=dataloaders_dict['train'])}
+    #criterion = nn.CrossEntropyLoss()
     
     trained_model, best_f1, best_f1_loss = train_model(model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
-    
+    wandb.finish()
     return trained_model, best_f1, best_f1_loss
 
 if args.sweep == True:

@@ -84,7 +84,7 @@ matrix = torch.from_numpy(np.loadtxt(matrix_pth, delimiter=','))
 #format float
 matrix = matrix.float()
 print(matrix)
-
+#%%
 #matrix = torch.tensor([[-2.569969892501831055e-01,2.154911756515502930e-01,1.519576273858547211e-02],
  #   [2.386483430862426758e+00,-3.911899626255035400e-01,-1.561194300651550293e+00],
   #  [-6.149564385414123535e-01,1.582644462585449219e+00,9.494693279266357422e-01]])
@@ -111,3 +111,53 @@ color_graded = ToPILImage()(color_graded.squeeze(0))
 color_graded.save(dest)
 
 #%%
+sweep = 'devoted-sweep-49'
+
+root = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/compiled_IR/FPR/M3140028.JPG'
+matrix_pth = "/local/scratch/jrs596/dat/IR_RGB_Comp_data/best_matrix_sweep/" + sweep + "_matrix.csv"
+#load torch tensor from csv
+matrix = torch.from_numpy(np.loadtxt(matrix_pth, delimiter=','))
+matrix = matrix.float()
+
+img = Image.open(root)
+#resize image
+img = img.resize((224, 224))
+#convert img to tensor
+input_tensor = ToTensor()(img)
+input_batch = input_tensor.unsqueeze(0) 
+
+print("matrix:")
+print(matrix)
+print()
+
+
+print("input_batch:")
+print(input_batch.shape)
+img_tensor = input_batch.permute(0, 2, 3, 1)
+print("Permute 1")
+print(img_tensor.shape)
+img_tensor = img_tensor @ matrix
+print("Matrix multiply")
+print(img_tensor.shape)
+img_tensor = img_tensor.permute(0, 3, 1, 2)
+print("Permute 2")
+print(img_tensor.shape)
+img_tensor = torch.clamp(img_tensor, 0, 1)
+# %%
+
+matrix = torch.tensor([[1,2,2],
+                       [1,2,2],
+                       [1,2,3]])
+matrix = matrix.float()
+#tensore of 1s shape (1, 3, 20, 20)
+img = torch.ones(1, 2, 2, 3)
+print('Image')
+print(img)
+print()
+out = img @ matrix
+out = out.permute(0, 3, 1, 2)
+
+print('Out')
+print(out)
+print(out.shape)
+# %%

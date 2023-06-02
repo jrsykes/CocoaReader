@@ -8,10 +8,10 @@ parameters:
     #     distribution: log_uniform
     #     min: 0.0001
     #     max: 0.1
-    layer_scale:
-         distribution: uniform
-         min: 0.01
-         max: 0.9
+    # layer_scale:
+    #      distribution: uniform
+    #      min: 0.01
+    #      max: 0.9
     stochastic_depth_prob:
          distribution: uniform
          min: 0.0001

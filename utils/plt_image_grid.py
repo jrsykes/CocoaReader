@@ -37,8 +37,8 @@ def plt_grid():
                      )  
 
     for ax, im in zip(grid, img_arr):
-    	ax.axis('off')
-    	ax.imshow(im)  
+        ax.axis('off')
+        ax.imshow(im)  
 
     plt.show()
     #plt.savefig("plt_grid.jpg")
