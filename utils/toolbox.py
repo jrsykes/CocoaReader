@@ -2,8 +2,6 @@ from __future__ import print_function
 from __future__ import division
 
 import os
-import yaml
-import pprint
 import torch
 import torch.nn as nn
 import numpy as np
@@ -12,28 +10,30 @@ from ArchitectureZoo import DisNet_nano, DisNet_pico
 
 
 
-def build_model(num_classes, args, config):
-    
-    if args.arch == 'convnext_tiny':
+def build_model(num_classes, arch, config):
+    print()
+    print('Building model...')
+ 
+    if arch == 'convnext_tiny':
         print('Loaded ConvNext Tiny with pretrained IN weights')
         model_ft = models.convnext_tiny(weights = None)
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-    elif args.arch == 'resnet18':
+    elif arch == 'resnet18':
         print('Loaded ResNet18 with pretrained IN weights')
         model_ft = models.resnet18(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif args.arch == 'resnet50':
+    elif arch == 'resnet50':
         print('Loaded ResNet50 with pretrained IN weights')
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif args.arch == 'DisNet_pico':
+    elif arch == 'DisNet_pico':
         print('Loaded DisNet_pico')
         
         model_ft = DisNet_pico(config)
-    elif args.arch == 'DisNet_nano':
+    elif arch == 'DisNet_nano':
         print('Loaded DisNet_nano')
         
         model_ft = DisNet_nano(config)
@@ -41,6 +41,10 @@ def build_model(num_classes, args, config):
     else:
         print("Architecture name not recognised")
         exit(0)
+    print()
+    print(f'{arch} loaded')
+    print('#'*50)
+    print()
     # Load custom pretrained weights    
     return model_ft
 

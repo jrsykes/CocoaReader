@@ -1,26 +1,14 @@
 from __future__ import print_function
 from __future__ import division
 
-import yaml
-import pprint
 import torch
 import torch.nn as nn
-import wandb
 import argparse
 import sys
-sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-import toolbox
-from training_loop import train_model
 import random
 import os
 import json
-from random_word import RandomWords
-import time
 import numpy as np
-
-
-#Set seeds for reproducability
-toolbox.SetSeeds()
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -75,7 +63,7 @@ parser.add_argument('--input_size', type=int, default=None,
                         help='image input size')
 parser.add_argument('--delta', type=float, default=1.4,
                         help='delta for dynamic focal loss')
-parser.add_argument('--arch', type=str, default='ConvNeXt_simple',
+parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
@@ -92,9 +80,14 @@ parser.add_argument('--criterion', type=str, default='crossentropy',
 args = parser.parse_args()
 print(args)
 
+sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
+import toolbox
+from training_loop import train_model
+#Set seeds for reproducability
+toolbox.SetSeeds()
+
 def train():
 
-    run = wandb.init(project=args.project_name)
 
     data_dir, num_classes, initial_bias, device = toolbox.setup(args)
 
@@ -113,7 +106,7 @@ def train():
                 'kernel_7': random.randint(1,7), 'kernel_8': random.randint(1,7),
       }
 
-    model = toolbox.build_model(num_classes, args, config=model_config)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
 
     model = nn.DataParallel(model)
 
@@ -131,55 +124,24 @@ def train():
     trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1 = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     
-    
-    wandb.finish()
     return trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, model_config
 
-if args.sweep == True:
-    with open(args.sweep_config) as file:
-        config = yaml.load(file, Loader=yaml.FullLoader)
-        sweep_config = config['sweep_config']
-        sweep_config['metric'] = config['metric']
-        sweep_config['parameters'] = config['parameters']
 
-        print('Sweep config:')
-        pprint.pprint(sweep_config)
-        print()
-        if args.sweep_id is None:
-            sweep_id = wandb.sweep(sweep_config, project=args.project_name, entity="frankslab")
-        else:
-            sweep_id = args.sweep_id
-        print("Sweep ID: ", sweep_id)
-        print()
 
-    wandb.agent(sweep_id,
-            project=args.project_name, 
-            function=train,
-            count=args.sweep_count)
-else:
-    if args.run_name is None:
-        run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
-        wandb.init(project=args.project_name, name=run_name, mode="offline")
-    else:
-        wandb.init(project=args.project_name, name=args.run_name, mode="offline")
-        run_name = args.run_name
 
-    trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, config = train()
+trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, config = train()
+n_parameters = sum(p.numel() for p in trained_model.parameters() if p.requires_grad)   
 
-    n_parameters = sum(p.numel() for p in trained_model.parameters() if p.requires_grad)   
-    
-    config['n_parameters'] = n_parameters
-    config['loss'] = best_f1_loss
+config['n_parameters'] = n_parameters
+config['loss'] = best_f1_loss
+config['f1'] = best_f1
+config['AIC'] = best_f1_AIC
+config['train_f1'] = best_train_f1
+#make directory if it doesn't exist
+os.makedirs(os.path.join(args.root, "dat/HypSweep/", args.project_name), exist_ok=True)
+out_file = os.path.join(args.root, "dat/HypSweep/", args.project_name, run_name + ".json")
 
-    config['f1'] = best_f1
-    config['AIC'] = best_f1_AIC
-    config['train_f1'] = best_train_f1
 
-    #make directory if it doesn't exist
-    os.makedirs(os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name), exist_ok=True)
-    out_file = os.path.join("/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat/models/HypSweep/", args.project_name, run_name + ".json")
-    
-    
-    # Save the updated dictionary back to the JSON file
-    with open(out_file, 'w') as f:
-        json.dump(config, f)
+# Save the updated dictionary back to the JSON file
+with open(out_file, 'w') as f:
+    json.dump(config, f)

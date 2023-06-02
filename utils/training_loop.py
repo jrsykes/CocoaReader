@@ -13,9 +13,19 @@ import os
 import sys
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 import toolbox
+from random_word import RandomWords
 
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
+    if args.run_name is None:
+        run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
+        wandb.init(project=args.project_name, name=run_name, mode="offline")
+    else:
+        wandb.init(project=args.project_name, name=args.run_name, mode="offline")
+        run_name = args.run_name
+
+    run = wandb.init(project=args.project_name)
+
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
@@ -189,7 +199,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 model_out = model
     
                 if args.save == True:
-                    PATH = os.path.join(args.root, 'models', args.model_name)
+                    PATH = os.path.join(args.root, 'dat/models', args.model_name)
                     torch.save(model.module, PATH + '.pth') 
   
             if phase == 'val':
@@ -203,6 +213,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         bar.finish() 
         epoch += 1
         
+    wandb.finish()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))

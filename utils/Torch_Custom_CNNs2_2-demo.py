@@ -8,12 +8,7 @@ import torch.nn as nn
 import wandb
 import argparse
 import sys
-sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-import toolbox
-from training_loop import train_model
-
-#Set seeds for reproducability
-toolbox.SetSeeds()
+import os
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -85,6 +80,12 @@ parser.add_argument('--criterion', type=str, default='crossentropy',
 args = parser.parse_args()
 print(args)
 
+sys.path.append(os.path.join(args.root, 'scripts/CocoaReader/utils'))
+import toolbox
+from training_loop import train_model
+#Set seeds for reproducability
+toolbox.SetSeeds()
+
 def train():
 
     run = wandb.init(project=args.project_name)
@@ -96,7 +97,7 @@ def train():
         with open(args.sweep_config) as f:
             model_config = yaml.safe_load(f)
 
-    model = toolbox.build_model(num_classes, args, config=model_config)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
 
     model = nn.DataParallel(model)
 
@@ -106,7 +107,7 @@ def train():
                                             weight_decay=args.weight_decay, eps=args.eps)
 
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=args.input_size) 
-    
+
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=True) for x in ['train', 'val']}
     
     criterion = {'val': nn.CrossEntropyLoss(), 'train': toolbox.DynamicFocalLoss(delta=args.delta, dataloader=dataloaders_dict['train'])}

@@ -14,7 +14,7 @@
 # set number of GPUs
 #SBATCH --gres=gpu:1
 
-##SBATCH --array=1-40
+#SBATCH --array=1-40
 
 # set maximum number of tasks to run in parallel
 #SBATCH --ntasks=40
@@ -34,17 +34,17 @@ source activate convnext
 
 export WANDB_MODE=offline
 
-root = "/jmain02/home/J2AD016/jjw02/jjs00-jjw02/"
-cd $root
+ROOT="/jmain02/home/J2AD016/jjw02/jjs00-jjw02"
+cd $ROOT
 
 #set wandb directory
-export WANDB_DIR=$root
+export WANDB_DIR=$ROOT
 
 python scripts/CocoaReader/CocoaNet/DisNet_nano_j2_sweep/Torch_Custom_CNNs2_2.py \
         --model_name 'DisNet-Nano' \
         --project_name 'DisNet-Nano' \
-        --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02/dat' \
-        --data_dir 'EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Easy/' \
+        --root '/jmain02/home/J2AD016/jjw02/jjs00-jjw02' \
+        --data_dir 'dat/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Easy/' \
         --input_size 400 \
         --min_epochs 15 \
         --max_epochs 200 \
@@ -52,5 +52,28 @@ python scripts/CocoaReader/CocoaNet/DisNet_nano_j2_sweep/Torch_Custom_CNNs2_2.py
         --patience 10 \
         --learning_rate 1e-3 \
         --weight_decay 1e-4 \
-        --arch 'DisNet_Nano'
+        --arch 'DisNet_nano'
 
+
+
+# export WANDB_MODE=offline
+
+# ROOT="/home/userfs/j/jrs596"
+# cd $ROOT
+
+# #set wandb directory
+# export WANDB_DIR=$ROOT
+
+# python scripts/CocoaReader/CocoaNet/DisNet_nano_j2_sweep/Torch_Custom_CNNs2_2.py \
+#         --model_name 'DisNet-Nano' \
+#         --project_name 'DisNet-Nano' \
+#         --root '/local/scratch/jrs596/' \
+#         --data_dir 'dat/test' \
+#         --input_size 400 \
+#         --min_epochs 15 \
+#         --max_epochs 200 \
+#         --batch_size 32 \
+#         --patience 10 \
+#         --learning_rate 1e-3 \
+#         --weight_decay 1e-4 \
+#         --arch 'DisNet_nano'
