@@ -29,9 +29,9 @@ class CNBlock(nn.Module):
         return result
 
 class DisNet_pico(nn.Module):
-    def __init__(self, config_dict = None, CC_CG = False):
+    def __init__(self, config_dict = None, IR = False):
         super(DisNet_pico, self).__init__()
-        self.CC_CG = CC_CG
+        self.IR = IR
         self.color_grading = CrossTalkColorGrading(matrix='Best')
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=config_dict['dim_1'], kernel_size=config_dict['kernel_1'], padding='same') 
         self.cnblock1 = CNBlock(dim=config_dict['dim_1'], kernel_3=config_dict['kernel_3'], kernel_4=config_dict['kernel_4'], stochastic_depth_prob=config_dict['stochastic_depth_prob'])
@@ -46,7 +46,7 @@ class DisNet_pico(nn.Module):
         self.fc3 = nn.Linear(config_dict['nodes_2'], config_dict['num_classes'])
 
     def forward(self, x):
-        if self.CC_CG == True:
+        if self.IR == True:
             x = self.color_grading(x) # apply cross channel channel color grading
         x = F.relu(self.conv1(x))   
         x = self.cnblock1(x)        
@@ -62,9 +62,9 @@ class DisNet_pico(nn.Module):
 
 
 class DisNet_nano(nn.Module):
-    def __init__(self, config_dict = None, CC_CG = False):
+    def __init__(self, config_dict = None, IR = False):
         super(DisNet_nano, self).__init__()
-        self.CC_CG = CC_CG
+        self.IR = IR
         self.color_grading = CrossTalkColorGrading(matrix='Best')
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=config_dict['dim_1'], kernel_size=config_dict['kernel_1'], padding='same') 
         self.cnblock1 = CNBlock(dim=config_dict['dim_1'], kernel_3=config_dict['kernel_3'], kernel_4=config_dict['kernel_4'], stochastic_depth_prob=config_dict['stochastic_depth_prob'])
@@ -81,7 +81,7 @@ class DisNet_nano(nn.Module):
         self.fc3 = nn.Linear(config_dict['nodes_2'], config_dict['num_classes'])
 
     def forward(self, x):
-        if self.CC_CG == True:
+        if self.IR == True:
             x = self.color_grading(x) # apply cross channel channel color grading
         x = F.relu(self.conv1(x))   
         x = self.cnblock1(x)        

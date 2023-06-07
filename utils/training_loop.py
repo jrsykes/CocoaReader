@@ -10,27 +10,41 @@ import wandb
 from sklearn import metrics
 from progress.bar import Bar
 import os
-import sys
-sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-import toolbox
+#import sys
 from random_word import RandomWords
+
+#sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
+#import toolbox
+from pthflops import count_ops
 
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
-    if args.run_name is None:
-        run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
-        wandb.init(project=args.project_name, name=run_name, mode="offline")
+    #Check environmental variable WANDB_MODE
+    if args.WANDB_MODE == 'offline':   
+        if args.sweep is False:
+            if args.run_name is None:
+                run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
+                wandb.init(project=args.project_name, name=run_name, mode="offline")
+            else:
+                wandb.init(project=args.project_name, name=args.run_name, mode="offline")
+                run_name = args.run_name
+        else:
+            run_name = wandb.run.name
     else:
-        wandb.init(project=args.project_name, name=args.run_name, mode="offline")
-        run_name = args.run_name
-
-    run = wandb.init(project=args.project_name)
-
+        if args.sweep is False:
+            if args.run_name is None:
+                run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
+                wandb.init(project=args.project_name, name=run_name)
+            else:
+                wandb.init(project=args.project_name, name=args.run_name)
+                run_name = args.run_name
+        else:
+            run_name = wandb.run.name
+    
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
     best_f1_acc = 0.0
-    best_f1_AIC = 0.0
     best_train_f1 = 0.0
     
     #Save current weights as 'best_model_wts' variable. 
@@ -80,7 +94,6 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
-
                     #split images in bacth into 16 non-overlapping chunks then recombine into bacth
                     if args.split_image == True:
                         
@@ -165,11 +178,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                    #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
                    #running totals for these metrics by the total number of training or validation samples. This controls for 
                    #the effect of batch size and the fact that the size of the last batch will less than args.batch_size
-                    running_loss += loss.item() * args.batch_size # inputs.size(0)
+                    running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data) 
-                    running_precision += stats_out['precision'] * args.batch_size # inputs.size(0)
-                    running_recall += stats_out['recall'] * args.batch_size # inputs.size(0)
-                    running_f1 += stats_out['f1-score'] * args.batch_size # inputs.size(0)    
+                    running_precision += stats_out['precision'] * inputs.size(0)
+                    running_recall += stats_out['recall'] * inputs.size(0)
+                    running_f1 += stats_out['f1-score'] * inputs.size(0)    
 
                     bar.next()  
            #Calculate statistics for epoch
@@ -179,9 +192,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             epoch_precision = (running_precision) / n         
             epoch_recall = (running_recall) / n        
             epoch_f1 = (running_f1) / n
+
             if phase == 'train':
                 train_f1 = epoch_f1 
-            AIC_ = toolbox.AIC(model=model, loss=epoch_loss)
+            
+            #AIC_ = toolbox.AIC(model=model, loss=epoch_loss)
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
@@ -193,7 +208,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 best_f1 = epoch_f1
                 best_f1_acc = epoch_acc
                 best_f1_loss = epoch_loss
-                best_f1_AIC = AIC_ #recod the best training AIC, not val
+                #best_f1_AIC = AIC_ #recod the best training AIC, not val
                 best_train_f1 = train_f1
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
@@ -206,17 +221,26 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 val_loss_history.append(epoch_loss)
             
             if phase == 'train':
-                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1, "AIC": AIC_, "Best AIC": best_f1_AIC})  
+                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1})  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
+        
 
         bar.finish() 
         epoch += 1
         
+    input = inputs[0].unsqueeze(0).to(device)
+    gflopts = count_ops(model, input)[:-1][0] / 1e9
+    # number of parameters
+    n_params = sum([p.nelement() for p in model.parameters()])
+
+    wandb.log({"GFLOPS": gflopts})
+    wandb.log({"n_params": n_params})
+    
     wandb.finish()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss, best_f1_AIC, best_train_f1
+    return model_out, best_f1, best_f1_loss, best_train_f1, run_name

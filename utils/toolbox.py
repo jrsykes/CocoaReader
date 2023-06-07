@@ -8,8 +8,6 @@ import numpy as np
 from torchvision import datasets, transforms, models
 from ArchitectureZoo import DisNet_nano, DisNet_pico
 
-
-
 def build_model(num_classes, arch, config):
     print()
     print('Building model...')
@@ -33,6 +31,11 @@ def build_model(num_classes, arch, config):
         print('Loaded DisNet_pico')
         
         model_ft = DisNet_pico(config)
+    elif arch == 'DisNet_pico-IR':
+        print('Loaded DisNet_pico')
+        
+        model_ft = DisNet_pico(config, IR=True)
+
     elif arch == 'DisNet_nano':
         print('Loaded DisNet_nano')
         
@@ -172,3 +175,5 @@ def SetSeeds():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(42)
+
+

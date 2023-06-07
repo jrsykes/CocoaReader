@@ -2,8 +2,7 @@
 
 #SBATCH --partition=small
 
-# set the number of nodes
-#SBATCH --nodes=1
+#SBATCH --ntasks=20 
 
 # set max wallclock time
 #SBATCH --time=6-00:00:00
@@ -71,7 +70,7 @@ python scripts/CocoaReader/CocoaNet/DisNet_nano_j2_sweep/Torch_Custom_CNNs2_2.py
 #         --data_dir 'dat/test' \
 #         --input_size 400 \
 #         --min_epochs 15 \
-#         --max_epochs 200 \
+#         --max_epochs 1 \
 #         --batch_size 32 \
 #         --patience 10 \
 #         --learning_rate 1e-3 \

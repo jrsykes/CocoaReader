@@ -5,10 +5,12 @@ import torch
 import torch.nn as nn
 import argparse
 import sys
-import random
+import yaml
 import os
 import json
-import numpy as np
+import wandb
+import pprint
+
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -21,6 +23,8 @@ parser.add_argument('--sweep', action='store_true', default=False,
                         help='Run Waits and Biases optimisation sweep')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
+parser.add_argument('--WANDB_MODE', type=str, default='online',
+                        help='WANDB_MODE for running offline')
 parser.add_argument('--sweep_config', type=str, default=None,
                         help='.yml sweep configuration file')
 parser.add_argument('--model_config', type=str, default=None,
@@ -88,24 +92,30 @@ toolbox.SetSeeds()
 
 def train():
 
+    wandb.init(project=args.project_name)
 
     data_dir, num_classes, initial_bias, device = toolbox.setup(args)
 
-    # #load config dictionary form json file
-    # if args.sweep_config is not None:
-    #     with open(args.sweep_config) as f:
-    #         model_config = yaml.safe_load(f)
     model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-                'stochastic_depth_prob': np.random.uniform(0.0001, 0.001), 'layer_scale': 0.3,
-                'dim_1': random.randint(14,60), 'dim_2': random.randint(14,60), 
-                'dim_3': random.randint(14,60),
-                'nodes_1': random.randint(64,130), 'nodes_2': random.randint(64,130),
-                'kernel_1': random.randint(1,7), 'kernel_2': random.randint(1,7),
-                'kernel_3': random.randint(1,7), 'kernel_4': random.randint(1,7),
-                'kernel_5': random.randint(1,7), 'kernel_6': random.randint(1,7),
-                'kernel_7': random.randint(1,7), 'kernel_8': random.randint(1,7),
+                'stochastic_depth_prob': wandb.config.stochastic_depth_prob, 
+                'layer_scale': 0.3,
+                'dim_1': wandb.config.dim_1, 'dim_2': wandb.config.dim_2, 
+                'nodes_1': wandb.config.nodes_1, 'nodes_2': wandb.config.nodes_2,
+                'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
+                'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
+                'kernel_5': wandb.config.kernel_5, 'kernel_6': wandb.config.kernel_6
       }
 
+    # model_config = {'num_classes': num_classes, 'input_size': args.input_size,
+    #             'stochastic_depth_prob': 0.0,
+    #             'layer_scale': 0.3,
+    #             'dim_1': 64, 'dim_2': 128,
+    #             'nodes_1': 4, 'nodes_2': 4,
+    #             'kernel_1': 3, 'kernel_2': 3,
+    #             'kernel_3': 3, 'kernel_4': 3,
+    #             'kernel_5': 3, 'kernel_6': 3
+    #     }
+    
     model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
 
     model = nn.DataParallel(model)
@@ -121,32 +131,33 @@ def train():
     
     criterion = {'val': nn.CrossEntropyLoss(), 'train': toolbox.DynamicFocalLoss(delta=args.delta, dataloader=dataloaders_dict['train'])}
     
-    trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     model_config['Run_name'] = run_name
     
-    return trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, model_config
+    return trained_model, best_f1, best_f1_loss, best_train_f1, model_config
 
 
 
-
-trained_model, best_f1, best_f1_loss, best_f1_AIC, best_train_f1, config = train()
-n_parameters = sum(p.numel() for p in trained_model.parameters() if p.requires_grad)   
-
-config['n_parameters'] = n_parameters
-config['loss'] = best_f1_loss
-config['f1'] = best_f1
-config['AIC'] = best_f1_AIC
-config['train_f1'] = best_train_f1
-#make directory if it doesn't exist
-os.makedirs(os.path.join(args.root, "dat/HypSweep/", args.project_name), exist_ok=True)
-out_file = os.path.join(args.root, "dat/HypSweep/", args.project_name, config['Run_name'] + ".json")
-
-print()
-print("Config: ")
-print(config)
-print()
-#save congig dictionary to json file
-with open(out_file, 'w') as f:
-    json.dump(config, f)
-
+if args.sweep == True:
+    with open(args.sweep_config) as file:
+        config = yaml.load(file, Loader=yaml.FullLoader)
+        sweep_config = config['sweep_config']
+        sweep_config['metric'] = config['metric']
+        sweep_config['parameters'] = config['parameters']
+    
+        print('Sweep config:')
+        pprint.pprint(sweep_config)
+        if args.sweep_id is None:
+            sweep_id = wandb.sweep(sweep=sweep_config, project=args.project_name, entity="frankslab")
+        else:
+            sweep_id = args.sweep_id
+        print("Sweep ID: ", sweep_id)
+        print()
+    
+    wandb.agent(sweep_id,
+            project=args.project_name, 
+            function=train,
+            count=args.sweep_count)
+else:
+    train()
