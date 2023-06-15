@@ -121,14 +121,14 @@ def Randomise_Split(root, destination):
 				os.makedirs(dest, exist_ok = True)
 				#open image and compress to 330x330 pixels
 				im = Image.open(os.path.join(source))
-				im1 = im.resize((400,400))
+				im1 = im.resize((500,500))
 				im1.save(os.path.join(dest, image))
 
 				#shutil.copy(source, dest)
 				#os.symlink(source, os.path.join(dest, image))
 
 root = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/compiled_RGB'
-destination = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/RGB_split_400'
+destination = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/RGB_split_500'
 
 Randomise_Split(root, destination)
 

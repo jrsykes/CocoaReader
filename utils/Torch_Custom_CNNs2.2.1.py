@@ -87,12 +87,14 @@ print(args)
 sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
 from training_loop import train_model
-#Set seeds for reproducability
-toolbox.SetSeeds()
+
 
 def train():
 
     wandb.init(project=args.project_name)
+
+    #Set seeds for reproducability
+    toolbox.SetSeeds()
 
     data_dir, num_classes, initial_bias, device = toolbox.setup(args)
 
@@ -134,9 +136,11 @@ def train():
     trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     model_config['Run_name'] = run_name
-    
+    #save model
+    model_path = os.path.join(args.root, 'Sweep_models', args.model_name)
+    os.makedirs(model_path, exist_ok=True)
+    torch.save(trained_model.module, os.path.join(model_path, run_name + '.pt')) 
     return trained_model, best_f1, best_f1_loss, best_train_f1, model_config
-
 
 
 if args.sweep == True:

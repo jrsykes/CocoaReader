@@ -7,26 +7,33 @@ import pandas as pd
 import time
 import numpy as np
 #import cv2
+import sys
 
-data_dir = "/local/scratch/jrs596/dat/EcuadorImages_EL_LowRes_split"
+sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
+
+data_dir = "/local/scratch/jrs596/dat/IR_RGB_Comp_data/IR_split_400"
+
+model_path = '/local/scratch/jrs596/dat/models/DisNet-pico-IR_ArchSweepBest.pt'
+quantized = False
+
 n_classes = len(os.listdir(os.path.join(data_dir, 'train')))
 
-input_size = 277
+input_size = 400
 batch_size = 1
 criterion = nn.CrossEntropyLoss()
 
 data_transforms = {
     'train': transforms.Compose([
-        transforms.Resize((input_size,input_size)),
+        #transforms.Resize((input_size,input_size)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
     ]),
     'val': transforms.Compose([
-        transforms.Resize((input_size,input_size)),
+        #transforms.Resize((input_size,input_size)),
         transforms.ToTensor(),
     ]),
     'test': transforms.Compose([
-        transforms.Resize((input_size,input_size)),
+        #transforms.Resize((input_size,input_size)),
         transforms.ToTensor(),
     ])
 }
@@ -36,7 +43,7 @@ image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transf
 	for x in ['train', 'val']}#, 'test']}
 # Create training and validation dataloaders
 dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_size, 
-	shuffle=False, num_workers=1) for x in ['train', 'val']}#, 'test']}#
+	shuffle=False, num_workers=6) for x in ['train', 'val']}#, 'test']}#
 
 
 
@@ -55,13 +62,13 @@ def eval(model, dataloaders_dict):
 	running_auc = 0
 
 	#df = pd.DataFrame(columns=['image_id','healthy','multiple_diseases','rust','scab'])
-	for phase in ['val']:
+	for phase in ['train', 'val']:
 		running_auc = 0
 		running_loss = 0.0
 		lables_list = []
 		preds_list = []
 		for i, (inputs, labels) in enumerate(dataloaders_dict[phase],0 ):
-			filename, _ = dataloaders_dict[phase].dataset.samples[i]
+			#filename, _ = dataloaders_dict[phase].dataset.samples[i]
 			#head_tail = os.path.split(filename)
 
 			# filename = head_tail[1][:-4]
@@ -227,8 +234,6 @@ def quant_eval2(model, img_loader):
 start = time.time()
 
 
-model_path = '/local/scratch/jrs596/dat/models/CocoaNet18_SemiSup..pth'
-quantized = False
 
 if quantized == False:
 	model = torch.load(model_path)
@@ -236,6 +241,8 @@ else:
 	model = torch.jit.load(model_path)
 
 model.eval()
+
+print(model)
 
 if quantized == False:
 	device = torch.device("cuda:0")

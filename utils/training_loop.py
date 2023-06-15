@@ -12,13 +12,12 @@ from progress.bar import Bar
 import os
 #import sys
 from random_word import RandomWords
-
+import toolbox
 #sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 #import toolbox
-from pthflops import count_ops
 
 
-def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):   
+def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):      
     #Check environmental variable WANDB_MODE
     if args.WANDB_MODE == 'offline':   
         if args.sweep is False:
@@ -41,6 +40,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     
+    my_metrics = toolbox.Metrics()
+
     since = time.time()
     val_loss_history = []
     best_f1 = 0.0
@@ -82,11 +83,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 if AttNet != None:
                     AttNet.eval()
 
-            running_loss = 0.0
-            running_corrects = 0
-            running_precision = 0
-            running_recall = 0
-            running_f1 = 0  
+
            #Get size of whole dataset split
             n = len(dataloaders_dict[phase].dataset)
            #Begin training
@@ -152,11 +149,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
                             outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
-                        if phase == 'train':
-                            loss, step = criterion[phase](outputs, labels, step)
-                        else:
-                            loss = criterion[phase](outputs, labels)
-                        #loss = criterion(outputs, labels)
+                        # if phase == 'train':
+                        #    loss, step = criterion[phase](outputs, labels, step)
+                        # else:
+                        #    loss = criterion[phase](outputs, labels)
+                        loss = criterion(outputs, labels)
 
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
                         loss += args.l1_lambda * l1_norm
@@ -174,29 +171,18 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                                 ANoptimizer.step() 
       
 
-                   #Calculate statistics
-                   #Here we multiply the loss and other metrics by the number of lables in the batch and then divide the 
-                   #running totals for these metrics by the total number of training or validation samples. This controls for 
-                   #the effect of batch size and the fact that the size of the last batch will less than args.batch_size
-                    running_loss += loss.item() * inputs.size(0)
-                    running_corrects += torch.sum(preds == labels.data) 
-                    running_precision += stats_out['precision'] * inputs.size(0)
-                    running_recall += stats_out['recall'] * inputs.size(0)
-                    running_f1 += stats_out['f1-score'] * inputs.size(0)    
+                        #Update metrics
+                        my_metrics.update(loss, preds, labels, stats_out)
 
                     bar.next()  
-           #Calculate statistics for epoch
-            n = len(dataloaders_dict[phase].dataset)
-            epoch_loss = float(running_loss / n)
-            epoch_acc = float(running_corrects.double() / n)
-            epoch_precision = (running_precision) / n         
-            epoch_recall = (running_recall) / n        
-            epoch_f1 = (running_f1) / n
+
+            # Calculate metrics for the epoch
+            epoch_loss, epoch_acc, epoch_precision, epoch_recall, epoch_f1 = my_metrics.calculate()
+            n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
             if phase == 'train':
                 train_f1 = epoch_f1 
             
-            #AIC_ = toolbox.AIC(model=model, loss=epoch_loss)
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
             print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
@@ -208,34 +194,28 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 best_f1 = epoch_f1
                 best_f1_acc = epoch_acc
                 best_f1_loss = epoch_loss
-                #best_f1_AIC = AIC_ #recod the best training AIC, not val
                 best_train_f1 = train_f1
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
     
                 if args.save == True:
                     PATH = os.path.join(args.root, 'dat/models', args.model_name)
-                    torch.save(model.module, PATH + '.pth') 
+                    torch.save(model, PATH + '.pth') 
   
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
             
             if phase == 'train':
-                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1})  
+                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1, "N parameters": n_parameters})  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
         
-
+            # Reset metrics for the next epoch
+            my_metrics.reset()
+        
         bar.finish() 
         epoch += 1
-        
-    input = inputs[0].unsqueeze(0).to(device)
-    gflopts = count_ops(model, input)[:-1][0] / 1e9
-    # number of parameters
-    n_params = sum([p.nelement() for p in model.parameters()])
 
-    wandb.log({"GFLOPS": gflopts})
-    wandb.log({"n_params": n_params})
     
     wandb.finish()
 

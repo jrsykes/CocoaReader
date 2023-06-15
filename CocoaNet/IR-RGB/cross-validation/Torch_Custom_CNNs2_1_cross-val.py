@@ -375,34 +375,34 @@ def Remove_module_from_layers(unpickled_model_wts):
         unpickled_model_wts[i] = unpickled_model_wts.pop('module.' + i)
     return unpickled_model_wts
 
-def build_model(num_classes, device):
+# def build_model(num_classes, device):
     
-    if args.arch == 'convnext_tiny':
-        print('Loaded ConvNext Tiny with pretrained IN weights')
-        model_ft = models.convnext_tiny(weights = None)
-        in_feat = model_ft.classifier[2].in_features
-        model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
-    elif args.arch == 'resnet18':
-        print('Loaded ResNet18 with pretrained IN weights')
-        model_ft = models.resnet18(weights=None)
-        in_feat = model_ft.fc.in_features
-        model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif args.arch == 'resnet50':
-        print('Loaded ResNet50 with pretrained IN weights')
-        model_ft = models.resnet50(weights=None)
-        in_feat = model_ft.fc.in_features
-        model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif args.arch == 'CGresnet18':
-        model_ft = CGResNet18(num_classes=num_classes)
-    else:
-        print("Architecture name not recognised")
-        exit(0)
-    # Load custom pretrained weights    
+#     if args.arch == 'convnext_tiny':
+#         print('Loaded ConvNext Tiny with pretrained IN weights')
+#         model_ft = models.convnext_tiny(weights = None)
+#         in_feat = model_ft.classifier[2].in_features
+#         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
+#     elif args.arch == 'resnet18':
+#         print('Loaded ResNet18 with pretrained IN weights')
+#         model_ft = models.resnet18(weights=None)
+#         in_feat = model_ft.fc.in_features
+#         model_ft.fc = nn.Linear(in_feat, num_classes)
+#     elif args.arch == 'resnet50':
+#         print('Loaded ResNet50 with pretrained IN weights')
+#         model_ft = models.resnet50(weights=None)
+#         in_feat = model_ft.fc.in_features
+#         model_ft.fc = nn.Linear(in_feat, num_classes)
+#     elif args.arch == 'CGresnet18':
+#         model_ft = CGResNet18(num_classes=num_classes)
+#     else:
+#         print("Architecture name not recognised")
+#         exit(0)
+#     # Load custom pretrained weights    
 
-    model_ft = nn.DataParallel(model_ft)
-    model_ft = set_batchnorm_momentum(model_ft, momentum=args.batchnorm_momentum)
-    model_ft = model_ft.to(device)
-    return model_ft
+#     model_ft = nn.DataParallel(model_ft)
+#     model_ft = set_batchnorm_momentum(model_ft, momentum=args.batchnorm_momentum)
+#     model_ft = model_ft.to(device)
+#     return model_ft
 
 def set_batchnorm_momentum(self, momentum):
     for m in self.modules():
@@ -487,7 +487,9 @@ def train():
         
     for fold in range(10):
         print(f'Fold {fold}')
-        model = build_model(num_classes, device)
+        #model = build_model(num_classes, device)
+        
+        model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                                 weight_decay=args.weight_decay, eps=args.eps)

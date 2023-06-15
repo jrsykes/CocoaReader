@@ -6,9 +6,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet_nano, DisNet_pico
+from ArchitectureZoo import DisNet_pico, DisNet_nano
+import timm
 
-def build_model(num_classes, arch, config):
+
+def build_model(num_classes, arch, config=None):
     print()
     print('Building model...')
  
@@ -18,28 +20,35 @@ def build_model(num_classes, arch, config):
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
     elif arch == 'resnet18':
-        print('Loaded ResNet18 with pretrained IN weights')
         model_ft = models.resnet18(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'resnet50':
-        print('Loaded ResNet50 with pretrained IN weights')
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'DisNet_pico':
-        print('Loaded DisNet_pico')
         
-        model_ft = DisNet_pico(config)
+        model_ft = DisNet_pico(out_channels=4)
+    elif arch == 'DisNet_pico2':
+            
+        model_ft = DisNet_pico2(out_channels=4)
+
+
     elif arch == 'DisNet_pico-IR':
-        print('Loaded DisNet_pico')
         
         model_ft = DisNet_pico(config, IR=True)
 
     elif arch == 'DisNet_nano':
-        print('Loaded DisNet_nano')
+       
+        model_ft = DisNet_nano(out_channels=4)
         
-        model_ft = DisNet_nano(config)
+    elif arch == 'DisNet_pico_0_1-IR':
+        model_ft = DisNet_pico_0_1(out_channels=num_classes, IR=True)
+    elif arch == 'efficientnet':
+        model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
+        num_ftrs = model_ft.classifier.in_features
+        model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
                        
     else:
         print("Architecture name not recognised")
@@ -175,5 +184,34 @@ def SetSeeds():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(42)
+    
 
 
+class Metrics:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.running_loss = 0.0
+        self.running_corrects = 0
+        self.running_precision = 0.0
+        self.running_recall = 0.0
+        self.running_f1 = 0.0
+        self.n = 0
+
+    def update(self, loss, preds, labels, stats_out):
+        inputs_size = labels.size(0)
+        self.running_loss += loss.item() * inputs_size
+        self.running_corrects += torch.sum(preds == labels.data)
+        self.running_precision += stats_out['precision'] * inputs_size
+        self.running_recall += stats_out['recall'] * inputs_size
+        self.running_f1 += stats_out['f1-score'] * inputs_size
+        self.n += inputs_size
+
+    def calculate(self):
+        loss = self.running_loss / self.n
+        acc = self.running_corrects.double() / self.n
+        precision = self.running_precision / self.n
+        recall = self.running_recall / self.n
+        f1 = self.running_f1 / self.n
+        return loss, acc, precision, recall, f1

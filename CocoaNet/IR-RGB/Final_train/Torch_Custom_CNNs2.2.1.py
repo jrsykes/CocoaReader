@@ -87,28 +87,19 @@ print(args)
 sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
 from training_loop import train_model
-#Set seeds for reproducability
-toolbox.SetSeeds()
-import numpy as np
+
 def train():
 
     wandb.init(project=args.project_name)
-
-    data_dir, num_classes, initial_bias, device = toolbox.setup(args)
-
-    model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-                'stochastic_depth_prob': 0.0009268910458147338,
-                'layer_scale': 0.3,
-                'dim_1': 16, 'dim_2': 39,
-                'nodes_1': 112, 'nodes_2': 86,
-                'kernel_1': 4, 'kernel_2': 5,
-                'kernel_3': 3, 'kernel_4': 2,
-                'kernel_5': 6, 'kernel_6': 2
-        }
+    #Set seeds for reproducability
+    toolbox.SetSeeds()
     
-    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
+    data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
+    device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
+    
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch)
 
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
 
     model = model.to(device)
 
@@ -119,13 +110,12 @@ def train():
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
-    criterion = {'val': nn.CrossEntropyLoss(), 'train': toolbox.DynamicFocalLoss(delta=args.delta, dataloader=dataloaders_dict['train'])}
-    
+    criterion = nn.CrossEntropyLoss()
+
     trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+
     
-    model_config['Run_name'] = run_name
-    
-    return trained_model, best_f1, best_f1_loss, best_train_f1, model_config
+    return trained_model, best_f1, best_f1_loss, best_train_f1
 
 
 
