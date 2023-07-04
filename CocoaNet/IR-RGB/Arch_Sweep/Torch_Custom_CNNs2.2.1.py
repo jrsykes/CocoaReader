@@ -96,50 +96,45 @@ def train():
     #Set seeds for reproducability
     toolbox.SetSeeds()
 
-    data_dir, num_classes, initial_bias, device = toolbox.setup(args)
+    data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
+    device = torch.device("cuda:7")
 
-    model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-                'stochastic_depth_prob': wandb.config.stochastic_depth_prob, 
-                'layer_scale': 0.3,
-                'dim_1': wandb.config.dim_1, 'dim_2': wandb.config.dim_2, 
-                'nodes_1': wandb.config.nodes_1, 'nodes_2': wandb.config.nodes_2,
-                'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
-                'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
-                'kernel_5': wandb.config.kernel_5, 'kernel_6': wandb.config.kernel_6
-      }
+    #define config dictionary with wandb
+    model_config = {
+        'num_classes': num_classes,
+        'dropout': wandb.config.drop_out,
+        'dim_1': wandb.config.dim_1, 
+        'dim_2': wandb.config.dim_2, 
+        'nodes_1': wandb.config.nodes_1, 
+        'nodes_2': wandb.config.nodes_2,
+        'kernel_1': wandb.config.kernel_1, 
+        'kernel_2': wandb.config.kernel_2,
+        'kernel_3': wandb.config.kernel_3, 
+        'kernel_4': wandb.config.kernel_4,
+        'kernel_5': wandb.config.kernel_5, 
+        'kernel_6': wandb.config.kernel_6,
+    }
 
-    # model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-    #             'stochastic_depth_prob': 0.0,
-    #             'layer_scale': 0.3,
-    #             'dim_1': 64, 'dim_2': 128,
-    #             'nodes_1': 4, 'nodes_2': 4,
-    #             'kernel_1': 3, 'kernel_2': 3,
-    #             'kernel_3': 3, 'kernel_4': 3,
-    #             'kernel_5': 3, 'kernel_6': 3
-    #     }
     
     model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
 
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
 
     model = model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
-
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=args.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+    
+    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=wandb.config.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
-    criterion = {'val': nn.CrossEntropyLoss(), 'train': toolbox.DynamicFocalLoss(delta=args.delta, dataloader=dataloaders_dict['train'])}
+    criterion = nn.CrossEntropyLoss()
     
     trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     model_config['Run_name'] = run_name
-    #save model
-    model_path = os.path.join(args.root, 'Sweep_models', args.model_name)
-    os.makedirs(model_path, exist_ok=True)
-    torch.save(trained_model.module, os.path.join(model_path, run_name + '.pt')) 
+
 
     return trained_model, best_f1, best_f1_loss, best_train_f1, model_config
 

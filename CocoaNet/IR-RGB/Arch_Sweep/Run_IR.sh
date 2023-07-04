@@ -25,7 +25,7 @@ module load system/CUDA/11.8.0
 conda init bash
 source ~/.bashrc
 
-source activate convnext
+source activate torch3
 
 ROOT="/users/jrs596"
 cd $ROOT
@@ -39,17 +39,16 @@ python scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/Torch_Custom_CNNs2.2.1.py 
         --model_name 'DisNet-Pico-IR' \
         --project_name 'DisNet-Pico-IR' \
         --root '/users/jrs596/scratch' \
-        --data_dir 'dat/IR_RGB_Comp_data/IR_split_400' \
-        --input_size 400 \
+        --data_dir 'dat/IR_RGB_Comp_data/IR_split_500' \
         --min_epochs 15 \
         --max_epochs 200 \
         --batch_size 21 \
         --patience 15 \
-        --arch 'DisNet_pico-IR' \
+        --arch 'DisNet-pico' \
         --sweep \
-        --sweep_id '1h2glqp5' \
+        --sweep_config 'scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/DisNet_pico-IR_config.yml' \
         --sweep_count 1000 \
-        --sweep_config 'scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/DisNet_pico-IR_config.yml'
+        --sweep_id '2dv0zt2v' 
       
 
 

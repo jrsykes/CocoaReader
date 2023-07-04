@@ -6,47 +6,41 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet_pico, DisNet_nano
+from ArchitectureZoo import DisNet_pico, DisNet_pico_deep, DisNet_nano
 import timm
+from thop import profile
 
-
-def build_model(num_classes, arch, config=None):
+def build_model(num_classes, arch, config):
     print()
     print('Building model...')
  
     if arch == 'convnext_tiny':
         print('Loaded ConvNext Tiny with pretrained IN weights')
-        model_ft = models.convnext_tiny(weights = None)
+        model_ft = models.convnext_tiny(weights = True)
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
     elif arch == 'resnet18':
-        model_ft = models.resnet18(weights=None)
+        model_ft = models.resnet18(weights=True)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'resnet50':
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif arch == 'DisNet_pico':
-        
-        model_ft = DisNet_pico(out_channels=4)
-    elif arch == 'DisNet_pico2':
-            
-        model_ft = DisNet_pico2(out_channels=4)
+    elif arch == 'DisNet-pico':
+        model_ft = DisNet_pico(out_channels=num_classes, config_dict=config)
+    elif arch == 'DisNet-pico_deep':
+        model_ft = DisNet_pico_deep(out_channels=num_classes, config_dict=config)
 
-
-    elif arch == 'DisNet_pico-IR':
+    elif arch == 'DisNet-nano':
+        model_ft = DisNet_nano(out_channels=num_classes)
         
-        model_ft = DisNet_pico(config, IR=True)
-
-    elif arch == 'DisNet_nano':
-       
-        model_ft = DisNet_nano(out_channels=4)
-        
-    elif arch == 'DisNet_pico_0_1-IR':
-        model_ft = DisNet_pico_0_1(out_channels=num_classes, IR=True)
-    elif arch == 'efficientnet':
-        model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
+    elif arch == 'efficientnetv2_s':
+        model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=True)
+        num_ftrs = model_ft.classifier.in_features
+        model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
+    elif arch == 'efficientnet_b0':
+        model_ft = timm.create_model('efficientnet_b0', pretrained=True)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
                        
@@ -67,6 +61,8 @@ def set_batchnorm_momentum(self, momentum):
     return self
 
 def setup(args):
+    print("Setting stuff up...")
+    print('#'*50)
     data_dir = os.path.join(args.root, args.data_dir)
     #Define some variable and paths
     os.environ['TORCH_HOME'] = os.path.join(args.root, "TORCH_HOME")
@@ -76,8 +72,10 @@ def setup(args):
 
     # Specify whether to use GPU or cpu. Quantisation aware training is not yet avalable for GPU.
    
-    device = torch.device("cuda")
-    
+    #device = torch.device("cuda")
+    device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
+
+
     ### Calculate and set bias for final layer based on imbalance in dataset classes
     dir_ = os.path.join(data_dir, 'train')
     list_cats = []
@@ -89,7 +87,7 @@ def setup(args):
     for i in list_cats:
         weights.append(np.log((max(list_cats)/i)))
 
-    initial_bias = torch.FloatTensor(weights).to(device)
+    initial_bias = torch.FloatTensor(weights)
 
     return data_dir, num_classes, initial_bias, device
 
@@ -143,11 +141,15 @@ def AIC(model, loss):
 
 def build_datasets(data_dir, input_size=None):
     # Data augmentation and normalization for training
-    # Just normalization for device
+    print("Image input size: ", str(input_size))
     if input_size == None:
+        print("No image resize applied")
         data_transforms = {
             'train': transforms.Compose([
                 transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=3, sigma=(1,3)),
+                                        transforms.RandomRotation(degrees=5)
+                                        ], p=0.4), 
                 transforms.ToTensor(),
 
             ]),
@@ -157,11 +159,15 @@ def build_datasets(data_dir, input_size=None):
         }
 
     elif input_size != None:
+        print("Image resize applied")
         data_transforms = {
             'train': transforms.Compose([
                 transforms.Resize((input_size,input_size)), 
                 transforms.RandomHorizontalFlip(p=0.5),
-                transforms.ToTensor(),
+                transforms.RandomApply([transforms.GaussianBlur(kernel_size=3, sigma=(1,3)),
+                        transforms.RandomRotation(degrees=5)
+                        ], p=0.4), 
+                transforms.ToTensor()
 
             ]),
             'val': transforms.Compose([
@@ -215,3 +221,12 @@ class Metrics:
         recall = self.running_recall / self.n
         f1 = self.running_f1 / self.n
         return loss, acc, precision, recall, f1
+
+def count_flops(model, device):
+    inputs = torch.randn(1, 3, 400, 400).to(device)
+    flops, params = profile(model, inputs=(inputs, ), verbose=False)
+
+    # Convert to GFLOPs
+    GFLOPs = flops / 1e9
+    return GFLOPs, params
+

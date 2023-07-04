@@ -35,11 +35,9 @@ parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat/',
                         help='location of all data')
 parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
-parser.add_argument('--save', action='store_true', default=False,
-                        help='Do you want to save the model?')
-parser.add_argument('--custom_pretrained', action='store_true', default=False,
-                        help='Train useing specified pre-trained weights?')
-parser.add_argument('--custom_pretrained_weights', type=str,
+parser.add_argument('--save', type=str, default=None,
+                        help='save "model", "weights" or "both" ?')
+parser.add_argument('--weights', type=str, default=None,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
@@ -95,13 +93,37 @@ def train():
     toolbox.SetSeeds()
     
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:4")
+    #device = torch.device("cuda:[0,1]")
+
+    config = {"dim_1":16,
+        "dim_2":15,
+        "dropout":0.31265223232454825,
+        "kernel_1":7,
+        "kernel_2":3,
+        "kernel_3":4,
+        "kernel_4":5,
+        "kernel_5":4,
+        "kernel_6":6,
+        "nodes_1":74,
+        "nodes_2":64}
     
-    model = toolbox.build_model(num_classes=num_classes, arch=args.arch)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=config)
 
-    #model = nn.DataParallel(model)
 
-    model = model.to(device)
+    if args.weights is not None:
+     # Load the state dict of the checkpoint
+        state_dict = torch.load(args.weights, map_location=device)
+
+        state_dict['fc3.weight'] = torch.randn([num_classes, state_dict['fc3.weight'].size(1)])
+        state_dict['fc3.bias'] = torch.randn([num_classes])
+        
+        # Load the modified state dictionary into the model
+        model.load_state_dict(state_dict)
+        print('Loaded weights from {}'.format(args.weights))
+
+    #model = torch.nn.DataParallel(model, device_ids=[7])
+    model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)

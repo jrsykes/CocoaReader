@@ -37,9 +37,7 @@ parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
 parser.add_argument('--save', action='store_true', default=False,
                         help='Do you want to save the model?')
-parser.add_argument('--custom_pretrained', action='store_true', default=False,
-                        help='Train useing specified pre-trained weights?')
-parser.add_argument('--custom_pretrained_weights', type=str,
+parser.add_argument('--weights', type=str, default=None,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
@@ -88,41 +86,33 @@ sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
 from training_loop import train_model
 
-
 def train():
 
     wandb.init(project=args.project_name)
-
     #Set seeds for reproducability
     toolbox.SetSeeds()
-
-    data_dir, num_classes, initial_bias, device = toolbox.setup(args)
-
-    model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-                'stochastic_depth_prob': wandb.config.stochastic_depth_prob, 
-                'layer_scale': 0.3,
-                'dim_1': wandb.config.dim_1, 'dim_2': wandb.config.dim_2, 
-                'nodes_1': wandb.config.nodes_1, 'nodes_2': wandb.config.nodes_2,
-                'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
-                'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
-                'kernel_5': wandb.config.kernel_5, 'kernel_6': wandb.config.kernel_6
-      }
-
-    # model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-    #             'stochastic_depth_prob': 0.0,
-    #             'layer_scale': 0.3,
-    #             'dim_1': 64, 'dim_2': 128,
-    #             'nodes_1': 4, 'nodes_2': 4,
-    #             'kernel_1': 3, 'kernel_2': 3,
-    #             'kernel_3': 3, 'kernel_4': 3,
-    #             'kernel_5': 3, 'kernel_6': 3
-    #     }
     
-    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
+    data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
+    #device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = nn.DataParallel(model)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch)
 
-    model = model.to(device)
+    if args.weights is not None:
+     # Load the state dict of the checkpoint
+        state_dict = torch.load(args.weights, map_location=device)
+
+        # Remove the weights for the final layer from the state dict
+        state_dict.pop('fc3.weight')
+        state_dict.pop('fc3.bias')
+
+        # Load the state dict into the model, ignoring the missing keys
+        model.load_state_dict(state_dict, strict=False)
+
+
+    #model = torch.nn.DataParallel(model, device_ids=[7])
+    model = torch.nn.DataParallel(model)
+    model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
@@ -131,16 +121,13 @@ def train():
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
-    criterion = {'val': nn.CrossEntropyLoss(), 'train': toolbox.DynamicFocalLoss(delta=args.delta, dataloader=dataloaders_dict['train'])}
-    
+    criterion = nn.CrossEntropyLoss()
+
     trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+
     
-    model_config['Run_name'] = run_name
-    #save model
-    model_path = os.path.join(args.root, 'Sweep_models', args.model_name)
-    os.makedirs(model_path, exist_ok=True)
-    torch.save(trained_model.module, os.path.join(model_path, run_name + '.pt')) 
-    return trained_model, best_f1, best_f1_loss, best_train_f1, model_config
+    return trained_model, best_f1, best_f1_loss, best_train_f1
+
 
 
 if args.sweep == True:

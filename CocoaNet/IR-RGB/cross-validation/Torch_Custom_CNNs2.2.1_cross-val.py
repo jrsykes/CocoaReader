@@ -10,7 +10,7 @@ import os
 import json
 import wandb
 import pprint
-
+import numpy as np
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -90,90 +90,8 @@ from training_loop import train_model
 
 
 def train():
-    wandb.init(project=args.project_name)
-    #Set seeds for reproducability
-    toolbox.SetSeeds()
-    # Initialize lists to store results
-    train_metrics_dict = {'loss': [], 'f1': [], 'acc': [], 'precision': [], 'recall': [], 'BPR_F1': [], 'FPR_F1': [], 'Healthy_F1': [], 'WBD_F1': []}
-    val_metrics_dict = {'loss': [], 'f1': [], 'acc': [], 'precision': [], 'recall': [], 'BPR_F1': [], 'FPR_F1': [], 'Healthy_F1': [], 'WBD_F1': []}
-
-    data_dir, num_classes, initial_bias, device = toolbox.setup(args)
-
-    # model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-    #             'stochastic_depth_prob': wandb.config.stochastic_depth_prob, 
-    #             'layer_scale': 0.3,
-    #             'dim_1': wandb.config.dim_1, 'dim_2': wandb.config.dim_2, 
-    #             'nodes_1': wandb.config.nodes_1, 'nodes_2': wandb.config.nodes_2,
-    #             'kernel_1': wandb.config.kernel_1, 'kernel_2': wandb.config.kernel_2,
-    #             'kernel_3': wandb.config.kernel_3, 'kernel_4': wandb.config.kernel_4,
-    #             'kernel_5': wandb.config.kernel_5, 'kernel_6': wandb.config.kernel_6
-    #   }
-
-    model_config = {'num_classes': num_classes, 'input_size': args.input_size,
-                'stochastic_depth_prob': 0.00039953471246499754,
-                'layer_scale': 0.3,
-                'dim_1': 15, 'dim_2': 22,
-                'nodes_1': 102, 'nodes_2': 103,
-                'kernel_1': 5, 'kernel_2': 1,
-                'kernel_3': 7, 'kernel_4': 2,
-                'kernel_5': 2, 'kernel_6': 1
-        }
-    
-    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
-
-    model = nn.DataParallel(model)
-
-    model = model.to(device)
-
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
-                                            weight_decay=args.weight_decay, eps=args.eps)
-    
-    for fold in range(10):
-        print(f'Fold {fold}')
-
-        image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=args.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
-
-        dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
-
-        criterion = {'val': nn.CrossEntropyLoss(), 'train': toolbox.DynamicFocalLoss(delta=args.delta, dataloader=dataloaders_dict['train'])}
-
-        trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
-
-        model_config['Run_name'] = run_name
-        #save model
-        model_path = os.path.join(args.root, 'Sweep_models', args.model_name)
-        os.makedirs(model_path, exist_ok=True)
-        torch.save(trained_model.module, os.path.join(model_path, run_name + '.pt')) 
-    return trained_model, best_f1, best_f1_loss, best_train_f1, model_config
-
-
-if args.sweep == True:
-    with open(args.sweep_config) as file:
-        config = yaml.load(file, Loader=yaml.FullLoader)
-        sweep_config = config['sweep_config']
-        sweep_config['metric'] = config['metric']
-        sweep_config['parameters'] = config['parameters']
-    
-        print('Sweep config:')
-        pprint.pprint(sweep_config)
-        if args.sweep_id is None:
-            sweep_id = wandb.sweep(sweep=sweep_config, project=args.project_name, entity="frankslab")
-        else:
-            sweep_id = args.sweep_id
-        print("Sweep ID: ", sweep_id)
-        print()
-    
-    wandb.agent(sweep_id,
-            project=args.project_name, 
-            function=train,
-            count=args.sweep_count)
-else:
-    train()
-
-
-
-def train():
-    data_dir, num_classes, initial_bias, device = setup(args)
+    data_dir, initial_bias, _ = toolbox.setup(args)
+    device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
     criterion = nn.CrossEntropyLoss()
 
     # Initialize lists to store results
@@ -182,18 +100,17 @@ def train():
         
     for fold in range(10):
         print(f'Fold {fold}')
-        #model = build_model(num_classes, device)
         
-        model = toolbox.build_model(num_classes=num_classes, arch=args.arch)
+        model = toolbox.build_model(num_classes=4, arch=args.arch).to(device)
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                                 weight_decay=args.weight_decay, eps=args.eps)
 
         
-        wandb.init(project=args.project_name, name=args.run_name+f'_fold_{fold}')
+        wandb.init(project=args.project_name)
    
         # Create training and validation datasets using the current fold
-        image_datasets = build_datasets(input_size=args.input_size, data_dir=os.path.join(data_dir, f'fold_{fold}'))
+        image_datasets = toolbox.build_datasets(input_size=args.input_size, data_dir=os.path.join(data_dir, f'fold_{fold}'))
     
         # Create dataloaders for the training and validation datasets
         dataloaders_dict = {
@@ -204,18 +121,18 @@ def train():
         # Train the model and store the results
         best_train_metrics, best_val_metrics = train_model(
             model=model,
+            args=args,
             optimizer=optimizer,
             device=device,
             dataloaders_dict=dataloaders_dict,
             criterion=criterion,
             patience=args.patience,
             initial_bias=initial_bias,
-            input_size=None,
+            input_size=args.input_size,
             n_tokens=None,
             batch_size=args.batch_size,
             AttNet=None,
-            ANoptimizer=None,
-            num_classes=num_classes
+            ANoptimizer=None
         )
 
         wandb.finish()
@@ -268,3 +185,5 @@ def train():
 
     wandb.finish()
     os.remove(args.run_name + '_results_dict.json')
+
+train()

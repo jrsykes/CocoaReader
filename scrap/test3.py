@@ -1,86 +1,56 @@
-from torchvision import datasets, models, transforms
-import os
+#%%
+
 import torch
-import random
-import shutil
-data_dir = "/local/scratch/jrs596/dat/compiled_cocoa_images/CrossVal_split/train_val/" 
 
-temp_dir = '/local/scratch/jrs596/dat/compiled_cocoa_images/CrossVal_split/epoch_randomisation/'
+from transformers import DeformableDetrConfig, DeformableDetrModel
 
-try:
-	shutil.rmtree(temp_dir + 'train')
-	shutil.rmtree(temp_dir + 'train')
-except:
-	pass
+# Initializing a Deformable DETR SenseTime/deformable-detr style configuration
+configuration = DeformableDetrConfig()
 
-for i in ['FPR', 'WBD', 'Healthy', 'BPR']:
-	image_list = os.listdir(data_dir + i)
-	random.shuffle(image_list)
-	for j in ['train', 'val']:
-		os.makedirs(temp_dir + j + '/' + i, exist_ok = True)
-		if j == 'train':
-			sample = image_list[:int(len(image_list)*0.9)]
-			for k in sample:
-				source = data_dir + i + '/' + k
-				dest = temp_dir + j + '/' + i + '/' + k
-				shutil.copy(source, dest)
-		else:
-			sample = image_list[int(len(image_list)*0.9):]
-			for k in sample:
-				source = data_dir + i + '/' + k
-				dest = temp_dir + j + '/' + i + '/' + k
-				shutil.copy(source, dest)
+# Initializing a model (with random weights) from the SenseTime/deformable-detr style configuration
+model = DeformableDetrModel(configuration)
 
+# Accessing the model configuration
+configuration = model.config
 
+from thop import profile
 
+def count_flops(model, input_size):
+    inputs = torch.randn(input_size).to(device)
+    flops, params = profile(model, inputs=(inputs, ), verbose=False)
 
+    # Convert to GFLOPs
+    GFLOPs = flops / 1e9
+    print(f'Total GFLOPs: {GFLOPs}')
+    print(f'Total params: {params}')
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = model.to(device)
 
-#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")#
-#
+print("Deformable DETR model:\n\n")
+# Assuming the input size is 1x3x800x800 for Deformable DETR
+count_flops(model, (1, 3, 224, 224))
 
-#def random_data_gen():#
+#%%
 
-#	data_transforms = {
-#	    'train': transforms.Compose([
-#	        transforms.RandomResizedCrop(input_size),
-#	        transforms.RandomHorizontalFlip(),
-#	        transforms.ToTensor(),
-#	        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-#	    ]),
-#	    'val': transforms.Compose([
-#	        transforms.Resize(input_size),
-#	        transforms.CenterCrop(input_size),
-#	        transforms.ToTensor(),
-#	        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-#	    ]),
-#	}	#
+import torch
+from torchvision.models import vit_b_16
 
-#	data = datasets.ImageFolder(data_dir)#
+# Initialize the model
+vit = vit_b_16()
 
-#	n = len(data.samples)	#
+# If you want to use pre-trained weights, you can do so by passing the appropriate parameter:
+vit = vit_b_16()
 
-#	image_datasets = torch.utils.data.random_split(data, [round(n*0.1), round(n*0.9)], 
-#		generator=torch.Generator())#
+# If you want to use the model for inference, don't forget to set it to evaluation mode:
+vit.eval()
 
-#	image_datasets = datasets.ImageFolder(image_datasets)
-#	
-##	image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), 
-##		data_transforms[x]) for x in ['train_val']}	#
+print("VIT model:\n\n")
+count_flops(vit, (1, 3, 224, 224))
+# %%
 
-#	
-#	##
+yolo = torch.hub.load('ultralytics/yolov5', 'yolov5s', _verbose=False)  # load silently
 
-#	#dataloaders_dict = torch.utils.data.DataLoader(image_datasets, batch_size=batch_size, 
-#	#	shuffle=True, num_workers=4)	#
-
-#	return image_datasets#
-
-#dataloaders = random_data_gen()#
-
-##for inputs, labels in dataloaders['train']:
-# #   print(inputs)# = inputs.to(device)
-#    #labels = labels.to(device)#
-#
-
-#print(dataloaders)
+print("YOLO model:\n\n")
+count_flops(yolo, (1, 3, 224, 224))
+# %%

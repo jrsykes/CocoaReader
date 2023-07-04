@@ -18,6 +18,10 @@ import toolbox
 
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):      
+    # @torch.compile
+    # def run_model(x):
+    #     return model(x)
+    
     #Check environmental variable WANDB_MODE
     if args.WANDB_MODE == 'offline':   
         if args.sweep is False:
@@ -70,7 +74,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                #If validation loss improves by at least 0.5%, reset patient to initial value
                patience = args.patience
         print('Patience: ' + str(patience) + '/' + str(args.patience))
-
+   
        #Training and validation loop
         for phase in ['train', 'val']:
             if phase == 'train':
@@ -198,9 +202,27 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
     
-                if args.save == True:
-                    PATH = os.path.join(args.root, 'dat/models', args.model_name)
-                    torch.save(model, PATH + '.pth') 
+                PATH = os.path.join(args.root, 'dat/models', args.model_name)
+                if args.save == 'model':
+                    print('Saving model to: ' + PATH + '.pth')
+                    try:
+                        torch.save(model.module, PATH + '.pth')
+                    except:
+                         torch.save(model, PATH + '.pth')
+                elif args.save == 'weights':
+                    print('Saving model weights to: ' + PATH + '_weights.pth')
+                    try:
+                        torch.save(model.module.state_dict(), PATH + '.pth')
+                    except:
+                        torch.save(model.state_dict(), PATH + '.pth')
+                elif args.save == 'both':
+                    print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
+                    try:
+                        torch.save(model.module, PATH + '.pth') 
+                        torch.save(model.module.state_dict(), PATH + '_weights.pth')
+                    except:
+                        torch.save(model, PATH + '.pth')
+                        torch.save(model.state_dict(), PATH + '_weights.pth')
   
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -212,10 +234,13 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         
             # Reset metrics for the next epoch
             my_metrics.reset()
+
         
         bar.finish() 
         epoch += 1
-
+    
+    GFLOPs, params = toolbox.count_flops(model, device)
+    wandb.log({'GFLOPs': GFLOPs, 'params': params})
     
     wandb.finish()
 
