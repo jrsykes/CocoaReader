@@ -132,33 +132,45 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # Get model outputs and calculate loss
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
-                        outputs = model(inputs)
+                        outputs, outputs2 = model(inputs)
 
-                        #Reduce dimensionality of output to 32x2
-                        if args.split_image == True:
-                            #old_output_shell = outputs[0:batch_size,0:num_classes]
-                            new_batch = []
-                            for i in range(batch_size):
-                                outputs_ = outputs[i*n_tokens**2:(i+1)*n_tokens**2]
-                                outputs_ = outputs_.detach().cpu()
+                        # #Reduce dimensionality of output to 32x2
+                        # if args.split_image == True:
+                        #     #old_output_shell = outputs[0:batch_size,0:num_classes]
+                        #     new_batch = []
+                        #     for i in range(batch_size):
+                        #         outputs_ = outputs[i*n_tokens**2:(i+1)*n_tokens**2]
+                        #         outputs_ = outputs_.detach().cpu()
                                 
-                                outputs_flat = torch.empty(0)
-                                for i in range(outputs_.shape[1]):
-                                    outputs_flat = torch.cat((outputs_flat,outputs_[:,i]),0)
+                        #         outputs_flat = torch.empty(0)
+                        #         for i in range(outputs_.shape[1]):
+                        #             outputs_flat = torch.cat((outputs_flat,outputs_[:,i]),0)
 
-                                outputs_ = outputs_flat.to(device).unsqueeze(0)
-                                outputs_ = AttNet(outputs_)
+                        #         outputs_ = outputs_flat.to(device).unsqueeze(0)
+                        #         outputs_ = AttNet(outputs_)
                                                         
-                                new_batch.append(outputs_)
+                        #         new_batch.append(outputs_)
 
-                            outputs = torch.stack(new_batch, dim=0).squeeze(1)
+                        #     outputs = torch.stack(new_batch, dim=0).squeeze(1)
 
                         # if phase == 'train':
                         #    loss, step = criterion[phase](outputs, labels, step)
                         # else:
                         #    loss = criterion[phase](outputs, labels)
+                        
+                        
+                        # define empty torch vector
+                        labels2 = []
+                        for i in (labels.tolist()):
+                            if i == 1:
+                                labels2.append(1)
+                            else:
+                                labels2.append(0)
+                        labels2 = torch.tensor(labels2).to(device)
+                              
                         loss = criterion(outputs, labels)
-
+                        loss += criterion(outputs2, labels2)
+  
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
                         loss += args.l1_lambda * l1_norm
                         
@@ -228,7 +240,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 val_loss_history.append(epoch_loss)
             
             if phase == 'train':
-                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1, "N parameters": n_parameters})  
+                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1})  
             else:
                 wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
         
@@ -238,8 +250,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         
         bar.finish() 
         epoch += 1
+    input_size = inputs.size()[1:]
     
-    GFLOPs, params = toolbox.count_flops(model, device)
+    GFLOPs, params = toolbox.count_flops(model=model, device=device, input_size=input_size)
     wandb.log({'GFLOPs': GFLOPs, 'params': params})
     
     wandb.finish()

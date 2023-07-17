@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet_pico, DisNet_pico_deep, DisNet_nano
+from ArchitectureZoo import DisNet_pico, DisNet_pico_duo
 import timm
 from thop import profile
 
@@ -29,12 +29,9 @@ def build_model(num_classes, arch, config):
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'DisNet-pico':
         model_ft = DisNet_pico(out_channels=num_classes, config_dict=config)
-    elif arch == 'DisNet-pico_deep':
-        model_ft = DisNet_pico_deep(out_channels=num_classes, config_dict=config)
+    elif arch == 'DisNet-pico-duo':
+        model_ft = DisNet_pico_duo(out_channels=num_classes, config_dict=config)
 
-    elif arch == 'DisNet-nano':
-        model_ft = DisNet_nano(out_channels=num_classes)
-        
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=True)
         num_ftrs = model_ft.classifier.in_features
@@ -139,6 +136,11 @@ def AIC(model, loss):
     AIC_ = 2*k - 2*np.log(loss)
     return AIC_
 
+class AveragePoolingColorChannels(object):
+    def __call__(self, img):
+        # Compute the mean along the color channel, then add an extra color channel dimension
+        return torch.mean(img, dim=0, keepdim=True)
+
 def build_datasets(data_dir, input_size=None):
     # Data augmentation and normalization for training
     print("Image input size: ", str(input_size))
@@ -150,11 +152,11 @@ def build_datasets(data_dir, input_size=None):
                 transforms.RandomApply([transforms.GaussianBlur(kernel_size=3, sigma=(1,3)),
                                         transforms.RandomRotation(degrees=5)
                                         ], p=0.4), 
-                transforms.ToTensor(),
+                transforms.ToTensor()
 
             ]),
             'val': transforms.Compose([
-                transforms.ToTensor(),
+                transforms.ToTensor()
             ])
         }
 
@@ -167,13 +169,15 @@ def build_datasets(data_dir, input_size=None):
                 transforms.RandomApply([transforms.GaussianBlur(kernel_size=3, sigma=(1,3)),
                         transforms.RandomRotation(degrees=5)
                         ], p=0.4), 
-                transforms.ToTensor()
+                transforms.ToTensor(),
+                #AveragePoolingColorChannels()
 
             ]),
             'val': transforms.Compose([
                 transforms.Resize((input_size,input_size)),
                 transforms.ToTensor(),
-            ]),
+                #AveragePoolingColorChannels()
+            ])
         }   
 
     print("Initializing Datasets and Dataloaders...")
@@ -222,8 +226,8 @@ class Metrics:
         f1 = self.running_f1 / self.n
         return loss, acc, precision, recall, f1
 
-def count_flops(model, device):
-    inputs = torch.randn(1, 3, 400, 400).to(device)
+def count_flops(model, device, input_size):
+    inputs = torch.randn(1, input_size[0], input_size[1], input_size[2]).to(device)
     flops, params = profile(model, inputs=(inputs, ), verbose=False)
 
     # Convert to GFLOPs

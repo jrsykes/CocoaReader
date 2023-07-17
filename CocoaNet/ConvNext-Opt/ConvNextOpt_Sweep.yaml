@@ -1,0 +1,43 @@
+sweep_config:
+  method: random
+metric:
+  name: Best_F1
+  goal: maximize
+parameters:
+    stochastic_depth_prob:
+         distribution: uniform
+         min: 0.001
+         max: 0.1
+    one:
+        distribution: int_uniform
+        min: 70
+        max: 96
+    two:
+        distribution: int_uniform
+        min: 100
+        max: 192
+    three:
+        distribution: int_uniform
+        min: 100
+        max: 384
+    four:
+        distribution: int_uniform
+        min: 100
+        max: 768
+    k_1:
+        distribution: int_uniform
+        min: 1
+        max: 9
+    k_2:
+        distribution: int_uniform
+        min: 1
+        max: 9
+    k_3:  
+        distribution: int_uniform
+        min: 1
+        max: 9
+    k_4:
+        distribution: int_uniform
+        min: 1
+        max: 9
+
