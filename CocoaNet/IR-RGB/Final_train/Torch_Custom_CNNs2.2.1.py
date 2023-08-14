@@ -93,34 +93,24 @@ def train():
     toolbox.SetSeeds()
     
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:4")
+    device = torch.device("cuda:0")
     #device = torch.device("cuda:[0,1]")
 
-    config = {"dim_1":16,
-        "dim_2":15,
-        "dropout":0.31265223232454825,
-        "kernel_1":7,
-        "kernel_2":3,
-        "kernel_3":4,
-        "kernel_4":5,
-        "kernel_5":4,
-        "kernel_6":6,
-        "nodes_1":74,
-        "nodes_2":64}
-    
-    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=config)
 
 
-    if args.weights is not None:
-     # Load the state dict of the checkpoint
-        state_dict = torch.load(args.weights, map_location=device)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=None)
 
-        state_dict['fc3.weight'] = torch.randn([num_classes, state_dict['fc3.weight'].size(1)])
-        state_dict['fc3.bias'] = torch.randn([num_classes])
+
+    # if args.weights is not None:
+    #  # Load the state dict of the checkpoint
+    #     state_dict = torch.load(args.weights, map_location=device)
+
+    #     state_dict['fc3.weight'] = torch.randn([num_classes, state_dict['fc3.weight'].size(1)])
+    #     state_dict['fc3.bias'] = torch.randn([num_classes])
         
-        # Load the modified state dictionary into the model
-        model.load_state_dict(state_dict)
-        print('Loaded weights from {}'.format(args.weights))
+    #     # Load the modified state dictionary into the model
+    #     model.load_state_dict(state_dict)
+    #     print('Loaded weights from {}'.format(args.weights))
 
     #model = torch.nn.DataParallel(model, device_ids=[7])
     model.to(device)
@@ -134,7 +124,7 @@ def train():
     
     criterion = nn.CrossEntropyLoss()
 
-    trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
 
     
     return trained_model, best_f1, best_f1_loss, best_train_f1

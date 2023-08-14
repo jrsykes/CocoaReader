@@ -3,9 +3,9 @@ import numpy as np
 import PIL.Image as Image
 
 # Root directory where the classes subdirectories are located
-root_dir = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/compiled_RGB'
+root_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/compiled_IR'
 # Destination directory where to create the 10 folders for the folds
-dest_dir = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/cross-val_RGB'
+dest_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/cross-val_IR'
 
 # Get the classes directories
 class_dirs = [os.path.join(root_dir, d) for d in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, d))]
@@ -43,5 +43,5 @@ for class_dir in class_dirs:
                 #os.symlink(img, link_name)
                 #open image with PIL, compress and save
                 im = Image.open(img)
-                im_ = im.resize((322,322))
+                im_ = im.resize((1000,1000))
                 im_.save(link_name)

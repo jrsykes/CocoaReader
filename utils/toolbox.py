@@ -16,28 +16,28 @@ def build_model(num_classes, arch, config):
  
     if arch == 'convnext_tiny':
         print('Loaded ConvNext Tiny with pretrained IN weights')
-        model_ft = models.convnext_tiny(weights = True)
+        model_ft = models.convnext_tiny(weights = None)
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
     elif arch == 'resnet18':
-        model_ft = models.resnet18(weights=True)
+        model_ft = models.resnet18(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'resnet50':
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif arch == 'DisNet-pico':
-        model_ft = DisNet_pico(out_channels=num_classes, config_dict=config)
-    elif arch == 'DisNet-pico-duo':
-        model_ft = DisNet_pico_duo(out_channels=num_classes, config_dict=config)
+    elif arch == 'DisNet_pico':
+        model_ft = DisNet_pico(out_channels=num_classes)
+    elif arch == 'DisNet_pico_duo':
+        model_ft = DisNet_pico_duo(out_channels=num_classes)
 
     elif arch == 'efficientnetv2_s':
-        model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=True)
+        model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
     elif arch == 'efficientnet_b0':
-        model_ft = timm.create_model('efficientnet_b0', pretrained=True)
+        model_ft = timm.create_model('efficientnet_b0', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
                        
@@ -65,7 +65,12 @@ def setup(args):
     os.environ['TORCH_HOME'] = os.path.join(args.root, "TORCH_HOME")
     
     data_dir = os.path.join(args.root, args.data_dir)
-    num_classes= len(os.listdir(data_dir + '/train'))
+    try:
+        num_classes= len(os.listdir(data_dir + '/train'))
+        dir_ = os.path.join(data_dir, 'train')
+    except:
+        num_classes= len(os.listdir(data_dir + '/fold_0/train'))
+        dir_ = os.path.join(data_dir, 'fold_0/train')
 
     # Specify whether to use GPU or cpu. Quantisation aware training is not yet avalable for GPU.
    
@@ -74,7 +79,7 @@ def setup(args):
 
 
     ### Calculate and set bias for final layer based on imbalance in dataset classes
-    dir_ = os.path.join(data_dir, 'train')
+    
     list_cats = []
     for i in sorted(os.listdir(dir_)):
         _, _, files = next(os.walk(os.path.join(dir_, i)))
@@ -197,8 +202,11 @@ def SetSeeds():
     
 
 
+from sklearn.metrics import f1_score
+
 class Metrics:
-    def __init__(self):
+    def __init__(self, num_classes=4):
+        self.num_classes = num_classes
         self.reset()
 
     def reset(self):
@@ -208,6 +216,8 @@ class Metrics:
         self.running_recall = 0.0
         self.running_f1 = 0.0
         self.n = 0
+        self.all_preds = []
+        self.all_labels = []
 
     def update(self, loss, preds, labels, stats_out):
         inputs_size = labels.size(0)
@@ -218,13 +228,22 @@ class Metrics:
         self.running_f1 += stats_out['f1-score'] * inputs_size
         self.n += inputs_size
 
+        # Store all predictions and labels for later calculation
+        self.all_preds.extend(preds.cpu().numpy())
+        self.all_labels.extend(labels.cpu().numpy())
+
     def calculate(self):
         loss = self.running_loss / self.n
         acc = self.running_corrects.double() / self.n
         precision = self.running_precision / self.n
         recall = self.running_recall / self.n
         f1 = self.running_f1 / self.n
-        return loss, acc, precision, recall, f1
+
+        # Calculate per class F1 scores
+        f1_per_class = f1_score(self.all_labels, self.all_preds, average=None)
+
+        return loss, acc, precision, recall, f1, f1_per_class
+
 
 def count_flops(model, device, input_size):
     inputs = torch.randn(1, input_size[0], input_size[1], input_size[2]).to(device)

@@ -35,8 +35,8 @@ parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat/',
                         help='location of all data')
 parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
-parser.add_argument('--save', action='store_true', default=False,
-                        help='Do you want to save the model?')
+parser.add_argument('--save', type=str, default=None,
+                        help='save "model", "weights" or "both" ?')
 parser.add_argument('--custom_pretrained', action='store_true', default=False,
                         help='Train useing specified pre-trained weights?')
 parser.add_argument('--custom_pretrained_weights', type=str,
@@ -97,25 +97,41 @@ def train():
     toolbox.SetSeeds()
 
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:7")
+    device = torch.device("cuda:1")
 
     #define config dictionary with wandb
     model_config = {
         'num_classes': num_classes,
-        'dropout': wandb.config.drop_out,
-        'dim_1': wandb.config.dim_1, 
-        'dim_2': wandb.config.dim_2, 
-        'nodes_1': wandb.config.nodes_1, 
-        'nodes_2': wandb.config.nodes_2,
-        'kernel_1': wandb.config.kernel_1, 
-        'kernel_2': wandb.config.kernel_2,
-        'kernel_3': wandb.config.kernel_3, 
-        'kernel_4': wandb.config.kernel_4,
-        'kernel_5': wandb.config.kernel_5, 
-        'kernel_6': wandb.config.kernel_6,
+        'input_size': wandb.config.input_size,
+        # 'drop_out': wandb.config.drop_out,
+        # 'dim_1': wandb.config.dim_1, 
+        # 'dim_2': wandb.config.dim_2, 
+        # 'nodes_1': wandb.config.nodes_1, 
+        # 'nodes_2': wandb.config.nodes_2,
+        # 'kernel_1': wandb.config.kernel_1, 
+        # 'kernel_2': wandb.config.kernel_2,
+        # 'kernel_3': wandb.config.kernel_3, 
+        # 'kernel_4': wandb.config.kernel_4,
+        # 'kernel_5': wandb.config.kernel_5, 
+        # 'kernel_6': wandb.config.kernel_6,
     }
 
-    
+    # model_config = {
+    #     'num_classes': num_classes,
+    #     "dim_1": 26,
+    #     "dim_2": 21,
+    #     "drop_out": 0.2,
+    #     "input_size": 64,
+    #     "kernel_1": 2,
+    #     "kernel_2": 6,
+    #     "kernel_3": 4,
+    #     "kernel_4": 1,
+    #     "kernel_5": 5,
+    #     "kernel_6": 6,
+    #     "nodes_1": 119,
+    #     "nodes_2": 77
+    # }
+        
     model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=model_config)
 
     #model = nn.DataParallel(model)
@@ -125,13 +141,13 @@ def train():
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
     
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=wandb.config.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=model_config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
     criterion = nn.CrossEntropyLoss()
     
-    trained_model, best_f1, best_f1_loss, best_train_f1, run_name = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
     
     model_config['Run_name'] = run_name
 

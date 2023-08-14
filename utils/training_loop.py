@@ -132,7 +132,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # Get model outputs and calculate loss
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
-                        outputs, outputs2 = model(inputs)
+                        
+                        if 'duo' in args.arch:
+                            outputs, outputs2 = model(inputs)
+                        else:
+                            outputs = model(inputs)
 
                         # #Reduce dimensionality of output to 32x2
                         # if args.split_image == True:
@@ -169,7 +173,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         labels2 = torch.tensor(labels2).to(device)
                               
                         loss = criterion(outputs, labels)
-                        loss += criterion(outputs2, labels2)
+                        if 'duo' in args.arch:
+                            loss += criterion(outputs2, labels2)
   
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
                         loss += args.l1_lambda * l1_norm
@@ -193,11 +198,16 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     bar.next()  
 
             # Calculate metrics for the epoch
-            epoch_loss, epoch_acc, epoch_precision, epoch_recall, epoch_f1 = my_metrics.calculate()
-            n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-
+            epoch_loss, epoch_acc, epoch_precision, epoch_recall, epoch_f1, f1_per_class = my_metrics.calculate()
+    
             if phase == 'train':
                 train_f1 = epoch_f1 
+                train_metrics = {'loss': [epoch_loss], 
+                       'f1': [epoch_f1], 
+                       'acc': [epoch_acc.item()], 
+                       'precision': [epoch_precision], 
+                       'recall': [epoch_recall], 
+                       'BPR_F1': [f1_per_class[0]], 'FPR_F1': [f1_per_class[1]], 'Healthy_F1': [f1_per_class[2]], 'WBD_F1': [f1_per_class[3]]}
             
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
@@ -213,6 +223,14 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 best_train_f1 = train_f1
                 best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
+
+                best_train_metrics = train_metrics
+                best_val_metrics = {'loss': [epoch_loss], 
+                                      'f1': [epoch_f1], 
+                                      'acc': [epoch_acc.item()], 
+                                      'precision': [epoch_precision], 
+                                      'recall': [epoch_recall], 
+                                      'BPR_F1': [f1_per_class[0]], 'FPR_F1': [f1_per_class[1]], 'Healthy_F1': [f1_per_class[2]], 'WBD_F1': [f1_per_class[3]]}
     
                 PATH = os.path.join(args.root, 'dat/models', args.model_name)
                 if args.save == 'model':
@@ -240,9 +258,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 val_loss_history.append(epoch_loss)
             
             if phase == 'train':
-                wandb.log({"epoch": epoch, "Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1})  
+                wandb.log({"Train_loss": epoch_loss, "Train_acc": epoch_acc, "Train_F1": epoch_f1, "Best_train_f1": best_train_f1})  
             else:
-                wandb.log({"epoch": epoch, "Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
+                wandb.log({"Val_loss": epoch_loss, "Val_acc": epoch_acc, "Val_F1": epoch_f1, "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
         
             # Reset metrics for the next epoch
             my_metrics.reset()
@@ -261,4 +279,4 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss, best_train_f1, run_name
+    return model_out, best_f1, best_f1_loss, best_train_f1, run_name, best_train_metrics, best_val_metrics

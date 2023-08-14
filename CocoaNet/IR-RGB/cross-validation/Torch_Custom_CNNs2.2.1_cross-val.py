@@ -90,8 +90,8 @@ from training_loop import train_model
 
 
 def train():
-    data_dir, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
+    data_dir, _, initial_bias, _ = toolbox.setup(args)
+    device = torch.device("cuda:2")
     criterion = nn.CrossEntropyLoss()
 
     # Initialize lists to store results
@@ -101,7 +101,8 @@ def train():
     for fold in range(10):
         print(f'Fold {fold}')
         
-        model = toolbox.build_model(num_classes=4, arch=args.arch).to(device)
+        model = toolbox.build_model(num_classes=4, arch=args.arch, config=None).to(device)
+        
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                                 weight_decay=args.weight_decay, eps=args.eps)
@@ -119,7 +120,7 @@ def train():
         }
 
         # Train the model and store the results
-        best_train_metrics, best_val_metrics = train_model(
+        _, _, _, _, run_name, best_train_metrics, best_val_metrics = train_model(
             model=model,
             args=args,
             optimizer=optimizer,
@@ -128,7 +129,7 @@ def train():
             criterion=criterion,
             patience=args.patience,
             initial_bias=initial_bias,
-            input_size=args.input_size,
+            input_size=None,
             n_tokens=None,
             batch_size=args.batch_size,
             AttNet=None,
@@ -171,19 +172,19 @@ def train():
     print()
           
     run = wandb.init(project=args.project_name)
-    artifact = wandb.Artifact(args.run_name + '_results', type='dataset')
+    artifact = wandb.Artifact(run_name + '_results', type='dataset')
 
     # Log the results as wandb artifacts
     mean_dict = {'train_mean_metrics': mean_train_metrics_dict, 'val_mean_metrics': mean_val_metrics_dict,
                      'train_se_metrics': train_se_metrics_dict, 'val_se_metrics': val_se_metrics_dict}
     
-    with open(args.run_name + '_results_dict.json', 'w') as f:
+    with open(run_name + '_results_dict.json', 'w') as f:
         json.dump(mean_dict, f)
 
-    artifact.add_file(args.run_name + '_results_dict.json')
+    artifact.add_file(run_name + '_results_dict.json')
     run.log_artifact(artifact)
 
     wandb.finish()
-    os.remove(args.run_name + '_results_dict.json')
+    os.remove(run_name + '_results_dict.json')
 
 train()
