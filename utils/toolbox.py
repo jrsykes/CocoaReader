@@ -6,9 +6,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet_pico, DisNet_pico_duo
+from ArchitectureZoo import DisNet_pico, DisNet_picoIR
 import timm
 from thop import profile
+from sklearn.metrics import f1_score
 
 def build_model(num_classes, arch, config):
     print()
@@ -28,10 +29,9 @@ def build_model(num_classes, arch, config):
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'DisNet_pico':
-        model_ft = DisNet_pico(out_channels=num_classes)
-    elif arch == 'DisNet_pico_duo':
-        model_ft = DisNet_pico_duo(out_channels=num_classes)
-
+        model_ft = DisNet_pico(out_channels=num_classes, config=config)
+    elif arch == 'DisNet_picoIR':
+        model_ft = DisNet_picoIR(out_channels=num_classes)
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
@@ -201,8 +201,6 @@ def SetSeeds():
     torch.manual_seed(42)
     
 
-
-from sklearn.metrics import f1_score
 
 class Metrics:
     def __init__(self, num_classes=4):

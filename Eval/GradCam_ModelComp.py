@@ -7,13 +7,12 @@ import cv2
 import torch.nn.functional as F
 import os
 from torchvision import datasets, transforms
-import sys
-sys.path.append('/users/jrs596/scripts/CocoaReader/utils')
 import torch
-from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+import sys
+sys.path.append('/users/jrs596/scripts/CocoaReader/utils')
 from ArchitectureZoo import DisNet_pico, DisNet_pico_duo
 
 device = torch.device("cuda:0")

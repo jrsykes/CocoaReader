@@ -36,18 +36,18 @@ export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
 ROOT="/home/userfs/j/jrs596"
 
 python scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/Torch_Custom_CNNs2.2.1.py \
-        --model_name 'efficientnetv2_s-IR' \
+        --model_name 'DisNet-Pico' \
         --project_name 'DisNet-Pico-IR' \
         --root '/users/jrs596/scratch' \
-        --data_dir 'dat/IR_RGB_Comp_data/IR_split_1k' \
+        --data_dir 'dat/IR_RGB_Comp_data/RGB_split_1k' \
         --min_epochs 15 \
         --max_epochs 200 \
         --batch_size 21 \
-        --patience 15 \
-        --arch 'efficientnetv2_s' \
+        --patience 20 \
+        --arch 'DisNet_pico' \
         --sweep \
-        --sweep_config '/users/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/DisNet_pico-IR_config_finetune.yml' \
-        --sweep_id 'fl42gf88' 
-        # --sweep_count 1000 \
+        --sweep_config '/users/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/DisNet_pico-IR_config.yml' \
+        --sweep_id '7wbi67lr' 
+
       
 

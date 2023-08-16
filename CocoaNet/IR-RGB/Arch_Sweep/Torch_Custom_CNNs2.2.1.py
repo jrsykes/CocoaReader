@@ -29,7 +29,7 @@ parser.add_argument('--sweep_config', type=str, default=None,
                         help='.yml sweep configuration file')
 parser.add_argument('--model_config', type=str, default=None,
                         help='.yml model configuration file')
-parser.add_argument('--sweep_count', type=int, default=100,
+parser.add_argument('--sweep_count', type=int, default=1000,
                         help='Number of models to train in sweep')
 parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat/',
                         help='location of all data')
@@ -97,23 +97,23 @@ def train():
     toolbox.SetSeeds()
 
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:1")
+    device = torch.device("cuda:4")
 
     #define config dictionary with wandb
     model_config = {
         'num_classes': num_classes,
         'input_size': wandb.config.input_size,
-        # 'drop_out': wandb.config.drop_out,
-        # 'dim_1': wandb.config.dim_1, 
-        # 'dim_2': wandb.config.dim_2, 
-        # 'nodes_1': wandb.config.nodes_1, 
-        # 'nodes_2': wandb.config.nodes_2,
-        # 'kernel_1': wandb.config.kernel_1, 
-        # 'kernel_2': wandb.config.kernel_2,
-        # 'kernel_3': wandb.config.kernel_3, 
-        # 'kernel_4': wandb.config.kernel_4,
-        # 'kernel_5': wandb.config.kernel_5, 
-        # 'kernel_6': wandb.config.kernel_6,
+        'drop_out': wandb.config.drop_out,
+        'dim_1': wandb.config.dim_1, 
+        'dim_2': wandb.config.dim_2, 
+        'nodes_1': wandb.config.nodes_1, 
+        'nodes_2': wandb.config.nodes_2,
+        'kernel_1': wandb.config.kernel_1, 
+        'kernel_2': wandb.config.kernel_2,
+        'kernel_3': wandb.config.kernel_3, 
+        'kernel_4': wandb.config.kernel_4,
+        'kernel_5': wandb.config.kernel_5, 
+        'kernel_6': wandb.config.kernel_6,
     }
 
     # model_config = {

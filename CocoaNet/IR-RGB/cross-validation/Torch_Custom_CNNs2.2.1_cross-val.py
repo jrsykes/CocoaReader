@@ -5,12 +5,11 @@ import torch
 import torch.nn as nn
 import argparse
 import sys
-import yaml
 import os
-import json
 import wandb
-import pprint
 import numpy as np
+import csv
+import json
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -79,6 +78,8 @@ parser.add_argument('--n_tokens', type=int, default=4,
                         help='Sqrt of number of tokens to split image into')
 parser.add_argument('--criterion', type=str, default='crossentropy',
                         help='Loss function to use. DFLOSS or crossentropy')
+parser.add_argument('--log_preds', action='store_true', default=False,
+                        help='Log model predictions')
 
 
 args = parser.parse_args()
@@ -91,7 +92,7 @@ from training_loop import train_model
 
 def train():
     data_dir, _, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:2")
+    device = torch.device("cuda:1")
     criterion = nn.CrossEntropyLoss()
 
     # Initialize lists to store results
@@ -135,56 +136,79 @@ def train():
             AttNet=None,
             ANoptimizer=None
         )
+########################################
+        if args.log_preds == True:
+            val_data = torch.utils.data.DataLoader(image_datasets['val'], batch_size=1, shuffle=False, num_workers=6, drop_last=False)
+            model.eval()
+            # true_labels = []
+            # pred_labels = []
+            out_list = []
 
+            with torch.no_grad():
+
+                for inputs, labels in val_data:
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)
+
+                    out_list.append((labels.item(), *model(inputs).tolist()[0]))
+
+            path = '/users/jrs596/scratch/dat/cross_val_predictions'
+            with open(os.path.join(path, args.arch + '.csv'), 'a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerows(out_list)
+  ########################################
+      
         wandb.finish()
 
-        # Store the results for this fold
-        for metric in train_metrics_dict:
-            train_metrics_dict[metric].append(best_train_metrics[metric])
-        for metric in val_metrics_dict:
-            val_metrics_dict[metric].append(best_val_metrics[metric])                                                   
-                                                       
-    #Divide all values in the dictionaries by 10 to get the mean
-    mean_train_metrics_dict = {}
-    mean_val_metrics_dict = {}
 
-    for metric in train_metrics_dict:
-        mean_train_metrics_dict[metric] = np.mean(train_metrics_dict[metric])
-    for metric in val_metrics_dict:
-        mean_val_metrics_dict[metric] = np.mean(val_metrics_dict[metric])
+    #     # Store the results for this fold
+    #     for metric in train_metrics_dict:
+    #         train_metrics_dict[metric].append(best_train_metrics[metric])
+    #     for metric in val_metrics_dict:
+    #         val_metrics_dict[metric].append(best_val_metrics[metric])                                                   
+                                                 
+    # #Divide all values in the dictionaries by 10 to get the mean
+    # mean_train_metrics_dict = {}
+    # mean_val_metrics_dict = {}
 
-    #Calculate standard error metrics dict
-    train_se_metrics_dict = {}
-    val_se_metrics_dict = {}
+    # for metric in train_metrics_dict:
+    #     mean_train_metrics_dict[metric] = np.mean(train_metrics_dict[metric])
+    # for metric in val_metrics_dict:
+    #     mean_val_metrics_dict[metric] = np.mean(val_metrics_dict[metric])
 
-    for metric in train_metrics_dict:
-        train_se_metrics_dict[metric] = np.std(train_metrics_dict[metric]) / np.sqrt(len(train_metrics_dict[metric]))
-    for metric in val_metrics_dict:
-        val_se_metrics_dict[metric] = np.std(val_metrics_dict[metric]) / np.sqrt(len(val_metrics_dict[metric]))
+    # #Calculate standard error metrics dict
+    # train_se_metrics_dict = {}
+    # val_se_metrics_dict = {}
+
+    # for metric in train_metrics_dict:
+    #     train_se_metrics_dict[metric] = np.std(train_metrics_dict[metric]) / np.sqrt(len(train_metrics_dict[metric]))
+    # for metric in val_metrics_dict:
+    #     val_se_metrics_dict[metric] = np.std(val_metrics_dict[metric]) / np.sqrt(len(val_metrics_dict[metric]))
 
 
-    print()
-    print(f'Mean train metrics: {mean_train_metrics_dict}')
-    print(f'Standard error train metrics: {train_se_metrics_dict}')
-    print()
-    print(f'Mean val metrics: {mean_val_metrics_dict}')
-    print(f'Standard error val metrics: {val_se_metrics_dict}')
-    print()
+    # print()
+    # print(f'Mean train metrics: {mean_train_metrics_dict}')
+    # print(f'Standard error train metrics: {train_se_metrics_dict}')
+    # print()
+    # print(f'Mean val metrics: {mean_val_metrics_dict}')
+    # print(f'Standard error val metrics: {val_se_metrics_dict}')
+    # print()
           
-    run = wandb.init(project=args.project_name)
-    artifact = wandb.Artifact(run_name + '_results', type='dataset')
+    # run = wandb.init(project=args.project_name)
+    # artifact = wandb.Artifact(run_name + '_results', type='dataset')
 
-    # Log the results as wandb artifacts
-    mean_dict = {'train_mean_metrics': mean_train_metrics_dict, 'val_mean_metrics': mean_val_metrics_dict,
-                     'train_se_metrics': train_se_metrics_dict, 'val_se_metrics': val_se_metrics_dict}
+    # # Log the results as wandb artifacts
+    # mean_dict = {'train_mean_metrics': mean_train_metrics_dict, 'val_mean_metrics': mean_val_metrics_dict,
+    #                  'train_se_metrics': train_se_metrics_dict, 'val_se_metrics': val_se_metrics_dict}
     
-    with open(run_name + '_results_dict.json', 'w') as f:
-        json.dump(mean_dict, f)
+    # with open(run_name + '_results_dict.json', 'w') as f:
+    #     json.dump(mean_dict, f)
 
-    artifact.add_file(run_name + '_results_dict.json')
-    run.log_artifact(artifact)
+    # artifact.add_file(run_name + '_results_dict.json')
+    # run.log_artifact(artifact)
 
-    wandb.finish()
-    os.remove(run_name + '_results_dict.json')
-
+    # wandb.finish()
+    # os.remove(run_name + '_results_dict.json')
+    
+    
 train()

@@ -1,7 +1,7 @@
 sweep_config:
   method: bayes
 metric:
-  name: Best_train_f1
+  name: Train_F1
   goal: maximize
 parameters:
     drop_out:
