@@ -29,7 +29,7 @@ parser.add_argument('--sweep_config', type=str, default=None,
                         help='.yml sweep configuration file')
 parser.add_argument('--model_config', type=str, default=None,
                         help='.yml model configuration file')
-parser.add_argument('--sweep_count', type=int, default=1000,
+parser.add_argument('--sweep_count', type=int, default=100,
                         help='Number of models to train in sweep')
 parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat/',
                         help='location of all data')
@@ -37,9 +37,7 @@ parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
 parser.add_argument('--save', type=str, default=None,
                         help='save "model", "weights" or "both" ?')
-parser.add_argument('--custom_pretrained', action='store_true', default=False,
-                        help='Train useing specified pre-trained weights?')
-parser.add_argument('--custom_pretrained_weights', type=str,
+parser.add_argument('--weights', type=str, default=None,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
@@ -79,8 +77,6 @@ parser.add_argument('--n_tokens', type=int, default=4,
                         help='Sqrt of number of tokens to split image into')
 parser.add_argument('--criterion', type=str, default='crossentropy',
                         help='Loss function to use. DFLOSS or crossentropy')
-parser.add_argument('--GPU', type=str, default='0',
-                        help='Which GPU device to use')
 
 
 args = parser.parse_args()
@@ -90,76 +86,53 @@ sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
 from training_loop import train_model
 
-
 def train():
-
-    run = wandb.init(project=args.project_name)
-    script_path = os.path.abspath(__file__)
-    script_dir = os.path.dirname(script_path)
-    wandb.save(os.path.join(script_dir, '*'), base_path=script_dir) 
+    config = {
+        'num_classes': 8,
+        'drop_out': 0.3,
+        'drop_out2': 0.3,
+        "dim_1": 26,
+        "dim_2": 16,
+        "input_size": 300,
+        "kernel_1": 1,
+        "kernel_2": 1,
+        "kernel_3": 9,
+        "kernel_4": 3,
+        "kernel_5": 19,
+        "kernel_6": 11,
+        "nodes_1": 168,
+        "nodes_2": 88,
+        "nodes_3": 79,
+        "nodes_4": 195,
+        "seed": 65,
+        "trans_nodes": 177,
+    }
 
     #Set seeds for reproducability
-    toolbox.SetSeeds(42)
-
-    data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:" + args.GPU)
-
-    #define config dictionary with wandb
-    # config = {
-    #     'num_classes': 8,
-    #     'input_size': wandb.config.input_size,
-    #     'drop_out': wandb.config.drop_out,
-    #     'dim_1': wandb.config.dim_1, 
-    #     'dim_2': wandb.config.dim_2, 
-    #     'nodes_1': wandb.config.nodes_1, 
-    #     'nodes_2': wandb.config.nodes_2,
-    #     'kernel_1': wandb.config.kernel_1, 
-    #     'kernel_2': wandb.config.kernel_2,
-    #     'kernel_3': wandb.config.kernel_3, 
-    #     'kernel_4': wandb.config.kernel_4,
-    #     'kernel_5': wandb.config.kernel_5, 
-    #     'kernel_6': wandb.config.kernel_6,
-    # }
+    toolbox.SetSeeds(config['seed'])
     
-    config = {
-            'num_classes': 8,
-            'drop_out': wandb.config.drop_out,
-            'drop_out2': wandb.config.drop_out2,
-            "dim_1": wandb.config.dim_1,
-            "dim_2": wandb.config.dim_2,
-            "input_size": wandb.config.input_size,
-            "kernel_1": wandb.config.kernel_1,
-            "kernel_2": wandb.config.kernel_2,
-            "kernel_3": wandb.config.kernel_3,
-            "kernel_4": wandb.config.kernel_4,
-            "kernel_5": wandb.config.kernel_5,
-            "kernel_6": wandb.config.kernel_6,
-            "nodes_1": wandb.config.nodes_1,
-            "nodes_2": wandb.config.nodes_2,
-            "nodes_3": wandb.config.nodes_3,
-            "nodes_4": wandb.config.nodes_4,
-            "trans_nodes": wandb.config.trans_nodes
-        }
+    wandb.init(project=args.project_name)
 
-  
+    
+    data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
+    device = torch.device("cuda:0")
+    
     DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
     SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
     Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
-    
     config2 = {'CNN1': DisNet, 
                'CNN2': SecondNet, 
                'MetaModel': Meta}
-    
-    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)  
-    # model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
-  
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=wandb.config.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+
+    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)
+ 
+    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
     criterion = nn.CrossEntropyLoss()
     
-    input_size = torch.Size([3, wandb.config.input_size, wandb.config.input_size])
+    input_size = torch.Size([3, config['input_size'], config['input_size']])
     inputs = torch.randn(1, *input_size).to(device)
     with torch.no_grad():
         model(inputs)
@@ -168,28 +141,17 @@ def train():
     del model
     print()
     print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
-
-    if GFLOPs < 6 and n_params < 50000000:
-        model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)   
-        # model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
-
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
+    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2)     
+    model = model.to(device)  
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                         weight_decay=args.weight_decay, eps=args.eps)
-        
-        trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
-        config['Run_name'] = run_name
-        
-    else: 
-        print()
-        print('Model too large, aborting training')
-        print()
-        run.log({'Status': 'aborted'})  # Log the status as 'aborted'
-        run.finish()  # Finish the run
+    
+    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
 
-        trained_model, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
+    
+    return trained_model, best_f1, best_f1_loss, best_train_f1
 
 
-    return trained_model, best_f1, best_f1_loss, best_train_f1, config
 
 if args.sweep == True:
     with open(args.sweep_config) as file:

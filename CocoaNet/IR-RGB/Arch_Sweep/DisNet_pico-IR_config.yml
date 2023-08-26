@@ -1,54 +1,72 @@
 sweep_config:
-  method: bayes
+    method: bayes
 metric:
-  name: Train_F1
-  goal: maximize
+    name: Best_F1
+    goal: maximize
 parameters:
     drop_out:
-         distribution: uniform
-         min: 0.1
-         max: 0.3
+        distribution: uniform
+        min: 0.1
+        max: 0.5
+    drop_out2:
+        distribution: uniform
+        min: 0.1
+        max: 0.5
     kernel_1:
         distribution: int_uniform
         min: 1
-        max: 8
+        max: 20
     kernel_2:
         distribution: int_uniform
         min: 1
-        max: 8
+        max: 20
     kernel_3:
         distribution: int_uniform
         min: 1
-        max: 8
+        max: 20
     kernel_4:
         distribution: int_uniform
         min: 1
-        max: 8
+        max: 20
     kernel_5:
         distribution: int_uniform
         min: 1
-        max: 8
+        max: 20
     kernel_6:
         distribution: int_uniform
         min: 1
-        max: 8    
+        max: 20    
     dim_1:
         distribution: int_uniform
-        min: 20
-        max: 50
+        min: 10
+        max: 100
     dim_2:
         distribution: int_uniform
-        min: 20
-        max: 50
+        min: 10
+        max: 100
     nodes_1:
         distribution: int_uniform
         min: 60
-        max: 120
+        max: 200
     nodes_2:
         distribution: int_uniform
         min: 60
-        max: 120
+        max: 200
+    nodes_3:
+        distribution: int_uniform
+        min: 60
+        max: 200
+    nodes_4:
+        distribution: int_uniform
+        min: 60
+        max: 200
+    trans_nodes:
+        distribution: int_uniform
+        min: 60
+        max: 200
     input_size:
         distribution: int_uniform
-        min: 350
+        min: 200
         max: 500
+
+

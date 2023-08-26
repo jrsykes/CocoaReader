@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet_pico, DisNet_picoIR
+from ArchitectureZoo import DisNet_pico, DisNet_picoIR, MetaModel, UnifiedModel
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
@@ -31,7 +31,7 @@ def build_model(num_classes, arch, config):
     elif arch == 'DisNet_pico':
         model_ft = DisNet_pico(out_channels=num_classes, config=config)
     elif arch == 'DisNet_picoIR':
-        model_ft = DisNet_picoIR(out_channels=num_classes)
+        model_ft = DisNet_picoIR(out_channels=num_classes, config=config)
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
@@ -40,7 +40,11 @@ def build_model(num_classes, arch, config):
         model_ft = timm.create_model('efficientnet_b0', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
-                       
+    elif arch == 'Meta':
+        model_ft = MetaModel(config=config)
+    elif arch == 'Unified':
+        model_ft = UnifiedModel(CNN1=config['CNN1'], CNN2=config['CNN2'], MetaModel=config['MetaModel'])
+                             
     else:
         print("Architecture name not recognised")
         exit(0)
@@ -191,14 +195,14 @@ def build_datasets(data_dir, input_size=None):
     return image_datasets
 
 
-def SetSeeds():
+def SetSeeds(seed=42):
     if torch.cuda.is_available():
-        torch.cuda.manual_seed(42)
-        torch.cuda.manual_seed_all(42)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    torch.manual_seed(42)
+    torch.manual_seed(seed)
     
 
 

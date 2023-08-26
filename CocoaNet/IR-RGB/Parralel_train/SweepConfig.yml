@@ -1,0 +1,11 @@
+sweep_config:
+  method: grid
+metric:
+  name: Best_F1
+  goal: maximize
+parameters:
+    input_size:
+         distribution: int_uniform
+         min: 300
+         max: 500
+ 

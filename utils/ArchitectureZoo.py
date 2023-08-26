@@ -213,25 +213,27 @@ class DisNet_pico(nn.Module):
     
 
 class DisNet_picoIR(nn.Module):
-    config_dict = {
-    "dim_1": 21,
-    "dim_2": 41,
-    "drop_out": 0.1280985437968713,
-    "input_size": 455,
-    "kernel_1": 2,
-    "kernel_2": 1,
-    "kernel_3": 8,
-    "kernel_4": 4,
-    "kernel_5": 4,
-    "kernel_6": 4,
-    "nodes_1": 84,
-    "nodes_2": 79,
-    }
+
+    # config_dict = {
+    #         "dim_1": 27,
+    #         "dim_2": 10,
+    #         "drop_out": 0.16160199440118397,
+    #         "input_size": 252,
+    #         "kernel_1": 3,
+    #         "kernel_2": 3,
+    #         "kernel_3": 19,
+    #         "kernel_4": 2,
+    #         "kernel_5": 19,
+    #         "kernel_6": 13,
+    #         "nodes_1": 113,
+    #         "nodes_2": 135,
+    #         "num_classes": 8
+    # }
 
 
-    def __init__(self, out_channels):
+    def __init__(self, out_channels, config=None):
         super(DisNet_picoIR, self).__init__()
-        # self.config_dict = config
+        self.config_dict = config
         
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=self.config_dict['dim_1'], kernel_size=self.config_dict['kernel_1'], padding='same') 
         nn.init.kaiming_normal_(self.conv1.weight, mode='fan_out', nonlinearity='relu')
@@ -246,7 +248,7 @@ class DisNet_picoIR(nn.Module):
         self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out'])
 
         # self.fc1 = None
-        self.fc1 = nn.Linear(523529, self.config_dict['nodes_1'])
+        self.fc1 = nn.Linear(183600, self.config_dict['nodes_1'])
         
         self.fc2 = nn.Linear(self.config_dict['nodes_1'], self.config_dict['nodes_2'])
         nn.init.kaiming_normal_(self.fc2.weight, mode='fan_out', nonlinearity='relu')
@@ -280,36 +282,74 @@ class DisNet_picoIR(nn.Module):
         return x
 
 
-class AttentionNet(nn.Module):
-    def __init__(self, num_classes, num_tokens):
-        super(AttentionNet, self).__init__()
-        num_heads = num_classes
-        embed_dim = num_tokens**2*num_classes
-        head_dim = embed_dim//num_heads
-        # define linear transformations for queries, keys, and values
-        self.query_transform = nn.Linear(embed_dim, num_heads * head_dim)
-        self.key_transform = nn.Linear(embed_dim, num_heads * head_dim)
-        self.value_transform = nn.Linear(embed_dim, num_heads * head_dim)
-        #apply muti-AttentionNet head
-        self.Attention = nn.MultiheadAttention(embed_dim=embed_dim, num_heads=num_heads)
-        #apply layer normalisation
-        self.layernorm = nn.LayerNorm(embed_dim)
-        #apply linear layer
-        self.fc1 = nn.Linear(embed_dim, embed_dim)
-        self.fc2 = nn.Linear(embed_dim, num_classes)
+# class AttentionNet(nn.Module):
+#     def __init__(self, num_classes, num_tokens):
+#         super(AttentionNet, self).__init__()
+#         num_heads = num_classes
+#         embed_dim = num_tokens**2*num_classes
+#         head_dim = embed_dim//num_heads
+#         # define linear transformations for queries, keys, and values
+#         self.query_transform = nn.Linear(embed_dim, num_heads * head_dim)
+#         self.key_transform = nn.Linear(embed_dim, num_heads * head_dim)
+#         self.value_transform = nn.Linear(embed_dim, num_heads * head_dim)
+#         #apply muti-AttentionNet head
+#         self.Attention = nn.MultiheadAttention(embed_dim=embed_dim, num_heads=num_heads)
+#         #apply layer normalisation
+#         self.layernorm = nn.LayerNorm(embed_dim)
+#         #apply linear layer
+#         self.fc1 = nn.Linear(embed_dim, embed_dim)
+#         self.fc2 = nn.Linear(embed_dim, num_classes)
 
+
+#     def forward(self, x):
+#         #apply AttentionNet
+#         queries = self.query_transform(x)
+#         keys = self.key_transform(x)
+#         values = self.value_transform(x)
+#         x, _ = self.Attention(queries, keys, values)
+#         x = self.fc1(x)
+#         #apply layer normalisation
+#         x = self.layernorm(x)
+#         #apply linear layer
+#         x = self.fc2(x)
+#         #apply relu activation
+#         x = F.softmax(x, dim=1)
+#         return x
+
+# Define the meta-model
+class MetaModel(nn.Module):
+    def __init__(self, config):
+        super(MetaModel, self).__init__()
+        self.config = config
+        self.fc1 = nn.Linear(self.config['trans_nodes']*2, self.config['nodes_3'])
+        self.bn1 = nn.LayerNorm(self.config['nodes_3'])
+        self.fc2 = nn.Linear(self.config['nodes_3'], self.config['nodes_4'])
+        self.bn2 = nn.LayerNorm(self.config['nodes_4'])
+        self.fc3 = nn.Linear(self.config['nodes_4'], self.config['num_classes'])
+        self.dropout = nn.Dropout(self.config['drop_out2'])
+        
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.bn1(x)
+        x = nn.ReLU()(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        x = self.bn2(x)
+        x = nn.ReLU()(x)
+        x = self.dropout(x)
+        x = self.fc3(x)
+        return x
+    
+# Define the unified model
+class UnifiedModel(nn.Module):
+    def __init__(self, CNN1, CNN2, MetaModel):
+        super(UnifiedModel, self).__init__()
+        self.cnn1 = CNN1
+        self.cnn2 = CNN2
+        self.meta = MetaModel
 
     def forward(self, x):
-        #apply AttentionNet
-        queries = self.query_transform(x)
-        keys = self.key_transform(x)
-        values = self.value_transform(x)
-        x, _ = self.Attention(queries, keys, values)
-        x = self.fc1(x)
-        #apply layer normalisation
-        x = self.layernorm(x)
-        #apply linear layer
-        x = self.fc2(x)
-        #apply relu activation
-        x = F.softmax(x, dim=1)
-        return x
+        out1 = self.cnn1(x)
+        out2 = self.cnn2(x)
+        merged = torch.cat((out1, out2), dim=1)
+        return self.meta(merged)

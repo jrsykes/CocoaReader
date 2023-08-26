@@ -77,7 +77,8 @@ parser.add_argument('--n_tokens', type=int, default=4,
                         help='Sqrt of number of tokens to split image into')
 parser.add_argument('--criterion', type=str, default='crossentropy',
                         help='Loss function to use. DFLOSS or crossentropy')
-
+parser.add_argument('--GPU', type=str, default='0',
+                        help='Which GPU device to use')
 
 args = parser.parse_args()
 print(args)
@@ -87,19 +88,47 @@ import toolbox
 from training_loop import train_model
 
 def train():
+    config = {
+            'num_classes': 8,
+            "dim_1": 20,
+            "dim_2": 51,
+            "drop_out": 0.3525889518248164,
+            "drop_out2": 0.2560665455502205,
+            "input_size": 240,
+            "kernel_1": 7,
+            "kernel_2": 11,
+            "kernel_3": 12,
+            "kernel_4": 3,
+            "kernel_5": 5,
+            "kernel_6": 2,
+            "nodes_1": 71,
+            "nodes_2": 144,
+            "nodes_3": 91,
+            "nodes_4": 132,
+            "trans_nodes": 108
+       }
 
+    toolbox.SetSeeds(42)
+    
     wandb.init(project=args.project_name)
-    #Set seeds for reproducability
-    toolbox.SetSeeds()
+    script_path = os.path.abspath(__file__)
+    script_dir = os.path.dirname(script_path)
+    wandb.save(os.path.join(script_dir, '*'))
     
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:0")
-    #device = torch.device("cuda:[0,1]")
+    device = torch.device("cuda:" + args.GPU)
 
-
-
-    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=None)
-
+    # model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+    DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
+    SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
+    Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
+    
+    config2 = {'CNN1': DisNet, 
+               'CNN2': SecondNet, 
+               'MetaModel': Meta}
+    
+    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device) 
+    
 
     # if args.weights is not None:
     #  # Load the state dict of the checkpoint
@@ -112,13 +141,24 @@ def train():
     #     model.load_state_dict(state_dict)
     #     print('Loaded weights from {}'.format(args.weights))
 
-    #model = torch.nn.DataParallel(model, device_ids=[7])
-    model.to(device)
+    input_size = torch.Size([3, config['input_size'], config['input_size']])
+    inputs = torch.randn(1, *input_size).to(device)
+    
+    with torch.no_grad():
+        model(inputs)
+    
+    GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
+    del model
+    print()
+    print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
+    
+    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device) 
+
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                             weight_decay=args.weight_decay, eps=args.eps)
 
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=args.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     

@@ -54,8 +54,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
-    best_model_wts = copy.deepcopy(model.state_dict())
-    best_model_wts['module.fc.bias'] = initial_bias.to(device)
+    # best_model_wts = copy.deepcopy(model.state_dict())
+    # best_model_wts['module.fc.bias'] = initial_bias.to(device)
 
     epoch = 0
     # Run untill validation loss has not improved for n epochs=patience or max_epochs is reached
@@ -78,15 +78,19 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
        #Training and validation loop
         for phase in ['train', 'val']:
             if phase == 'train':
-                model.train()  # Set model to training mode
-                if AttNet != None:
-                    AttNet.train()
+                if args.arch == 'parallel':
+                    model['DisNet'].train()
+                    model['EffNet'].train()
+                else:
+                    model.train()  # Set model to training mode
+ 
  
             elif phase == 'val':
-                model.eval()   # Set model to evaluate mode
-                if AttNet != None:
-                    AttNet.eval()
-
+                if args.arch == 'parallel':
+                    model['DisNet'].eval()
+                    model['EffNet'].eval()
+                else:
+                    model.eval()   # Set model to evaluate mode
 
            #Get size of whole dataset split
             n = len(dataloaders_dict[phase].dataset)
@@ -95,36 +99,40 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
-                    #split images in bacth into 16 non-overlapping chunks then recombine into bacth
-                    if args.split_image == True:
+                    # #split images in bacth into 16 non-overlapping chunks then recombine into bacth
+                    # if args.split_image == True:
                         
-                        #split batch into list of tensors
-                        inputs = torch.split(inputs, 1, dim=0)
-                        #print(inputs[0].shape)
-                        token_size = int(input_size / n_tokens)
-                        x, y, h ,w = 0, 0, token_size, token_size
-                        ims = []
-                        for t in inputs:
-                            #crop im to 16 non-overlapping 277x277 tensors
-                            for i in range(n_tokens):
-                                for j in range(n_tokens):
-                                    t.squeeze_(0)
-                                    im1 = t[:, x:x+h, y:y+w]
-                                    ims.append(im1)
-                                    y += w
-                                y = 0
-                                x += h
-                            x, y, h ,w = 0, 0, token_size, token_size
-                        #convert list of tensors into a batch tensor of shape (512, 3, 277, 277)
-                        inputs = torch.stack(ims, dim=0)
+                    #     #split batch into list of tensors
+                    #     inputs = torch.split(inputs, 1, dim=0)
+                    #     #print(inputs[0].shape)
+                    #     token_size = int(input_size / n_tokens)
+                    #     x, y, h ,w = 0, 0, token_size, token_size
+                    #     ims = []
+                    #     for t in inputs:
+                    #         #crop im to 16 non-overlapping 277x277 tensors
+                    #         for i in range(n_tokens):
+                    #             for j in range(n_tokens):
+                    #                 t.squeeze_(0)
+                    #                 im1 = t[:, x:x+h, y:y+w]
+                    #                 ims.append(im1)
+                    #                 y += w
+                    #             y = 0
+                    #             x += h
+                    #         x, y, h ,w = 0, 0, token_size, token_size
+                    #     #convert list of tensors into a batch tensor of shape (512, 3, 277, 277)
+                    #     inputs = torch.stack(ims, dim=0)
                     
                     #Load images and lables from current batch onto GPU(s)
                     inputs = inputs.to(device)
                     labels = labels.to(device)
                     # zero the parameter gradients
-                    optimizer.zero_grad()       
-                    if ANoptimizer != None:
-                        ANoptimizer.zero_grad()
+                    if args.arch == 'parallel':
+                        optimizer['DisNetoptimizer'].zero_grad()
+                        optimizer['EffNetoptimizer'].zero_grad()
+                    else:
+                        optimizer.zero_grad()       
+                    # if ANoptimizer != None:
+                    #     ANoptimizer.zero_grad()
 
                     # forward
                     # track history if only in train
@@ -133,51 +141,29 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
                         
-                        if 'duo' in args.arch:
-                            outputs, outputs2 = model(inputs)
+                        if args.arch == 'parallel':
+                            DisNetOutputs, EffNetOutputs = model['DisNet'](inputs), model['EffNet'](inputs)
                         else:
                             outputs = model(inputs)
 
-                        # #Reduce dimensionality of output to 32x2
-                        # if args.split_image == True:
-                        #     #old_output_shell = outputs[0:batch_size,0:num_classes]
-                        #     new_batch = []
-                        #     for i in range(batch_size):
-                        #         outputs_ = outputs[i*n_tokens**2:(i+1)*n_tokens**2]
-                        #         outputs_ = outputs_.detach().cpu()
-                                
-                        #         outputs_flat = torch.empty(0)
-                        #         for i in range(outputs_.shape[1]):
-                        #             outputs_flat = torch.cat((outputs_flat,outputs_[:,i]),0)
 
-                        #         outputs_ = outputs_flat.to(device).unsqueeze(0)
-                        #         outputs_ = AttNet(outputs_)
-                                                        
-                        #         new_batch.append(outputs_)
-
-                        #     outputs = torch.stack(new_batch, dim=0).squeeze(1)
-
-                        # if phase == 'train':
-                        #    loss, step = criterion[phase](outputs, labels, step)
-                        # else:
-                        #    loss = criterion[phase](outputs, labels)
+          
+                        # if args.arch == 'parallel':
+                        #     DisNetweight = 0.4
+                        #     EffMetweight = 0.6
+                        #     outputs = DisNetweight * DisNetOutputs + EffMetweight * EffNetOutputs
                         
-                        
-                        # define empty torch vector
-                        labels2 = []
-                        for i in (labels.tolist()):
-                            if i == 1:
-                                labels2.append(1)
-                            else:
-                                labels2.append(0)
-                        labels2 = torch.tensor(labels2).to(device)
+                        # split the output into two eaul parts via the class dimension
                               
                         loss = criterion(outputs, labels)
-                        if 'duo' in args.arch:
-                            loss += criterion(outputs2, labels2)
-  
-                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
+
+                        if args.arch == 'parallel':
+                            l1_norm = sum(p.abs().sum() for p in model['DisNet'].parameters() if p.dim() > 1) + sum(p.abs().sum() for p in model['EffNet'].parameters() if p.dim() > 1)
+                        else:
+                            l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
+                        
                         loss += args.l1_lambda * l1_norm
+                        
                         
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
@@ -187,9 +173,13 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
-                            optimizer.step()  
-                            if ANoptimizer != None:
-                                ANoptimizer.step() 
+                            if args.arch == 'parallel':
+                                optimizer['DisNetoptimizer'].step()
+                                optimizer['EffNetoptimizer'].step()
+                            else:
+                                optimizer.step()  
+                            # if ANoptimizer != None:
+                            #     ANoptimizer.step() 
       
 
                         #Update metrics
@@ -221,7 +211,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 best_f1_acc = epoch_acc
                 best_f1_loss = epoch_loss
                 best_train_f1 = train_f1
-                best_model_wts = copy.deepcopy(model.state_dict())  
+                # best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
 
                 best_train_metrics = train_metrics
@@ -246,13 +236,31 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     except:
                         torch.save(model.state_dict(), PATH + '.pth')
                 elif args.save == 'both':
-                    print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
-                    try:
-                        torch.save(model.module, PATH + '.pth') 
-                        torch.save(model.module.state_dict(), PATH + '_weights.pth')
-                    except:
-                        torch.save(model, PATH + '.pth')
-                        torch.save(model.state_dict(), PATH + '_weights.pth')
+                    if args.arch != 'parallel':
+                        print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
+                        try:
+                            torch.save(model.module, PATH + '.pth') 
+                            torch.save(model.module.state_dict(), PATH + '_weights.pth')
+                        except:
+                            torch.save(model, PATH + '.pth')
+                            torch.save(model.state_dict(), PATH + '_weights.pth')
+                    elif args.arch == 'parallel':
+                        
+                        print('Saving model and weights')
+                        try:
+                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_DisNet_parallel')
+                            torch.save(model['DisNet'], PATH + '.pth') 
+                            torch.save(model['DisNet'].state_dict(), PATH + '_weights.pth')
+                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_EffNet_parallel')
+                            torch.save(model['EffNet'], PATH + '_weights.pth')
+                            torch.save(model['EffNet'].state_dict(), PATH + '_weights.pth')
+                        except:
+                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_DisNet_parallel')
+                            torch.save(model['DisNet'], PATH + '.pth')
+                            torch.save(model['DisNet'].state_dict(), PATH + '_weights.pth')
+                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_EffNet_parallel')
+                            torch.save(model['EffNet'], PATH + '.pth')
+                            torch.save(model['EffNet'].state_dict(), PATH + '_weights.pth')
   
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -266,12 +274,12 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             my_metrics.reset()
 
         
-        bar.finish() 
+        bar.finish()
         epoch += 1
-    input_size = inputs.size()[1:]
-    
-    GFLOPs, params = toolbox.count_flops(model=model, device=device, input_size=input_size)
-    wandb.log({'GFLOPs': GFLOPs, 'params': params})
+    input_size = inputs.size()[1:]   
+    if args.arch != 'parallel':
+        GFLOPs, params = toolbox.count_flops(model=model, device=device, input_size=input_size)
+        wandb.log({'GFLOPs': GFLOPs, 'params': params})
     
     wandb.finish()
 

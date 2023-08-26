@@ -1,0 +1,3 @@
+/var/spool/slurmd.spool/job06991/slurm_script: line 14: activate: No such file or directory
+/users/jrs596/scratch/.cache/python_environments/envs/torch4/bin/python: can't open file '/users/jrs596/scripts/CocoaReader/Eval/scripts/CocoaReader/CocoaNet/IR-RGB/Final_train/Torch_Custom_CNNs2.2.1.py': [Errno 2] No such file or directory
+srun: error: gpu03: task 0: Exited with exit code 2

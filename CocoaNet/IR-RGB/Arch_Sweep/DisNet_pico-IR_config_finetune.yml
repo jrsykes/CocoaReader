@@ -1,10 +1,14 @@
 sweep_config:
-  method: grid
+  method: random
 metric:
-  name: Best_train_f1
-  goal: maximize
+  name: Train_loss
+  goal: minimize
 parameters:
     input_size:
         distribution: int_uniform
-        min: 400
-        max: 500
+        min: 200
+        max: 400
+    seed:
+        distribution: int_uniform
+        min: 1
+        max: 20

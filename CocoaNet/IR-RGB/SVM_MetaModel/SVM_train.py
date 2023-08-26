@@ -41,7 +41,9 @@ print(X_train.shape)
 
 #%%
 from sklearn.model_selection import GridSearchCV
-param_grid = {'C': [0.1, 1, 10, 100], 'gamma': [1, 0.1, 0.01, 0.001], 'kernel': ['rbf', 'poly', 'sigmoid']}
+param_grid = {'C': [0.1, 1, 5, 10], 'gamma': [1, 0.1, 0.01, 0.001], 'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+              'degree': [2, 3, 4, 5], 'coef0': [0.0, 0.1, 0.5], 'tol': [1e-4]}
+
 grid = GridSearchCV(SVC(probability=True), param_grid, refit=True, verbose=3)
 grid.fit(X_train, true_labels)
 print(grid.best_params_)

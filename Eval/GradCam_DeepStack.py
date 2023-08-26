@@ -14,11 +14,11 @@ from PIL import Image, ImageDraw, ImageFont
 import sys
 sys.path.append('/users/jrs596/scripts/CocoaReader/utils')
 from ArchitectureZoo import DisNet_pico, DisNet_picoIR
+import toolbox 
 
-device = torch.device("cuda:7")
+device = torch.device("cuda:0")
 
 #%%
-
 class ResNet_CAM(nn.Module):
     def __init__(self, net, layer_k):
         super(ResNet_CAM, self).__init__()
@@ -177,26 +177,76 @@ def get_grad_cam(net, img):
 
 #%%
 # Load models
-resnet = torch.load('/users/jrs596/scratch/dat/models/resnet18-IR.pth', map_location=lambda storage, loc: storage.cuda(7))
-efficientnet = torch.load('/users/jrs596/scratch/dat/models/efficientnetv2_s-IR.pth', map_location=lambda storage, loc: storage.cuda(7))
-efficientnet_b0 = torch.load('/users/jrs596/scratch/dat/models/efficientnet_b0-IR.pth', map_location=lambda storage, loc: storage.cuda(7))
+config = {
+            'num_classes': 8,
+            "dim_1": 20,
+            "dim_2": 51,
+            "drop_out": 0.3525889518248164,
+            "drop_out2": 0.2560665455502205,
+            "input_size": 240,
+            "kernel_1": 7,
+            "kernel_2": 11,
+            "kernel_3": 12,
+            "kernel_4": 3,
+            "kernel_5": 5,
+            "kernel_6": 2,
+            "nodes_1": 71,
+            "nodes_2": 144,
+            "nodes_3": 91,
+            "nodes_4": 132,
+            "trans_nodes": 108
+            }
 
+  
+DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
+SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
+Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
 
+config2 = {'CNN1': DisNet, 
+           'CNN2': SecondNet, 
+           'MetaModel': Meta}
 
-DisNet_pico = DisNet_picoIR(out_channels=8).to(device)
+DisResNet = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)  
+
+# DisNet_pico = DisNet_pico(out_channels=4).to(device)
 
 # # Load weights
-weights_path = "/users/jrs596/scratch/dat/models/DisNet-IR-earthy-sweep-4502_weights.pth"
-weights = torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(7))
+weights_path = "/users/jrs596/scratch/dat/models/DisNet-IR-lemon-sweep-620_weights.pth"
+weights = torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(0))
+
+def remove_total_weights(model_state_dict):
+    """
+    Remove weights with "total" in the name from a PyTorch model's state dictionary.
+
+    Parameters:
+        model_state_dict (OrderedDict): The state dictionary of a PyTorch model.
+
+    Returns:
+        new_state_dict (OrderedDict): The modified state dictionary.
+    """
+    new_state_dict = {}
+    for key, value in model_state_dict.items():
+        if "total" not in key:
+            new_state_dict[key] = value
+    return new_state_dict
+
+state_dict = remove_total_weights(weights)
 
 # # Apply weights to the model
-DisNet_pico.load_state_dict(weights)
+DisResNet.load_state_dict(state_dict, strict=False)
+#%%
 
 
-labels = ["Original", "DisNet_pico", "ResNet", "Efficientnet_b0", "EfficientNetV2"]
+DisNet_pico = DisResNet.cnn1
+resnet = DisResNet.cnn2
+
+#%%
+
+
+labels = ["Original", "DisNet_pico", "ResNet"]
 # labels = ["Original", "ResNet", "Efficientnet_b0", "EfficientNetV2"]
 
-models = [DisNet_pico, resnet, efficientnet, efficientnet_b0]
+models = [DisNet_pico, resnet]
 # models = [resnet, efficientnet, efficientnet_b0]
 
 dat_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/GradCamTest40'
@@ -216,9 +266,11 @@ def load_data(dat_dir, img_size):
     return valloader
 
 
+
+
 # Iterate over models
-model_list = [(DisNet_pico, DisNet_pico_CAM, 252), (resnet, ResNet_CAM, 408), (efficientnet_b0, EfficientNet_CAM, 424), (efficientnet, EfficientNet_CAM, 485)]
-plot_img_size = 485
+model_list = [(DisNet_pico, DisNet_pico_CAM, 240), (resnet, ResNet_CAM, 408)]
+plot_img_size = 408
 # Prepare tensor to store images
 n_models = len(model_list) + 1  # Add one for the original images
 imgs = torch.Tensor(n_imgs, n_models, 3, plot_img_size, plot_img_size)  # Adjusted the tensor dimensions
@@ -297,25 +349,25 @@ for i in range(n_imgs):
         # Create a draw object
         draw = ImageDraw.Draw(img_pil)
         
-        # Add class or class prediction to each image
-        if j == 0:  # For the first column, use the ground truth label
-            label = ground_truth_labels[i]
-            draw.text((0, 0), class_labels[label], fill="white", font=font)
-        else:  # For all other columns, use the predicted class
-            # resize img_ tensor to 3 x 224 x 224
-            img__ = torch.nn.functional.interpolate(img_, size=model_list[j-1][2], mode='bilinear', align_corners=False)
-            try:
-                pred, _ = models[j-1](img__.to(device))
-            except:
-                pred = models[j-1](img__.to(device))
-            pred = pred.argmax(dim=1)
-            draw.text((0, 0), class_labels[pred], fill="white", font=font)
+        # # Add class or class prediction to each image
+        # if j == 0:  # For the first column, use the ground truth label
+        #     label = ground_truth_labels[i]
+        #     draw.text((0, 0), class_labels[label], fill="white", font=font)
+        # else:  # For all other columns, use the predicted class
+        #     # resize img_ tensor to 3 x 224 x 224
+        #     img__ = torch.nn.functional.interpolate(img_, size=model_list[j-1][2], mode='bilinear', align_corners=False)
+        #     try:
+        #         pred, _ = models[j-1](img__.to(device))
+        #     except:
+        #         pred = models[j-1](img__.to(device))
+        #     pred = pred.argmax(dim=1)
+        #     draw.text((0, 0), class_labels[pred], fill="white", font=font)
         
         # Paste the image onto the grid image
         grid_img.paste(img_pil, (j * img_size, i * img_size))
 
 # Save the grid image
-grid_img.save("/users/jrs596/scratch/dat/gradcam_all_models_labeled8_v2.png")
+grid_img.save("/users/jrs596/scratch/dat/gradcam_DisResNet.png")
 # grid_img.save("/users/jrs596/scratch/dat/gradcam_DisNet-duo.png")
 
 
