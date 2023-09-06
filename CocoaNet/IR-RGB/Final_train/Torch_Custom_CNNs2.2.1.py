@@ -90,22 +90,22 @@ from training_loop import train_model
 def train():
     config = {
             'num_classes': 8,
-            "dim_1": 20,
-            "dim_2": 51,
-            "drop_out": 0.3525889518248164,
-            "drop_out2": 0.2560665455502205,
-            "input_size": 240,
-            "kernel_1": 7,
-            "kernel_2": 11,
-            "kernel_3": 12,
-            "kernel_4": 3,
-            "kernel_5": 5,
-            "kernel_6": 2,
-            "nodes_1": 71,
-            "nodes_2": 144,
-            "nodes_3": 91,
-            "nodes_4": 132,
-            "trans_nodes": 108
+            "dim_1": 21,
+            "dim_2": 65,
+            "drop_out": 0.15202176805728135,
+            "drop_out2": 0.13793505455783697,
+            "input_size": 219,
+            "kernel_1": 8,
+            "kernel_2": 10,
+            "kernel_3": 15,
+            "kernel_4": 8,
+            "kernel_5": 19,
+            "kernel_6": 3,
+            "nodes_1": 157,
+            "nodes_2": 72,
+            "nodes_3": 193,
+            "nodes_4": 130,
+            "trans_nodes": 72,
        }
 
     toolbox.SetSeeds(42)
