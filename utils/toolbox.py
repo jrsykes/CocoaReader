@@ -28,10 +28,10 @@ def build_model(num_classes, arch, config):
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif arch == 'DisNet_pico':
+    elif arch == 'DisNet':
         model_ft = DisNet_pico(out_channels=num_classes, config=config)
-    elif arch == 'DisNet_picoIR':
-        model_ft = DisNet_picoIR(out_channels=num_classes, config=config)
+    # elif arch == 'DisNet_picoIR':
+    #     model_ft = DisNet_picoIR(out_channels=num_classes, config=config)
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features

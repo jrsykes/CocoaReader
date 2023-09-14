@@ -105,53 +105,55 @@ def train():
     device = torch.device("cuda:" + args.GPU)
 
     #define config dictionary with wandb
-    # config = {
-    #     'num_classes': 8,
-    #     'input_size': wandb.config.input_size,
-    #     'drop_out': wandb.config.drop_out,
-    #     'dim_1': wandb.config.dim_1, 
-    #     'dim_2': wandb.config.dim_2, 
-    #     'nodes_1': wandb.config.nodes_1, 
-    #     'nodes_2': wandb.config.nodes_2,
-    #     'kernel_1': wandb.config.kernel_1, 
-    #     'kernel_2': wandb.config.kernel_2,
-    #     'kernel_3': wandb.config.kernel_3, 
-    #     'kernel_4': wandb.config.kernel_4,
-    #     'kernel_5': wandb.config.kernel_5, 
-    #     'kernel_6': wandb.config.kernel_6,
-    # }
-    
     config = {
-            'num_classes': 8,
-            'drop_out': wandb.config.drop_out,
-            'drop_out2': wandb.config.drop_out2,
-            "dim_1": wandb.config.dim_1,
-            "dim_2": wandb.config.dim_2,
-            "input_size": wandb.config.input_size,
-            "kernel_1": wandb.config.kernel_1,
-            "kernel_2": wandb.config.kernel_2,
-            "kernel_3": wandb.config.kernel_3,
-            "kernel_4": wandb.config.kernel_4,
-            "kernel_5": wandb.config.kernel_5,
-            "kernel_6": wandb.config.kernel_6,
-            "nodes_1": wandb.config.nodes_1,
-            "nodes_2": wandb.config.nodes_2,
-            "nodes_3": wandb.config.nodes_3,
-            "nodes_4": wandb.config.nodes_4,
-            "trans_nodes": wandb.config.trans_nodes
-        }
+        'num_classes': 8,
+        'input_size': wandb.config.input_size,
+        'drop_out': wandb.config.drop_out,
+        'drop_out2': wandb.config.drop_out2,
+        'dim_1': wandb.config.dim_1, 
+        'dim_2': wandb.config.dim_2, 
+        'nodes_1': wandb.config.nodes_1, 
+        'nodes_2': wandb.config.nodes_2,
+        'kernel_1': wandb.config.kernel_1, 
+        'kernel_2': wandb.config.kernel_2,
+        'kernel_3': wandb.config.kernel_3, 
+        'kernel_4': wandb.config.kernel_4,
+        'kernel_5': wandb.config.kernel_5, 
+        'kernel_6': wandb.config.kernel_6,
+    }
+    
+    # config = {
+    #         'num_classes': 8,
+    #         'drop_out': wandb.config.drop_out,
+    #         'drop_out2': wandb.config.drop_out2,
+    #         "dim_1": wandb.config.dim_1,
+    #         "dim_2": wandb.config.dim_2,
+    #         "input_size": wandb.config.input_size,
+    #         "kernel_1": wandb.config.kernel_1,
+    #         "kernel_2": wandb.config.kernel_2,
+    #         "kernel_3": wandb.config.kernel_3,
+    #         "kernel_4": wandb.config.kernel_4,
+    #         "kernel_5": wandb.config.kernel_5,
+    #         "kernel_6": wandb.config.kernel_6,
+    #         "nodes_1": wandb.config.nodes_1,
+    #         "nodes_2": wandb.config.nodes_2,
+    #         "nodes_3": wandb.config.nodes_3,
+    #         "nodes_4": wandb.config.nodes_4,
+    #         "trans_nodes": wandb.config.trans_nodes
+    #     }
 
   
-    DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
-    SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
-    Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
+    # DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
+    # SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
+    # Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
     
-    config2 = {'CNN1': DisNet, 
-               'CNN2': SecondNet, 
-               'MetaModel': Meta}
+    # config2 = {'CNN1': DisNet, 
+    #            'CNN2': SecondNet, 
+    #            'MetaModel': Meta}
     
-    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)  
-    # model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+    # model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)  
+    
+    model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
   
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=wandb.config.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
@@ -170,8 +172,8 @@ def train():
     print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
 
     if GFLOPs < 6 and n_params < 50000000:
-        model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)   
-        # model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+        # model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)   
+        model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
                                         weight_decay=args.weight_decay, eps=args.eps)

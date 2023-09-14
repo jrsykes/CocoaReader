@@ -212,7 +212,7 @@ class DisNet_pico(nn.Module):
         return x
     
 
-class DisNet_picoIR(nn.Module):
+class DisNet(nn.Module):
 
     # config_dict = {
     #         "dim_1": 27,
@@ -232,7 +232,7 @@ class DisNet_picoIR(nn.Module):
 
 
     def __init__(self, out_channels, config=None):
-        super(DisNet_picoIR, self).__init__()
+        super(DisNet, self).__init__()
         self.config_dict = config
         
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=self.config_dict['dim_1'], kernel_size=self.config_dict['kernel_1'], padding='same') 
@@ -245,10 +245,10 @@ class DisNet_picoIR(nn.Module):
         self.conv2 = nn.Conv2d(in_channels=self.config_dict['dim_1'], out_channels=self.config_dict['dim_2'], kernel_size=self.config_dict['kernel_2'], padding='same')
         nn.init.kaiming_normal_(self.conv2.weight, mode='fan_out', nonlinearity='relu')
         
-        self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out'])
+        self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out2'])
 
-        # self.fc1 = None
-        self.fc1 = nn.Linear(183600, self.config_dict['nodes_1'])
+        self.fc1 = None
+        # self.fc1 = nn.Linear(183600, self.config_dict['nodes_1'])
         
         self.fc2 = nn.Linear(self.config_dict['nodes_1'], self.config_dict['nodes_2'])
         nn.init.kaiming_normal_(self.fc2.weight, mode='fan_out', nonlinearity='relu')

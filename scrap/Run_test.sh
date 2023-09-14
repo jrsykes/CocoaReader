@@ -1,40 +1,28 @@
 #!/bin/bash
 
-#SBATCH --partition=small
-
-# set the number of nodes
-#SBATCH --nodes=1
-
-# set max wallclock time
-#SBATCH --time=6-00:00:00
-
-# set name of job
-#SBATCH --job-name=ConvNextOpt
-
-# set number of GPUs
+#SBATCH --job-name=IR-RGB_cross-val
+#SBATCH --output=slurm_output_%j.txt
+#SBATCH --error=slurm_error_%j.txt
+#SBATCH --partition=gpu_big
 #SBATCH --gres=gpu:1
-
-#SBATCH --array=1-3
-
-# set maximum number of tasks to run in parallel
-#SBATCH --ntasks=3
-
-# mail alert at start, end and abortion of execution
-#SBATCH --mail-type=ALL
-
-# run the application
-
-module load python/anaconda3
-module load cuda/11.2
-module load pytorch/1.9.0
-
-conda init bash
-source ~/.bashrc
-source activate convnext
-
-export WANDB_MODE=offline
+#SBATCH --time=48:00:00
+#SBATCH --mem=100G
+#SBATCH --cpus-per-task=6  # Request 6 CPU cores
 
 
-python /jmain02/home/J2AD016/jjw02/jjs00-jjw02/scripts/CocoaReader/scrap/test.py
+# Activate the torch4 environment
+source activate torch4
+
+# Set wandb directory
+export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
+
+# Set the root directory
+ROOT="/home/userfs/j/jrs596"
+
+python main_finetune.py \
+    --model convnextv2_atto \
+    --eval false \
+    --input_size 224 \
+    --data_path /users/jrs596/scratch/dat/IR_RGB_Comp_data/IR_split_1k \
 
 

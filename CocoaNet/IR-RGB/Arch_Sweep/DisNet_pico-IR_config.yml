@@ -52,18 +52,6 @@ parameters:
         distribution: int_uniform
         min: 60
         max: 200
-    nodes_3:
-        distribution: int_uniform
-        min: 60
-        max: 200
-    nodes_4:
-        distribution: int_uniform
-        min: 60
-        max: 200
-    trans_nodes:
-        distribution: int_uniform
-        min: 60
-        max: 200
     input_size:
         distribution: int_uniform
         min: 200

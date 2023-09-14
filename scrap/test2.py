@@ -1,17 +1,18 @@
 #%%
-import torch.nn as nn
+from torchvision import datasets, transforms, models
 import torch
 
-criterion = nn.CrossEntropyLoss()
-
-#%%
-
-out = torch.tensor([[0, 0, 0, 10]], dtype=torch.float32)
-lable = torch.tensor([1], dtype=torch.float32)
-
-loss = criterion(out, lable)
-
-print(loss)
+model_ft = models.convnextv2_atto(weights = None)
 
 
 #%%
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+model_ft = model_ft.to(device)
+
+
+print(model_ft)
+
+
+#%%
+print('HELLO')
+# %%

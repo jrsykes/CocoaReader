@@ -18,10 +18,10 @@ results = {
                          "train_se_metrics": {"Loss": 0.05284516768793222, "F1": 0.03459359004957016, "Acc": 0.03148602063532409, "Precision": 0.031009032165963856, "Recall": 0.03148602063532408, "BPR_F1": 0.035209504558448755, "FPR_F1": 0.03478881107332921, "Healthy_F1": 0.036149664873384973, "WBD_F1": 0.02849833577183997}, 
                          "val_se_metrics": {"Loss": 0.06626393861925348, "F1": 0.02430925917055632, "Acc": 0.02265348256027852, "Precision": 0.018025793210340323, "Recall": 0.02265348256027853, "BPR_F1": 0.0422703676317821, "FPR_F1": 0.028855992803753925, "Healthy_F1": 0.054584917678838794, "WBD_F1": 0.029962658594638446}},
            
-           "DisResNet": {"train_mean_metrics": {"Loss": 1.4825807547801386, "F1": 0.5482191262216578, "Acc": 0.5691779260468166, "Precision": 0.5901000052422195, "Recall": 0.5691779260468166, "BPR_F1": 0.7202813973297811, "FPR_F1": 0.3300081012133579, "Healthy_F1": 0.4171326177962225, "WBD_F1": 0.7096212908867781}, 
-                         "val_mean_metrics": {"Loss": 1.6188842267816903, "F1": 0.5851207588707588, "Acc": 0.6063695563695563, "Precision": 0.625000690447119, "Recall": 0.6063695563695564, "BPR_F1": 0.6977705859671803, "FPR_F1": 0.39900099900099895, "Healthy_F1": 0.5489743589743589, "WBD_F1": 0.694819494231259}, 
-                         "train_se_metrics": {"Loss": 0.08244988491556662, "F1": 0.017038047850870288, "Acc": 0.016613607421906023, "Precision": 0.019119766741262298, "Recall": 0.01661360742190602, "BPR_F1": 0.02004100815898391, "FPR_F1": 0.03441004651281485, "Healthy_F1": 0.03756870955354669, "WBD_F1": 0.014715165915305273}, 
-                         "val_se_metrics": {"Loss": 0.07633226545889607, "F1": 0.015312852059871472, "Acc": 0.013881661633135511, "Precision": 0.018908747819505457, "Recall": 0.013881661633135528, "BPR_F1": 0.03690677963604218, "FPR_F1": 0.032776063004960464, "Healthy_F1": 0.04656893118531147, "WBD_F1": 0.02735595704508639}},
+        #    "DisResNet": {"train_mean_metrics": {"Loss": 1.4825807547801386, "F1": 0.5482191262216578, "Acc": 0.5691779260468166, "Precision": 0.5901000052422195, "Recall": 0.5691779260468166, "BPR_F1": 0.7202813973297811, "FPR_F1": 0.3300081012133579, "Healthy_F1": 0.4171326177962225, "WBD_F1": 0.7096212908867781}, 
+        #                  "val_mean_metrics": {"Loss": 1.6188842267816903, "F1": 0.5851207588707588, "Acc": 0.6063695563695563, "Precision": 0.625000690447119, "Recall": 0.6063695563695564, "BPR_F1": 0.6977705859671803, "FPR_F1": 0.39900099900099895, "Healthy_F1": 0.5489743589743589, "WBD_F1": 0.694819494231259}, 
+        #                  "train_se_metrics": {"Loss": 0.08244988491556662, "F1": 0.017038047850870288, "Acc": 0.016613607421906023, "Precision": 0.019119766741262298, "Recall": 0.01661360742190602, "BPR_F1": 0.02004100815898391, "FPR_F1": 0.03441004651281485, "Healthy_F1": 0.03756870955354669, "WBD_F1": 0.014715165915305273}, 
+        #                  "val_se_metrics": {"Loss": 0.07633226545889607, "F1": 0.015312852059871472, "Acc": 0.013881661633135511, "Precision": 0.018908747819505457, "Recall": 0.013881661633135528, "BPR_F1": 0.03690677963604218, "FPR_F1": 0.032776063004960464, "Healthy_F1": 0.04656893118531147, "WBD_F1": 0.02735595704508639}},
             "ResNet18": {"train_mean_metrics": {"Loss": 1.795058268391226, "F1": 0.6172005746237982, "Acc": 0.6228601225619609, "Precision": 0.6764403341393723, "Recall": 0.622860122561961, "BPR_F1": 0.7217006134796367, "FPR_F1": 0.45293909215655725, "Healthy_F1": 0.5771030207250306, "WBD_F1": 0.6981829463527867}, 
                          "val_mean_metrics": {"Loss": 1.9390275902600371, "F1": 0.6485550831347355, "Acc": 0.6532153032153032, "Precision": 0.7101909994767137, "Recall": 0.6532153032153032, "BPR_F1": 0.7356065503124326, "FPR_F1": 0.5760139860139859, "Healthy_F1": 0.5604739704739703, "WBD_F1": 0.7087978619247969}, 
                          "train_se_metrics": {"Loss": 0.18667081037172442, "F1": 0.021661584022085536, "Acc": 0.019136368412923432, "Precision": 0.024007093581767017, "Recall": 0.019136368412923422, "BPR_F1": 0.01729918788361364, "FPR_F1": 0.03254700542377541, "Healthy_F1": 0.02317963311917654, "WBD_F1": 0.022614218346873636}, 
@@ -73,66 +73,56 @@ plt.show()
 #%%
 
 converted_results = {
-    "train": {
+    "Train": {
         "DisNet": {"Loss": 5.751327107954907, "F1": 0.5778870488498523, "Acc": 0.5891042096673547, "Precision": 0.6555103869427568, "Recall": 0.5891042096673547, "BPR_F1": 0.6283444389855397, "FPR_F1": 0.5128225913306519, "Healthy_F1": 0.5648154501580868, "WBD_F1": 0.6386317184655708},
-        "DisResNet": {"Loss": 1.4825807547801386, "F1": 0.5482191262216578, "Acc": 0.5691779260468166, "Precision": 0.5901000052422195, "Recall": 0.5691779260468166, "BPR_F1": 0.7202813973297811, "FPR_F1": 0.3300081012133579, "Healthy_F1": 0.4171326177962225, "WBD_F1": 0.7096212908867781},
         "ResNet18": {"Loss": 1.795058268391226, "F1": 0.6172005746237982, "Acc": 0.6228601225619609, "Precision": 0.6764403341393723, "Recall": 0.622860122561961, "BPR_F1": 0.7217006134796367, "FPR_F1": 0.45293909215655725, "Healthy_F1": 0.5771030207250306, "WBD_F1": 0.6981829463527867},
         "DisNet_se": {"Loss": 0.05284516768793222, "F1": 0.03459359004957016, "Acc": 0.03148602063532409, "Precision": 0.031009032165963856, "Recall": 0.03148602063532408, "BPR_F1": 0.035209504558448755, "FPR_F1": 0.03478881107332921, "Healthy_F1": 0.036149664873384973, "WBD_F1": 0.02849833577183997},
-        "DisResNet_se": {"Loss": 0.08244988491556662, "F1": 0.017038047850870288, "Acc": 0.016613607421906023, "Precision": 0.019119766741262298, "Recall": 0.01661360742190602, "BPR_F1": 0.02004100815898391, "FPR_F1": 0.03441004651281485, "Healthy_F1": 0.03756870955354669, "WBD_F1": 0.014715165915305273},
         "ResNet18_se": {"Loss": 0.18667081037172442, "F1": 0.021661584022085536, "Acc": 0.019136368412923432, "Precision": 0.024007093581767017, "Recall": 0.019136368412923422, "BPR_F1": 0.01729918788361364, "FPR_F1": 0.03254700542377541, "Healthy_F1": 0.02317963311917654, "WBD_F1": 0.022614218346873636},
     },
-    "val": {
+    "Val": {
         "DisNet": {"Loss": 6.0806663032270905, "F1": 0.5487692190386425, "Acc": 0.551984126984127, "Precision": 0.600510179855418, "Recall": 0.551984126984127, "BPR_F1": 0.6616135531135531, "FPR_F1": 0.4392507492507492, "Healthy_F1": 0.5093164515223338, "WBD_F1": 0.5587587850745745},
-        "DisResNet": {"Loss": 1.6188842267816903, "F1": 0.5851207588707588, "Acc": 0.6063695563695563, "Precision": 0.625000690447119, "Recall": 0.6063695563695564, "BPR_F1": 0.6977705859671803, "FPR_F1": 0.39900099900099895, "Healthy_F1": 0.5489743589743589, "WBD_F1": 0.694819494231259},
         "ResNet18": {"Loss": 1.9390275902600371, "F1": 0.6485550831347355, "Acc": 0.6532153032153032, "Precision": 0.7101909994767137, "Recall": 0.6532153032153032, "BPR_F1": 0.7356065503124326, "FPR_F1": 0.5760139860139859, "Healthy_F1": 0.5604739704739703, "WBD_F1": 0.7087978619247969},
         "DisNet_se": {"Loss": 0.06626393861925348, "F1": 0.02430925917055632, "Acc": 0.02265348256027852, "Precision": 0.018025793210340323, "Recall": 0.02265348256027853, "BPR_F1": 0.0422703676317821, "FPR_F1": 0.028855992803753925, "Healthy_F1": 0.054584917678838794, "WBD_F1": 0.029962658594638446},
-        "DisResNet_se": {"Loss": 0.07633226545889607, "F1": 0.015312852059871472, "Acc": 0.013881661633135511, "Precision": 0.018908747819505457, "Recall": 0.013881661633135528, "BPR_F1": 0.03690677963604218, "FPR_F1": 0.032776063004960464, "Healthy_F1": 0.04656893118531147, "WBD_F1": 0.02735595704508639},
         "ResNet18_se": {"Loss": 0.14386486198012813, "F1": 0.01639641870579217, "Acc": 0.014826507269436911, "Precision": 0.02110055555696848, "Recall": 0.014826507269436923, "BPR_F1": 0.0332269778172585, "FPR_F1": 0.04725257900397079, "Healthy_F1": 0.022457150752444643, "WBD_F1": 0.0215325750355198},
     },
 }
 
 # Metrics to plot
-metrics = list(converted_results["train"]["DisResNet"].keys())
+metrics = list(converted_results["Train"]["DisNet"].keys())
 #drop loss
 metrics.remove("Loss")
 
-# Create subplots
-# fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 def plot_data(key):
     # Create figure
-    fig, ax = plt.subplots(figsize=(15, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     
     # Extract data
     disnet_data = [converted_results[key]["DisNet"][metric] for metric in metrics]
-    disresnet_data = [converted_results[key]["DisResNet"][metric] for metric in metrics]
     ResNet18_data = [converted_results[key]["ResNet18"][metric] for metric in metrics]
     disnet_se = [converted_results[key]["DisNet_se"][metric] for metric in metrics]
-    disresnet_se = [converted_results[key]["DisResNet_se"][metric] for metric in metrics]
     ResNet18_se = [converted_results[key]["ResNet18_se"][metric] for metric in metrics]
     
     # X-axis positions
     x = np.arange(len(metrics))
     
-    # Bar width
-    width = 0.2
+    # Bar width (Reduced width for closer bars)
+    width = 0.3
     
-    # Calculate the positions for each bar
-    disnet_positions = x - width
-    disresnet_positions = x
-    ResNet18_positions = x + width
+    # Calculate the positions for each bar (Adjusted positions for closer bars)
+    disnet_positions = x - width*0.5
+    ResNet18_positions = x + width*0.5
     
     # Plot bars
-    ax.bar(disnet_positions, disnet_data, width, yerr=disnet_se, label='DisNet', color='black', capsize=10)  # Solid black color
-    ax.bar(disresnet_positions, disresnet_data, width, yerr=disresnet_se, label='DisResNet', color='white', edgecolor='black', hatch='//', capsize=10)
+    ax.bar(disnet_positions, disnet_data, width, yerr=disnet_se, label='DisNet', color='black', capsize=10)
     ax.bar(ResNet18_positions, ResNet18_data, width, yerr=ResNet18_se, label='ResNet18', color='white', edgecolor='black', capsize=10)
     
     # Labels
-    ax.set_ylabel('Value ±1 SE')
+    ax.set_ylabel(key +' metric value ±1 SE', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(metrics, rotation=45)
     
     # Legend with larger fontsize
-    ax.legend(fontsize=18)
+    ax.legend(fontsize=18, loc='upper left', bbox_to_anchor=(0.65, 1))
 
     # Remove top and right spines
     ax.spines['right'].set_visible(False)
@@ -140,7 +130,7 @@ def plot_data(key):
     
     # Add multiple evenly spaced horizontal lines
     ymin, ymax = ax.get_ylim()
-    for y in np.linspace(ymin, ymax, 9):  # 9 evenly spaced lines
+    for y in np.linspace(ymin, 0.8, 9):
         ax.axhline(y, color='gray', linestyle='--', linewidth=0.5)
 
     # Save plot
@@ -152,9 +142,9 @@ def plot_data(key):
     plt.show()
 
 # Plot train data
-plot_data("train")
+plot_data("Train")
 # Plot val data
-plot_data("val")
+plot_data("Val")
 
 
 
