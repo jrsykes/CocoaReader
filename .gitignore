@@ -1,0 +1,5 @@
+# Ignore all .pyc files in __pycache__ directories
+__pycache__/
+
+*.png
+
