@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet_pico, DisNet_picoIR, MetaModel, UnifiedModel
+from ArchitectureZoo import DisNet, MetaModel, UnifiedModel
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
@@ -29,7 +29,7 @@ def build_model(num_classes, arch, config):
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'DisNet':
-        model_ft = DisNet_pico(out_channels=num_classes, config=config)
+        model_ft = DisNet(out_channels=num_classes, config=config)
     # elif arch == 'DisNet_picoIR':
     #     model_ft = DisNet_picoIR(out_channels=num_classes, config=config)
     elif arch == 'efficientnetv2_s':
@@ -254,4 +254,3 @@ def count_flops(model, device, input_size):
     # Convert to GFLOPs
     GFLOPs = flops / 1e9
     return GFLOPs, params
-

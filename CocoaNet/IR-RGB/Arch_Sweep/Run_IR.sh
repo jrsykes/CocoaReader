@@ -11,18 +11,20 @@
 
 
 # Activate the torch4 environment
-source activate torch4
+source activate torch3
 
 # Set wandb directory
-export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
+# export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
+export WANDB_DIR="/local/scratch/jrs596/WANDB_cache/"
 
 # Set the root directory
-ROOT="/home/userfs/j/jrs596"
+# ROOT="/home/userfs/j/jrs596"
+ROOT="/local/scratch/jrs596/"
 
 python scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/Torch_Custom_CNNs2.2.1.py \
         --model_name 'DisNet-RGB' \
         --project_name 'DisNet-Pico-IR' \
-        --root '/users/jrs596/scratch' \
+        --root '/local/scratch/jrs596' \
         --data_dir 'dat/IR_RGB_Comp_data/RGB_split_1k' \
         --min_epochs 15 \
         --max_epochs 200 \
@@ -30,6 +32,6 @@ python scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/Torch_Custom_CNNs2.2.1.py 
         --patience 20 \
         --sweep \
         --arch 'DisNet' \
-        --sweep_config '/users/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/DisNet_pico-IR_config.yml' \
-        --GPU 0 \
-        # --sweep_id 'ohrsq16a'
+        --sweep_config '/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/DisNet_pico-IR_config.yml' \
+        --GPU 1 \
+        --sweep_id 'pcyyxm20'

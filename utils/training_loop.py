@@ -17,11 +17,11 @@ import toolbox
 #import toolbox
 
 
-def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size, n_tokens=None, AttNet=None, ANoptimizer=None):      
+def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size):      
     # @torch.compile
     # def run_model(x):
     #     return model(x)
-    
+        
     #Check environmental variable WANDB_MODE
     if args.WANDB_MODE == 'offline':   
         if args.sweep is False:
@@ -78,19 +78,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
        #Training and validation loop
         for phase in ['train', 'val']:
             if phase == 'train':
-                if args.arch == 'parallel':
-                    model['DisNet'].train()
-                    model['EffNet'].train()
-                else:
-                    model.train()  # Set model to training mode
+                model.train()  # Set model to training mode
  
- 
-            elif phase == 'val':
-                if args.arch == 'parallel':
-                    model['DisNet'].eval()
-                    model['EffNet'].eval()
-                else:
-                    model.eval()   # Set model to evaluate mode
+                model.eval()   # Set model to evaluate mode
 
            #Get size of whole dataset split
             n = len(dataloaders_dict[phase].dataset)
@@ -99,40 +89,12 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
-                    # #split images in bacth into 16 non-overlapping chunks then recombine into bacth
-                    # if args.split_image == True:
-                        
-                    #     #split batch into list of tensors
-                    #     inputs = torch.split(inputs, 1, dim=0)
-                    #     #print(inputs[0].shape)
-                    #     token_size = int(input_size / n_tokens)
-                    #     x, y, h ,w = 0, 0, token_size, token_size
-                    #     ims = []
-                    #     for t in inputs:
-                    #         #crop im to 16 non-overlapping 277x277 tensors
-                    #         for i in range(n_tokens):
-                    #             for j in range(n_tokens):
-                    #                 t.squeeze_(0)
-                    #                 im1 = t[:, x:x+h, y:y+w]
-                    #                 ims.append(im1)
-                    #                 y += w
-                    #             y = 0
-                    #             x += h
-                    #         x, y, h ,w = 0, 0, token_size, token_size
-                    #     #convert list of tensors into a batch tensor of shape (512, 3, 277, 277)
-                    #     inputs = torch.stack(ims, dim=0)
                     
                     #Load images and lables from current batch onto GPU(s)
                     inputs = inputs.to(device)
                     labels = labels.to(device)
                     # zero the parameter gradients
-                    if args.arch == 'parallel':
-                        optimizer['DisNetoptimizer'].zero_grad()
-                        optimizer['EffNetoptimizer'].zero_grad()
-                    else:
-                        optimizer.zero_grad()       
-                    # if ANoptimizer != None:
-                    #     ANoptimizer.zero_grad()
+                    optimizer.zero_grad()       
 
                     # forward
                     # track history if only in train
@@ -141,29 +103,13 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
                         
-                        if args.arch == 'parallel':
-                            DisNetOutputs, EffNetOutputs = model['DisNet'](inputs), model['EffNet'](inputs)
-                        else:
-                            outputs = model(inputs)
+                        outputs = model(inputs)
 
-
-          
-                        # if args.arch == 'parallel':
-                        #     DisNetweight = 0.4
-                        #     EffMetweight = 0.6
-                        #     outputs = DisNetweight * DisNetOutputs + EffMetweight * EffNetOutputs
-                        
-                        # split the output into two eaul parts via the class dimension
-                              
                         loss = criterion(outputs, labels)
 
-                        if args.arch == 'parallel':
-                            l1_norm = sum(p.abs().sum() for p in model['DisNet'].parameters() if p.dim() > 1) + sum(p.abs().sum() for p in model['EffNet'].parameters() if p.dim() > 1)
-                        else:
-                            l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
+                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
                         
-                        loss += args.l1_lambda * l1_norm
-                        
+                        loss += args.l1_lambda * l1_norm                     
                         
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
@@ -173,15 +119,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
-                            if args.arch == 'parallel':
-                                optimizer['DisNetoptimizer'].step()
-                                optimizer['EffNetoptimizer'].step()
-                            else:
-                                optimizer.step()  
-                            # if ANoptimizer != None:
-                            #     ANoptimizer.step() 
-      
-
+                            optimizer.step()  
+                           
                         #Update metrics
                         my_metrics.update(loss, preds, labels, stats_out)
 
@@ -201,9 +140,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
-            print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))
-            # Save statistics to tensorboard log
-            
+            print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_precision, epoch_recall, epoch_f1))           
 
            # Save model and update best weights only if recall has improved
             if phase == 'val' and epoch_f1 > best_f1:
@@ -226,41 +163,25 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 if args.save == 'model':
                     print('Saving model to: ' + PATH + '.pth')
                     try:
-                        torch.save(model.module, PATH + '.pth')
+                        torch.save(model_out.module, PATH + '.pth')
                     except:
-                         torch.save(model, PATH + '.pth')
+                         torch.save(model_out, PATH + '.pth')
                 elif args.save == 'weights':
                     print('Saving model weights to: ' + PATH + '_weights.pth')
                     try:
-                        torch.save(model.module.state_dict(), PATH + '.pth')
+                        torch.save(model_out.module.state_dict(), PATH + '.pth')
                     except:
-                        torch.save(model.state_dict(), PATH + '.pth')
+                        torch.save(model_out.state_dict(), PATH + '.pth')
                 elif args.save == 'both':
                     if args.arch != 'parallel':
                         print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
                         try:
-                            torch.save(model.module, PATH + '.pth') 
-                            torch.save(model.module.state_dict(), PATH + '_weights.pth')
+                            torch.save(model_out.module, PATH + '.pth') 
+                            torch.save(model_out.module.state_dict(), PATH + '_weights.pth')
                         except:
-                            torch.save(model, PATH + '.pth')
-                            torch.save(model.state_dict(), PATH + '_weights.pth')
-                    elif args.arch == 'parallel':
-                        
-                        print('Saving model and weights')
-                        try:
-                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_DisNet_parallel')
-                            torch.save(model['DisNet'], PATH + '.pth') 
-                            torch.save(model['DisNet'].state_dict(), PATH + '_weights.pth')
-                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_EffNet_parallel')
-                            torch.save(model['EffNet'], PATH + '_weights.pth')
-                            torch.save(model['EffNet'].state_dict(), PATH + '_weights.pth')
-                        except:
-                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_DisNet_parallel')
-                            torch.save(model['DisNet'], PATH + '.pth')
-                            torch.save(model['DisNet'].state_dict(), PATH + '_weights.pth')
-                            PATH = os.path.join(args.root, 'dat/models', args.model_name + '_EffNet_parallel')
-                            torch.save(model['EffNet'], PATH + '.pth')
-                            torch.save(model['EffNet'].state_dict(), PATH + '_weights.pth')
+                            torch.save(model_out, PATH + '.pth')
+                            torch.save(model_out.state_dict(), PATH + '_weights.pth')
+                    
   
             if phase == 'val':
                 val_loss_history.append(epoch_loss)
@@ -276,10 +197,6 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         
         bar.finish()
         epoch += 1
-    input_size = inputs.size()[1:]   
-    if args.arch != 'parallel':
-        GFLOPs, params = toolbox.count_flops(model=model, device=device, input_size=input_size)
-        wandb.log({'GFLOPs': GFLOPs, 'params': params})
     
     wandb.finish()
 

@@ -41,6 +41,8 @@ parser.add_argument('--weights', type=str, default=None,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
+parser.add_argument('--ema_beta', type=float, default=None,
+                        help='beta value for exponential moving average of weights')
 parser.add_argument('--batch_size', type=int, default=21,
                         help='Initial batch size')
 parser.add_argument('--max_epochs', type=int, default=2,
@@ -90,22 +92,19 @@ from training_loop import train_model
 def train():
     config = {
             'num_classes': 8,
-            "dim_1": 21,
-            "dim_2": 65,
-            "drop_out": 0.15202176805728135,
-            "drop_out2": 0.13793505455783697,
-            "input_size": 219,
-            "kernel_1": 8,
-            "kernel_2": 10,
-            "kernel_3": 15,
-            "kernel_4": 8,
+            "dim_1": 27,
+            "dim_2": 10,
+            "drop_out": 0.16160199440118397,
+            "drop_out2": 0.16160199440118397,
+            "input_size": 252,
+            "kernel_1": 3,
+            "kernel_2": 3,
+            "kernel_3": 19,
+            "kernel_4": 2,
             "kernel_5": 19,
-            "kernel_6": 3,
-            "nodes_1": 157,
-            "nodes_2": 72,
-            "nodes_3": 193,
-            "nodes_4": 130,
-            "trans_nodes": 72,
+            "kernel_6": 13,
+            "nodes_1": 113,
+            "nodes_2": 135
        }
 
     toolbox.SetSeeds(42)
@@ -118,28 +117,7 @@ def train():
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
     device = torch.device("cuda:" + args.GPU)
 
-    # model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
-    DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
-    SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
-    Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
-    
-    config2 = {'CNN1': DisNet, 
-               'CNN2': SecondNet, 
-               'MetaModel': Meta}
-    
-    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device) 
-    
-
-    # if args.weights is not None:
-    #  # Load the state dict of the checkpoint
-    #     state_dict = torch.load(args.weights, map_location=device)
-
-    #     state_dict['fc3.weight'] = torch.randn([num_classes, state_dict['fc3.weight'].size(1)])
-    #     state_dict['fc3.bias'] = torch.randn([num_classes])
-        
-    #     # Load the modified state dictionary into the model
-    #     model.load_state_dict(state_dict)
-    #     print('Loaded weights from {}'.format(args.weights))
+    model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
 
     input_size = torch.Size([3, config['input_size'], config['input_size']])
     inputs = torch.randn(1, *input_size).to(device)
@@ -152,11 +130,10 @@ def train():
     print()
     print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
     
-    model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device) 
+    model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
 
-
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
-                                            weight_decay=args.weight_decay, eps=args.eps)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
+                                            weight_decay=args.weight_decay, eps=args.eps, betas=(wandb.config.beta1, wandb.config.beta2))
 
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
@@ -164,7 +141,7 @@ def train():
     
     criterion = nn.CrossEntropyLoss()
 
-    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, batch_size=args.batch_size)
 
     
     return trained_model, best_f1, best_f1_loss, best_train_f1

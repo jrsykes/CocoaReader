@@ -1,11 +1,18 @@
 sweep_config:
-  method: grid
+    method: random
 metric:
-  name: Best_F1
-  goal: maximize
+    name: Best_F1
+    goal: maximize
 parameters:
-    input_size:
-         distribution: int_uniform
-         min: 300
-         max: 500
- 
+    beta1:
+        distribution: uniform
+        min: 0.89
+        max: 0.99
+    beta2:
+        distribution: uniform
+        min: 0.94
+        max: 0.999
+    learning_rate:
+        distribution: uniform
+        min: 0.000001
+        max: 0.001
