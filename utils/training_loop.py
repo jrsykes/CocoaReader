@@ -137,7 +137,6 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        'precision': [epoch_precision], 
                        'recall': [epoch_recall], 
                     #    'BPR_F1': [f1_per_class[0]], 'FPR_F1': [f1_per_class[1]], 'Healthy_F1': [f1_per_class[2]], 'WBD_F1': [f1_per_class[3]]
-                        'F1_per_class': f1_per_class
                         }
             
 
@@ -159,9 +158,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                                       'acc': [epoch_acc.item()], 
                                       'precision': [epoch_precision], 
                                       'recall': [epoch_recall], 
-                                      'BPR_F1': [f1_per_class[0]], 'FPR_F1': [f1_per_class[1]], 'Healthy_F1': [f1_per_class[2]], 'WBD_F1': [f1_per_class[3]]}
+                                    #   'BPR_F1': [f1_per_class[0]], 'FPR_F1': [f1_per_class[1]], 'Healthy_F1': [f1_per_class[2]], 'WBD_F1': [f1_per_class[3]]
+                                    }
     
-                PATH = os.path.join(args.root, 'dat/models', args.model_name)
+                PATH = os.path.join(args.root, 'models', args.model_name)
+                os.makedirs(os.path.join(args.root, 'models'), exist_ok=True)
                 if args.save == 'model':
                     print('Saving model to: ' + PATH + '.pth')
                     try:
