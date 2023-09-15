@@ -136,7 +136,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        'acc': [epoch_acc.item()], 
                        'precision': [epoch_precision], 
                        'recall': [epoch_recall], 
-                       'BPR_F1': [f1_per_class[0]], 'FPR_F1': [f1_per_class[1]], 'Healthy_F1': [f1_per_class[2]], 'WBD_F1': [f1_per_class[3]]}
+                    #    'BPR_F1': [f1_per_class[0]], 'FPR_F1': [f1_per_class[1]], 'Healthy_F1': [f1_per_class[2]], 'WBD_F1': [f1_per_class[3]]
+                        'F1_per_class': f1_per_class
+                        }
             
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
