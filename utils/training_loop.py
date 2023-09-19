@@ -24,7 +24,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         
     #Check environmental variable WANDB_MODE
     if args.WANDB_MODE == 'offline':   
-        if args.sweep is False:
+        if args.sweep_config == None:
             if args.run_name is None:
                 run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
                 wandb.init(project=args.project_name, name=run_name, mode="offline")
@@ -34,7 +34,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     else:
-        if args.sweep is False:
+        if args.sweep_config == None:
             if args.run_name is None:
                 run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
                 wandb.init(project=args.project_name, name=run_name)

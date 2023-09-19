@@ -7,7 +7,6 @@ import argparse
 import sys
 import yaml
 import os
-import json
 import wandb
 import pprint
 
@@ -19,8 +18,6 @@ parser.add_argument('--project_name', type=str, default='test',
                         help='Name for wandb project')
 parser.add_argument('--run_name', type=str, default=None,
                         help='Name for wandb run')
-parser.add_argument('--sweep', action='store_true', default=False,
-                        help='Run Waits and Biases optimisation sweep')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
 parser.add_argument('--WANDB_MODE', type=str, default='online',
@@ -93,7 +90,7 @@ from training_loop import train_model
 
 def train():
 
-    run = wandb.init(project=args.project_name)
+    run = wandb.init(project=args.project_name, settings=wandb.Settings(_service_wait=300))
     script_path = os.path.abspath(__file__)
     script_dir = os.path.dirname(script_path)
     wandb.save(os.path.join(script_dir, '*'), base_path=script_dir) 
@@ -107,9 +104,9 @@ def train():
     #define config dictionary with wandb
     config = {
         'num_classes': 8,
-        'input_size': wandb.config.input_size,
-        'drop_out': wandb.config.drop_out,
-        'drop_out2': wandb.config.drop_out2,
+        'input_size': args.input_size,
+        'drop_out': 0.2,
+        'drop_out2': 0.2,
         'dim_1': wandb.config.dim_1, 
         'dim_2': wandb.config.dim_2, 
         'nodes_1': wandb.config.nodes_1, 
@@ -120,42 +117,14 @@ def train():
         'kernel_4': wandb.config.kernel_4,
         'kernel_5': wandb.config.kernel_5, 
         'kernel_6': wandb.config.kernel_6,
+        'beta1': wandb.config.beta1,
+        'beta2': wandb.config.beta2,
+        'learning_rate': wandb.config.learning_rate
     }
-    
-    # config = {
-    #         'num_classes': 8,
-    #         'drop_out': wandb.config.drop_out,
-    #         'drop_out2': wandb.config.drop_out2,
-    #         "dim_1": wandb.config.dim_1,
-    #         "dim_2": wandb.config.dim_2,
-    #         "input_size": wandb.config.input_size,
-    #         "kernel_1": wandb.config.kernel_1,
-    #         "kernel_2": wandb.config.kernel_2,
-    #         "kernel_3": wandb.config.kernel_3,
-    #         "kernel_4": wandb.config.kernel_4,
-    #         "kernel_5": wandb.config.kernel_5,
-    #         "kernel_6": wandb.config.kernel_6,
-    #         "nodes_1": wandb.config.nodes_1,
-    #         "nodes_2": wandb.config.nodes_2,
-    #         "nodes_3": wandb.config.nodes_3,
-    #         "nodes_4": wandb.config.nodes_4,
-    #         "trans_nodes": wandb.config.trans_nodes
-    #     }
-
-  
-    # DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
-    # SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
-    # Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
-    
-    # config2 = {'CNN1': DisNet, 
-    #            'CNN2': SecondNet, 
-    #            'MetaModel': Meta}
-    
-    # model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)  
-    
+        
     model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
   
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=wandb.config.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
@@ -175,7 +144,7 @@ def train():
         # model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)   
         model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
+        optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
                                         weight_decay=args.weight_decay, eps=args.eps)
         
         trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
@@ -193,7 +162,8 @@ def train():
 
     return trained_model, best_f1, best_f1_loss, best_train_f1, config
 
-if args.sweep == True:
+os.environ["WANDB__SERVICE_WAIT"] = "300"
+if args.sweep_config != None:
     with open(args.sweep_config) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
         sweep_config = config['sweep_config']
