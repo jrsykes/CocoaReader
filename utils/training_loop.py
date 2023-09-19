@@ -17,7 +17,7 @@ import toolbox
 #import toolbox
 
 
-def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, input_size, batch_size):      
+def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, batch_size):      
     # @torch.compile
     # def run_model(x):
     #     return model(x)

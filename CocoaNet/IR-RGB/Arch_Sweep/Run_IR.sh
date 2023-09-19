@@ -23,7 +23,7 @@ export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
 python scripts/CocoaReader/CocoaNet/IR-RGB/Arch_Sweep/Torch_Custom_CNNs2.2.1.py \
         --model_name 'DisNet-IR' \
         --project_name 'DisNet-Pico-IR' \
-        --root '/local/scratch/jrs596' \
+        --root '/users/jrs596/scratch' \
         --data_dir 'dat/IR_RGB_Comp_data/IR_split_1k' \
         --input_size 285 \
         --min_epochs 15 \

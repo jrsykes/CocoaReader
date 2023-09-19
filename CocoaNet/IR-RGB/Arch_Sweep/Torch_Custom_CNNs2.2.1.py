@@ -130,7 +130,7 @@ def train():
     
     criterion = nn.CrossEntropyLoss()
     
-    input_size = torch.Size([3, wandb.config.input_size, wandb.config.input_size])
+    input_size = torch.Size([3, config['input_size'], config['input_size']])
     inputs = torch.randn(1, *input_size).to(device)
     with torch.no_grad():
         model(inputs)
@@ -147,7 +147,7 @@ def train():
         optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
                                         weight_decay=args.weight_decay, eps=args.eps)
         
-        trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, n_tokens=args.n_tokens, batch_size=args.batch_size, AttNet=None, ANoptimizer=None)
+        trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, batch_size=args.batch_size)
         config['Run_name'] = run_name
         
     else: 
