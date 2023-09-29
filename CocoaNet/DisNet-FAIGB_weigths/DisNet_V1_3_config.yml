@@ -1,0 +1,58 @@
+sweep_config:
+    method: bayes
+metric:
+    name: Best_F1
+    goal: maximize
+parameters:
+    input_size:
+        distribution: int_uniform
+        min: 200
+        max: 500
+    criterion:
+        values: [DFLOSS, cross_entropy]
+    kernel_1:
+        values: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+    kernel_2:
+        values: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+    kernel_3:
+        values: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+    dim_1:
+        distribution: int_uniform
+        min: 16
+        max: 128
+    dim_2:
+        distribution: int_uniform
+        min: 16
+        max: 128
+    dim_3:
+        distribution: int_uniform
+        min: 16
+        max: 128
+    beta1:
+        distribution: uniform
+        min: 0.88
+        max: 0.99
+    beta2:
+        distribution: uniform
+        min: 0.93
+        max: 0.999
+    learning_rate:
+        distribution: uniform
+        min: 1e-6
+        max: 1e-3
+    num_blocks_1:
+        distribution: int_uniform
+        min: 1
+        max: 4  
+    num_blocks_2:
+        distribution: int_uniform
+        min: 1
+        max: 4 
+    out_channels:
+        distribution: uniform
+        min: 1
+        max: 2 
+
+
+
+

@@ -14,8 +14,7 @@ import os
 from random_word import RandomWords
 import toolbox
 #sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
-#import toolbox
-
+from toolbox import DynamicFocalLoss
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, initial_bias, batch_size):      
     # @torch.compile
@@ -105,7 +104,10 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         
                         outputs = model(inputs)
 
-                        loss = criterion(outputs, labels)
+                        if isinstance(criterion[phase], DynamicFocalLoss):
+                            loss, step = criterion[phase](outputs, labels, step)
+                        else:
+                            loss = criterion[phase](outputs, labels)
 
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
                         

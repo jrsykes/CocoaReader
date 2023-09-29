@@ -127,10 +127,10 @@ def Randomise_Split(root, destination):
 				#shutil.copy(source, dest)
 				#os.symlink(source, os.path.join(dest, image))
 
-root = '/local/scratch/jrs596/dat/FAIGB_PNPFiltered_HandFiltered_PinopsidaCollapsed'
-destination = '/local/scratch/jrs596/dat/FAIGB_494'
+# root = '/local/scratch/jrs596/dat/FAIGB_PNPFiltered_HandFiltered_PinopsidaCollapsed'
+# destination = '/local/scratch/jrs596/dat/FAIGB_494'
 
-Randomise_Split(root, destination)
+# Randomise_Split(root, destination)
 
 def compress_copy(root, destination):
 	for class_ in os.listdir(root):
@@ -274,7 +274,28 @@ def cocoa_image_complier(dat, destination):
 			shutil.copy(source, dest_)
 
 
-#%%
 
-#cocoa_image_complier(dat="/local/scratch/jrs596/dat/EcuadorImages_EL_LowRes/Combined", destination="/local/scratch/jrs596/dat/split_cocoa_images2")
-# %%
+def resize_and_save_image(image_path, output_path):
+    try:
+        with Image.open(image_path) as img:
+            img = img.resize((700, 700))
+            img.save(output_path)
+            print(f"Image {image_path} resized and saved to {output_path}")
+    except Exception as e:
+        print(f"Error processing {image_path}: {e}")
+
+def process_directory(input_directory, output_directory):
+    for root, dirs, files in os.walk(input_directory):
+        for file in files:
+            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                input_image_path = os.path.join(root, file)
+                relative_subdir = os.path.relpath(root, input_directory)
+                output_subdir = os.path.join(output_directory, relative_subdir)
+                os.makedirs(output_subdir, exist_ok=True)
+                output_image_path = os.path.join(output_subdir, file)
+                resize_and_save_image(input_image_path, output_image_path)
+
+input_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit'
+output_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit_700'
+
+process_directory(input_directory, output_directory)
