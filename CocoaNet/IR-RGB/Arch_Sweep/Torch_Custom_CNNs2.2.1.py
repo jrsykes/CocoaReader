@@ -103,26 +103,19 @@ def train():
 
     #define config dictionary with wandb
     config = {
-        'num_classes': 8,
         'input_size': args.input_size,
-        'drop_out': 0.2,
-        'drop_out2': 0.2,
         'dim_1': wandb.config.dim_1, 
         'dim_2': wandb.config.dim_2, 
-        'nodes_1': wandb.config.nodes_1, 
-        'nodes_2': wandb.config.nodes_2,
+        'dim_3': wandb.config.dim_3,
         'kernel_1': wandb.config.kernel_1, 
         'kernel_2': wandb.config.kernel_2,
-        'kernel_3': wandb.config.kernel_3, 
-        'kernel_4': wandb.config.kernel_4,
-        'kernel_5': wandb.config.kernel_5, 
-        'kernel_6': wandb.config.kernel_6,
-        'beta1': wandb.config.beta1,
-        'beta2': wandb.config.beta2,
-        'learning_rate': wandb.config.learning_rate
+        'kernel_3': wandb.config.kernel_3,
+        'num_blocks_1': wandb.config.num_blocks_1,
+        'num_blocks_2': wandb.config.num_blocks_2,
+        'out_channels': wandb.config.out_channels,        
     }
         
-    model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+    model = toolbox.build_model(arch=args.arch, num_classes=None, config=config).to(device)
   
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
@@ -136,16 +129,16 @@ def train():
         model(inputs)
     
     GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
+    wandb.log({'GFLOPs': GFLOPs, 'n_params': n_params})  # Log the GFLOPs and n_params of the model
     del model
     print()
     print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
 
     if GFLOPs < 6 and n_params < 50000000:
-        # model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)   
-        model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+        model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
-                                        weight_decay=args.weight_decay, eps=args.eps)
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(wandb.config.beta1, wandb.config.beta2))
         
         trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, batch_size=args.batch_size)
         config['Run_name'] = run_name

@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet, MetaModel, UnifiedModel
+from ArchitectureZoo import DisNet, DisNetV1_2
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
@@ -30,8 +30,10 @@ def build_model(num_classes, arch, config):
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'DisNet':
         model_ft = DisNet(out_channels=num_classes, config=config)
-    # elif arch == 'DisNet_picoIR':
-    #     model_ft = DisNet_picoIR(out_channels=num_classes, config=config)
+        
+    elif arch == 'DisNetV1_2':
+        model_ft = DisNetV1_2(config=config)
+    
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features

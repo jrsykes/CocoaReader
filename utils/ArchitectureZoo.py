@@ -26,210 +26,9 @@ class CNBlock_pico(nn.Module):
         result = self.layer_scale * self.block(input)
         result += input
         return result
-
-
-
-# class DisNet_pico(nn.Module):
-#     def __init__(self, out_channels, config_dict):
-#         super(DisNet_pico, self).__init__()
-#         self.config_dict = config_dict
-
-#         self.conv1 = nn.Conv2d(in_channels=3, out_channels=config_dict['dim_1'], kernel_size=config_dict['kernel_1'], padding='same') 
-#         nn.init.kaiming_normal_(self.conv1.weight, mode='fan_out', nonlinearity='relu')
-#         self.cnblock1 = CNBlock_pico(dim=config_dict['dim_1'], kernel_3=config_dict['kernel_3'], kernel_4=config_dict['kernel_4'], dropout=config_dict['drop_out'])
-#         self.Avgpool = nn.AvgPool2d(2, 2)
-#         self.Maxpool = nn.MaxPool2d(2, 2)
-#         self.conv2 = nn.Conv2d(in_channels=config_dict['dim_1'], out_channels=config_dict['dim_2'], kernel_size=config_dict['kernel_2'], padding='same')
-#         nn.init.kaiming_normal_(self.conv2.weight, mode='fan_out', nonlinearity='relu')
-#         self.cnblock2 = CNBlock_pico(dim=config_dict['dim_2'], kernel_3=config_dict['kernel_5'], kernel_4=config_dict['kernel_6'], dropout=config_dict['drop_out'])
-
-#         self.fc1 = None
-#         #self.fc1 = nn.Linear(150000, self.config_dict['nodes_1'])
-        
-#         self.fc2 = nn.Linear(config_dict['nodes_1'], config_dict['nodes_2'])
-#         nn.init.kaiming_normal_(self.fc2.weight, mode='fan_out', nonlinearity='relu')
-#         self.fc3 = nn.Linear(config_dict['nodes_2'], out_channels)
-#         nn.init.kaiming_normal_(self.fc3.weight, mode='fan_out', nonlinearity='relu')
-
-#     def forward(self, x):
-#         x = F.relu(self.conv1(x))   
-#         x = self.cnblock1(x)        
-#         x = self.Maxpool(x)            
-#         x = F.relu(self.conv2(x))   
-#         x = self.cnblock2(x)        
-#         x = self.Avgpool(x)     
-#         x = torch.flatten(x, 1)   
-          
-#         if self.fc1 is None:
-#             self.fc1 = nn.Linear(x.shape[1], self.config_dict['nodes_1']).to(x.device)
-#             nn.init.kaiming_normal_(self.fc1.weight, mode='fan_out', nonlinearity='relu')        
-#         x = F.gelu(self.fc1(x))     
-#         x = F.gelu(self.fc2(x))     
-#         x = self.fc3(x)             
-#         return x
-
-
-
-
-# class DisNet_pico_duo(nn.Module):
-#     config_dict = {
-#         "dim_1": 34,
-#         "dim_2": 25,
-#         "drop_out": 0.15764421413342755,
-#         "input_size": 388,
-#         "kernel_1": 3,
-#         "kernel_2": 4,
-#         "kernel_3": 3,
-#         "kernel_4": 3,
-#         "kernel_5": 4,
-#         "kernel_6": 7,
-#         "nodes_1": 80,
-#         "nodes_2": 65,
-#     }
-
-
-#     def __init__(self, out_channels):
-#         super(DisNet_pico_duo, self).__init__()
-#         # self.config_dict = config_dict
-
-#         self.conv1 = nn.Conv2d(in_channels=3, out_channels=self.config_dict['dim_1'], kernel_size=self.config_dict['kernel_1'], padding='same') 
-#         nn.init.kaiming_normal_(self.conv1.weight, mode='fan_out', nonlinearity='relu')
-        
-
-#         self.cnblock1 = CNBlock_pico(dim=self.config_dict['dim_1'], kernel_3=self.config_dict['kernel_3'], kernel_4=self.config_dict['kernel_4'], dropout=self.config_dict['drop_out'])
-#         self.se1 = SqueezeExcitation(input_channels=self.config_dict['dim_1'], squeeze_channels=1)
-        
-#         self.conv2 = nn.Conv2d(in_channels=self.config_dict['dim_1'], out_channels=self.config_dict['dim_2'], kernel_size=self.config_dict['kernel_2'], padding='same')
-#         nn.init.kaiming_normal_(self.conv2.weight, mode='fan_out', nonlinearity='relu')
-        
-#         self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out'])
-
-#         # self.fc1 = None
-#         self.fc1 = nn.Linear(235225, self.config_dict['nodes_1'])
-        
-#         self.fc2 = nn.Linear(self.config_dict['nodes_1'], self.config_dict['nodes_2'])
-#         nn.init.kaiming_normal_(self.fc2.weight, mode='fan_out', nonlinearity='relu')
-#         self.fc2_norm = nn.LayerNorm(self.config_dict['nodes_2']) # Layer normalization
-
-#         self.fc3_1 = nn.Linear(self.config_dict['nodes_2'], out_channels)
-#         nn.init.kaiming_normal_(self.fc3_1.weight, mode='fan_out', nonlinearity='relu')
-#         # self.fc3_1_norm = nn.LayerNorm(out_channels) # Layer normalization
-
-#         self.fc3_2 = nn.Linear(self.config_dict['nodes_2'], 2)
-#         nn.init.kaiming_normal_(self.fc3_2.weight, mode='fan_out', nonlinearity='relu')
-#         # self.fc3_2_norm = nn.LayerNorm(2) # Layer normalization
-        
-#         self.Maxpool = nn.MaxPool2d(2, 2) 
-#         self.Avgpool = nn.AvgPool2d(2, 2)
-    
-#     def forward(self, x):
-#         x = self.conv1(x)
-#         x = F.relu(x)
-#         x = self.cnblock1(x)
-#         x = self.se1(x)         
-#         x = self.Maxpool(x)            
-#         x = self.conv2(x)   
-#         x = F.relu(x)
-#         x = self.cnblock2(x)   
-#         x = self.Avgpool(x)     
-#         x = torch.flatten(x, 1)     
-          
-#         if self.fc1 is None:
-#             self.fc1 = nn.Linear(x.shape[1], self.config_dict['nodes_1']).to(x.device)
-#             nn.init.kaiming_normal_(self.fc1.weight, mode='fan_out', nonlinearity='relu')
-    
-#         x = F.gelu(self.fc1(x))     
-#         x = F.gelu(self.fc2_norm(self.fc2(x)))     
-#         y = self.fc3_1(x) 
-#         z = self.fc3_2(x)        
-#         return y, z
-
-class DisNet_pico(nn.Module):
-    # config_dict = {
-    # "dim_1": 21,
-    # "dim_2": 41,
-    # "drop_out": 0.1280985437968713,
-    # "input_size": 455,
-    # "kernel_1": 2,
-    # "kernel_2": 1,
-    # "kernel_3": 8,
-    # "kernel_4": 4,
-    # "kernel_5": 4,
-    # "kernel_6": 4,
-    # "nodes_1": 84,
-    # "nodes_2": 79,
-    # }
-
-
-    def __init__(self, out_channels, config):
-        super(DisNet_pico, self).__init__()
-        self.config_dict = config
-        
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=self.config_dict['dim_1'], kernel_size=self.config_dict['kernel_1'], padding='same') 
-        nn.init.kaiming_normal_(self.conv1.weight, mode='fan_out', nonlinearity='relu')
-        
-
-        self.cnblock1 = CNBlock_pico(dim=self.config_dict['dim_1'], kernel_3=self.config_dict['kernel_3'], kernel_4=self.config_dict['kernel_4'], dropout=self.config_dict['drop_out'])
-        self.se1 = SqueezeExcitation(input_channels=self.config_dict['dim_1'], squeeze_channels=1)
-        
-        self.conv2 = nn.Conv2d(in_channels=self.config_dict['dim_1'], out_channels=self.config_dict['dim_2'], kernel_size=self.config_dict['kernel_2'], padding='same')
-        nn.init.kaiming_normal_(self.conv2.weight, mode='fan_out', nonlinearity='relu')
-        
-        self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out'])
-
-        self.fc1 = None
-        # self.fc1 = nn.Linear(523529, self.config_dict['nodes_1'])
-        
-        self.fc2 = nn.Linear(self.config_dict['nodes_1'], self.config_dict['nodes_2'])
-        nn.init.kaiming_normal_(self.fc2.weight, mode='fan_out', nonlinearity='relu')
-        self.fc2_norm = nn.LayerNorm(self.config_dict['nodes_2']) 
-        
-        self.fc3 = nn.Linear(self.config_dict['nodes_2'], out_channels)
-        nn.init.kaiming_normal_(self.fc3.weight, mode='fan_out', nonlinearity='relu')
-        
-        self.Maxpool = nn.MaxPool2d(2, 2) 
-        self.Avgpool = nn.AvgPool2d(2, 2)
-    
-    def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.cnblock1(x)
-        x = self.se1(x)         
-        x = self.Maxpool(x)            
-        x = self.conv2(x)   
-        x = F.relu(x)
-        x = self.cnblock2(x)   
-        x = self.Avgpool(x)     
-        x = torch.flatten(x, 1)     
-          
-        if self.fc1 is None:
-            self.fc1 = nn.Linear(x.shape[1], self.config_dict['nodes_1']).to(x.device)
-            nn.init.kaiming_normal_(self.fc1.weight, mode='fan_out', nonlinearity='relu')
-    
-        x = F.gelu(self.fc1(x))     
-        x = F.gelu(self.fc2_norm(self.fc2(x)))     
-        x = self.fc3(x) 
-        return x
-    
+  
 
 class DisNet(nn.Module):
-
-    # config_dict = {
-    #         "dim_1": 27,
-    #         "dim_2": 10,
-    #         "drop_out": 0.16160199440118397,
-    #         "input_size": 252,
-    #         "kernel_1": 3,
-    #         "kernel_2": 3,
-    #         "kernel_3": 19,
-    #         "kernel_4": 2,
-    #         "kernel_5": 19,
-    #         "kernel_6": 13,
-    #         "nodes_1": 113,
-    #         "nodes_2": 135,
-    #         "num_classes": 8
-    # }
-
 
     def __init__(self, out_channels, config=None):
         super(DisNet, self).__init__()
@@ -245,10 +44,10 @@ class DisNet(nn.Module):
         self.conv2 = nn.Conv2d(in_channels=self.config_dict['dim_1'], out_channels=self.config_dict['dim_2'], kernel_size=self.config_dict['kernel_2'], padding='same')
         nn.init.kaiming_normal_(self.conv2.weight, mode='fan_out', nonlinearity='relu')
         
-        self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out2'])
+        self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out'])
 
-        self.fc1 = None
-        # self.fc1 = nn.Linear(183600, self.config_dict['nodes_1'])
+        # self.fc1 = None
+        self.fc1 = nn.Linear(39690, self.config_dict['nodes_1'])
         
         self.fc2 = nn.Linear(self.config_dict['nodes_1'], self.config_dict['nodes_2'])
         nn.init.kaiming_normal_(self.fc2.weight, mode='fan_out', nonlinearity='relu')
@@ -280,6 +79,91 @@ class DisNet(nn.Module):
         x = F.gelu(self.fc2_norm(self.fc2(x)))     
         x = self.fc3(x) 
         return x
+
+
+class Bottleneck(nn.Module):
+    expansion = 4
+    
+    def __init__(self, in_channels, out_channels, stride=1, max_groups=32, kernel_size=3):
+        super(Bottleneck, self).__init__()
+        mid_channels = out_channels // self.expansion
+        groups = mid_channels if mid_channels % max_groups == 0 else 1  # Ensure num_groups is a divisor of num_channels
+        
+        self.residual = nn.Sequential(
+            nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=False),
+            nn.GroupNorm(num_groups=groups, num_channels=mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, mid_channels, kernel_size=kernel_size, stride=stride, padding=kernel_size//2, bias=False, groups=groups),
+            nn.GroupNorm(num_groups=groups, num_channels=mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=1, bias=False),
+            nn.GroupNorm(num_groups=groups, num_channels=out_channels)
+        )
+        
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.GroupNorm(num_groups=groups, num_channels=out_channels)
+            )
+        self.relu = nn.ReLU(inplace=True)
+        
+    def forward(self, x):
+        out_residual = self.residual(x)
+        out_shortcut = self.shortcut(x)
+        
+        # Check if padding is needed
+        if out_residual.size(2) != out_shortcut.size(2) or out_residual.size(3) != out_shortcut.size(3):
+            padding = [0, out_residual.size(3) - out_shortcut.size(3), 0, out_residual.size(2) - out_shortcut.size(2)]
+            out_shortcut = nn.functional.pad(out_shortcut, padding)
+        
+        out = out_residual + out_shortcut
+        out = self.relu(out)
+        return out
+
+
+class DisNetV1_2(nn.Module):
+    def __init__(self, config=None):
+        super(DisNetV1_2, self).__init__()
+        self.config_dict = config
+        
+        out_channels = self.config_dict['out_channels']
+        groups = self.config_dict['dim_1'] if self.config_dict['dim_1'] % 32 == 0 else 1  # Ensure num_groups is a divisor of num_channels
+        
+        self.conv1 = nn.Conv2d(3, self.config_dict['dim_1'], kernel_size=self.config_dict['kernel_1'], stride=2, padding=self.config_dict['kernel_1']//2, bias=False)
+        self.gn1 = nn.GroupNorm(num_groups=groups, num_channels=self.config_dict['dim_1'])
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        
+        # Pass num_blocks parameter when creating layers
+        self.layer1 = self._make_layer(self.config_dict['dim_1'], self.config_dict['dim_2'], blocks=self.config_dict['num_blocks_1'], stride=1, kernel_size=self.config_dict['kernel_2'])
+        self.layer2 = self._make_layer(self.config_dict['dim_2'], self.config_dict['dim_3'], blocks=self.config_dict['num_blocks_2'], stride=2, kernel_size=self.config_dict['kernel_3'])
+        
+        self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(self.config_dict['dim_3'], out_channels)
+        
+    def _make_layer(self, in_channels, out_channels, blocks, stride, kernel_size):
+        layers = []
+        layers.append(Bottleneck(in_channels, out_channels, stride=stride, kernel_size=kernel_size))
+        for _ in range(1, blocks):  # Use blocks parameter to determine the number of Bottleneck blocks
+            layers.append(Bottleneck(out_channels, out_channels, kernel_size=kernel_size))
+        return nn.Sequential(*layers)
+         
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.gn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        
+        x = self.layer1(x)
+        x = self.layer2(x)
+        
+        x = self.global_avg_pool(x)
+        x = torch.flatten(x, 1)
+        
+        x = self.fc(x)
+        return x
+
 
 
 # class AttentionNet(nn.Module):

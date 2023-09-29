@@ -90,22 +90,20 @@ import toolbox
 from training_loop import train_model
 
 def train():
-    config = {
-            'num_classes': 8,
-            "dim_1": 27,
-            "dim_2": 10,
-            "drop_out": 0.16160199440118397,
-            "drop_out2": 0.16160199440118397,
-            "input_size": 252,
-            "kernel_1": 3,
-            "kernel_2": 3,
-            "kernel_3": 19,
-            "kernel_4": 2,
-            "kernel_5": 19,
-            "kernel_6": 13,
-            "nodes_1": 113,
-            "nodes_2": 135
-       }
+    # config = {
+    #     "beta1": 0.9051880132274126,
+    #     "beta2": 0.9630258300974864,
+    #     "dim_1": 49,
+    #     "dim_2": 97,
+    #     "dim_3": 68,
+    #     "kernel_1": 11,
+    #     "kernel_2": 9,
+    #     "kernel_3": 13,
+    #     "learning_rate": 0.0005921981578304907,
+    #     "num_blocks_1": 2,
+    #     "num_blocks_2": 4,
+    #     "out_channels": 7
+    # }
 
     toolbox.SetSeeds(42)
     
@@ -117,9 +115,9 @@ def train():
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
     device = torch.device("cuda:" + args.GPU)
 
-    model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=None).to(device)
 
-    input_size = torch.Size([3, config['input_size'], config['input_size']])
+    input_size = torch.Size([3, wandb.config.input_size, wandb.config.input_size])
     inputs = torch.randn(1, *input_size).to(device)
     
     with torch.no_grad():
@@ -130,25 +128,25 @@ def train():
     print()
     print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
     
-    model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=None).to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
-                                            weight_decay=args.weight_decay, eps=args.eps, betas=(wandb.config.beta1, wandb.config.beta2))
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(wandb.config.beta1, wandb.config.beta2))
 
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=wandb.config.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
     criterion = nn.CrossEntropyLoss()
 
-    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, input_size=None, batch_size=args.batch_size)
+    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, batch_size=args.batch_size)
 
     
     return trained_model, best_f1, best_f1_loss, best_train_f1
 
 
 
-if args.sweep == True:
+if args.sweep_config != None:
     with open(args.sweep_config) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
         sweep_config = config['sweep_config']

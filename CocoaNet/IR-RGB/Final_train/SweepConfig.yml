@@ -1,9 +1,13 @@
 sweep_config:
-    method: random
+    method: bayes
 metric:
     name: Best_F1
     goal: maximize
 parameters:
+    input_size:
+        distribution: int_uniform
+        min: 200
+        max: 500
     beta1:
         distribution: uniform
         min: 0.89

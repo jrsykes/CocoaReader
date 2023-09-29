@@ -111,39 +111,27 @@ def train():
         wandb.save(os.path.join(script_dir, '*')) 
         
         #define config dictionary with wandb
-        config = {
-            "dim_1": 27,
-            "dim_2": 10,
-            "drop_out": 0.16160199440118397,
-            "input_size": 252,
-            "kernel_1": 3,
-            "kernel_2": 3,
-            "kernel_3": 19,
-            "kernel_4": 2,
-            "kernel_5": 19,
-            "kernel_6": 13,
-            "nodes_1": 113,
-            "nodes_2": 135,
-            "num_classes": 8
-           }
+        # config = {
+        #     "beta1": 0.9531276695000606,
+        #     "beta2": 0.9758172413959572,
+        #     "dim_1": 124,
+        #     "dim_2": 35,
+        #     "dim_3": 104,
+        #     "kernel_1": 9,
+        #     "kernel_2": 17,
+        #     "kernel_3": 5,
+        #     "learning_rate": 0.0008565830975374916,
+        #     "num_blocks_1": 2,
+        #     "num_blocks_2": 3,
+        #     "out_channels": 8
+        # }
 
         toolbox.SetSeeds(42)
 
-        model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+        model = toolbox.build_model(num_classes=4, arch=args.arch, config=None).to(device)
 
-        # DisNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='DisNet_picoIR', config=config)
-        # SecondNet = toolbox.build_model(num_classes=config['trans_nodes'], arch='resnet18', config=None)
-        # Meta = toolbox.build_model(num_classes=config['num_classes'], arch='Meta', config=config)
-
-        # config2 = {'CNN1': DisNet, 
-        #            'CNN2': SecondNet, 
-        #            'MetaModel': Meta}
-    
-        # model = toolbox.build_model(num_classes=None, arch='Unified', config=config2).to(device)
-        # model = model.to(device)
-          
         # Create training and validation datasets using the current fold
-        image_datasets = toolbox.build_datasets(input_size=config['input_size'], data_dir=os.path.join(data_dir, f'fold_{fold}'))
+        image_datasets = toolbox.build_datasets(input_size=args.input_size, data_dir=os.path.join(data_dir, f'fold_{fold}'))
     
         # Create dataloaders for the training and validation datasets
         dataloaders_dict = {
@@ -151,7 +139,7 @@ def train():
             'val': torch.utils.data.DataLoader(image_datasets['val'], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=False)
         }
         
-        input_size = torch.Size([3, config['input_size'], config['input_size']])
+        input_size = torch.Size([3, args.input_size, args.input_size])
         inputs = torch.randn(1, *input_size).to(device)
 
         with torch.no_grad():
@@ -162,10 +150,10 @@ def train():
         print()
         print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
 
-        model = toolbox.build_model(num_classes=config['num_classes'], arch=args.arch, config=config).to(device)
+        model = toolbox.build_model(num_classes=4, arch=args.arch, config=None).to(device)
         
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate,
-                                        weight_decay=args.weight_decay, eps=args.eps)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=5.140551979453639e-05,
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(0.9841235203771193, 0.9895409209654844))
         # Train the model and store the results
         _, _, _, _, run_name, best_train_metrics, best_val_metrics = train_model(
             model=model,
@@ -176,11 +164,7 @@ def train():
             criterion=criterion,
             patience=args.patience,
             initial_bias=initial_bias,
-            input_size=None,
-            n_tokens=None,
-            batch_size=args.batch_size,
-            AttNet=None,
-            ANoptimizer=None
+            batch_size=args.batch_size
         )
 ########################################
         # if args.log_preds == True:

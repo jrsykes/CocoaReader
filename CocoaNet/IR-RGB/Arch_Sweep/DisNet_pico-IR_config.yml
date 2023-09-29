@@ -1,5 +1,5 @@
 sweep_config:
-    method: random
+    method: bayes
 metric:
     name: Best_F1
     goal: maximize

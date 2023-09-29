@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import sys
-sys.path.append('/users/jrs596/scripts/CocoaReader/utils')
-from ArchitectureZoo import DisNet_pico, DisNet_picoIR
+sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
+from ArchitectureZoo import DisNet, DisNetV1_2
 
-device = torch.device("cuda:7")
+device = torch.device("cuda:0")
 
 #%%
 
@@ -57,24 +57,24 @@ class EfficientNet_CAM(nn.Module):
         self.first_part_conv = convs[:layer_k]
         self.second_part_conv = convs[layer_k:-1]  # Exclude the last layer
         self.linear = nn.Sequential(convs[-1], *list(net.children())[-1:])  # Include the last layer in linear
-
         
     def forward(self, x):
         x = self.first_part_conv(x.to(device))
         x.register_hook(self.activations_hook)
         x = self.second_part_conv(x)
-        x = F.adaptive_avg_pool2d(x, (1280, 1280))
+        x = F.adaptive_avg_pool2d(x, (1, 1))  # Consider reducing the size
         x = self.linear(x)
         return x
     
     def activations_hook(self, grad):
-        self.gradients = grad
+        self.gradients = grad.cpu()  # Move gradients to CPU
     
     def get_activations_gradient(self):
         return self.gradients
     
     def get_activations(self, x):
         return self.first_part_conv(x.to(device))
+
 
 
 class DisNet_pico_CAM(nn.Module):
@@ -127,6 +127,34 @@ class DisNet_pico_CAM(nn.Module):
         x = self.Avgpool(x)
         return x
 
+class DisNetV1_2_CAM(nn.Module):
+    def __init__(self, net, layer_k):
+        super(DisNetV1_2_CAM, self).__init__()
+        self.disnet = net
+        layers = [net.conv1, net.gn1, net.relu, net.maxpool, net.layer1, net.layer2]
+        self.first_part_conv = nn.Sequential(*layers[:layer_k])
+        self.second_part_conv = nn.Sequential(*layers[layer_k:])
+        self.global_avg_pool = net.global_avg_pool
+        self.fc = net.fc
+        
+    def forward(self, x):
+        x = self.first_part_conv(x)
+        x.register_hook(self.activations_hook)
+        x = self.second_part_conv(x)
+        x = self.global_avg_pool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
+    
+    def activations_hook(self, grad):
+        self.gradients = grad
+    
+    def get_activations_gradient(self):
+        return self.gradients
+    
+    def get_activations(self, x):
+        return self.first_part_conv(x)
+
 
 # %%
 
@@ -177,30 +205,66 @@ def get_grad_cam(net, img):
 
 #%%
 # Load models
-resnet = torch.load('/users/jrs596/scratch/dat/models/resnet18-IR.pth', map_location=lambda storage, loc: storage.cuda(7))
-efficientnet = torch.load('/users/jrs596/scratch/dat/models/efficientnetv2_s-IR.pth', map_location=lambda storage, loc: storage.cuda(7))
-efficientnet_b0 = torch.load('/users/jrs596/scratch/dat/models/efficientnet_b0-IR.pth', map_location=lambda storage, loc: storage.cuda(7))
+resnet = torch.load('/local/scratch/jrs596/models/resnet18-IR.pth', map_location=lambda storage, loc: storage.cuda(0))
+efficientnet = torch.load('/local/scratch/jrs596/models/efficientnetv2_s-IR.pth', map_location=lambda storage, loc: storage.cuda(0))
+efficientnet_b0 = torch.load('/local/scratch/jrs596/models/efficientnet_b0-IR.pth', map_location=lambda storage, loc: storage.cuda(0))
 
 
+##############################################################
+config = {
+    "dim_1": 27,
+    "dim_2": 10,
+    "drop_out": 0.16160199440118397,
+    "input_size": 252,
+    "kernel_1": 3,
+    "kernel_2": 3,
+    "kernel_3": 19,
+    "kernel_4": 2,
+    "kernel_5": 19,
+    "kernel_6": 13,
+    "nodes_1": 113,
+    "nodes_2": 135
+}
 
-DisNet_pico = DisNet_picoIR(out_channels=8).to(device)
-
+DisNet_pico = DisNet(out_channels=8, config=config).to(device)
 # # Load weights
-weights_path = "/users/jrs596/scratch/dat/models/DisNet-IR-earthy-sweep-4502_weights.pth"
-weights = torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(7))
-
+weights_path = "/local/scratch/jrs596/models/DisNet-IR-earthy-sweep-4502_weights.pth"
+weights = torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(0))
 # # Apply weights to the model
 DisNet_pico.load_state_dict(weights)
+##############################################################
+config = {
+    "beta1": 0.9051880132274126,
+    "beta2": 0.9630258300974864,
+    "dim_1": 49,
+    "dim_2": 97,
+    "dim_3": 68,
+    "kernel_1": 11,
+    "kernel_2": 9,
+    "kernel_3": 13,
+    "learning_rate": 0.0005921981578304907,
+    "num_blocks_1": 2,
+    "num_blocks_2": 4,      
+    "out_channels": 7
+}
 
 
-labels = ["Original", "DisNet_pico", "ResNet", "Efficientnet_b0", "EfficientNetV2"]
+DisNet_V1_2 = DisNetV1_2(config=config)
+weights_path = "/local/scratch/jrs596/models/DisNetV1_2_IR_ancient-sweep-128_weights.pth"
+# DisNetV1_2.load_state_dict(torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(0)))
+
+state_dict = torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(0))
+DisNet_V1_2.load_state_dict(state_dict)
+##############################################################
+
+labels = ["Original", "DisNet", "ResNet", "Efficientnet_b0", "EfficientNetV2"]
 # labels = ["Original", "ResNet", "Efficientnet_b0", "EfficientNetV2"]
 
-models = [DisNet_pico, resnet, efficientnet, efficientnet_b0]
+models = [DisNet_V1_2, resnet, efficientnet_b0, efficientnet]
 # models = [resnet, efficientnet, efficientnet_b0]
 
-dat_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/GradCamTest40'
-n_imgs = 40
+dat_dir = '/local/scratch/jrs596/dat/IR_RGB_Comp_data/GradCamTest8'
+n_imgs = 8
 
 # Prepare data
 # img_size = config['input_size']
@@ -217,33 +281,49 @@ def load_data(dat_dir, img_size):
 
 
 # Iterate over models
-model_list = [(DisNet_pico, DisNet_pico_CAM, 252), (resnet, ResNet_CAM, 408), (efficientnet_b0, EfficientNet_CAM, 424), (efficientnet, EfficientNet_CAM, 485)]
+model_list = [(DisNet_V1_2, DisNetV1_2_CAM, 285), (resnet, ResNet_CAM, 408), (efficientnet_b0, EfficientNet_CAM, 424), (efficientnet, EfficientNet_CAM, 485)]
 plot_img_size = 485
 # Prepare tensor to store images
 n_models = len(model_list) + 1  # Add one for the original images
 imgs = torch.Tensor(n_imgs, n_models, 3, plot_img_size, plot_img_size)  # Adjusted the tensor dimensions
 
-for j, model_set in enumerate(model_list, start=1):  # Start from 1 to leave space for the original images
-    print() 
+import gc
+import time
+
+for j, model_set in enumerate(model_list, start=1):
+    print()
     print(labels[j])
     print()
     img_size = model_set[2]
     
     valloader = load_data(dat_dir, img_size)
     it = iter(valloader)
-    # Iterate over images
+    
     for i in range(n_imgs):
         img, _ = next(it)
-        if j == 1:  # Store the original image only once
+        if j == 1:
             img_resize = torch.nn.functional.interpolate(img[0].unsqueeze(0), size=(plot_img_size), mode='bilinear', align_corners=False)
             imgs[i][0] = img_resize
-            # imgs[i][0] = img[0]
-            
-        model_cam_net = model_set[1](model_set[0], -1)  # Use the final layer
+        
+        model_cam_net = model_set[1](model_set[0], -1)
+        
         out = get_grad_cam(model_cam_net, img)
-        # resize out tensor to 3 x 224 x 224
+        
         out = torch.nn.functional.interpolate(out.unsqueeze(0), size=(plot_img_size), mode='bilinear', align_corners=False)
-        imgs[i][j] = out  # Adjusted the tensor indexing
+        imgs[i][j] = out
+    
+    print("Done with model:", labels[j], "\n Clearing memory.")
+    
+    model_cam_net.cpu()
+    for param in model_cam_net.parameters():
+        del param
+    
+    del model_cam_net, out, img, valloader, it
+    it = None
+    
+    torch.cuda.empty_cache()
+    gc.collect()
+
 
 
 # Transpose the tensor
@@ -253,7 +333,7 @@ imgs = imgs.permute(0, 1, 2, 3, 4)  # Adjusted the permute order
 imgs_np = imgs.numpy()
 
 #%%
-
+print("\nMapping complete, getting predictions.\n")
 # Create a figure and axes
 fig, axs = plt.subplots(n_imgs, n_models, figsize=(100, 100))
 #set plot width
@@ -266,7 +346,7 @@ class_labels = ["BPR", "FPR", "Healthy", "WBD"]  # Replace with your actual clas
 
 
 
-font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 40)  # Replace with the path to a .ttf file on your system
+font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 80)  # Replace with the path to a .ttf file on your system
 
 # Create a new blank image
 grid_img = Image.new('RGB', (n_models * img_size, n_imgs * img_size))
@@ -304,6 +384,8 @@ for i in range(n_imgs):
         else:  # For all other columns, use the predicted class
             # resize img_ tensor to 3 x 224 x 224
             img__ = torch.nn.functional.interpolate(img_, size=model_list[j-1][2], mode='bilinear', align_corners=False)
+            models[j-1].to(device)
+            models[j-1].eval()
             try:
                 pred, _ = models[j-1](img__.to(device))
             except:
@@ -315,7 +397,7 @@ for i in range(n_imgs):
         grid_img.paste(img_pil, (j * img_size, i * img_size))
 
 # Save the grid image
-grid_img.save("/users/jrs596/scratch/dat/gradcam_all_models_labeled8_v2.png")
+grid_img.save("/local/scratch/jrs596/gradcam_all_models_labeled8_v3.png")
 # grid_img.save("/users/jrs596/scratch/dat/gradcam_DisNet-duo.png")
 
 
