@@ -40,7 +40,7 @@ parser.add_argument('--custom_pretrained_weights', type=str,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
-parser.add_argument('--batch_size', type=int, default=21,
+parser.add_argument('--batch_size', type=int, default=42,
                         help='Initial batch size')
 parser.add_argument('--max_epochs', type=int, default=2,
                         help='n epochs before early stopping')
@@ -64,7 +64,7 @@ parser.add_argument('--input_size', type=int, default=None,
                         help='image input size')
 parser.add_argument('--delta', type=float, default=1.4,
                         help='delta for dynamic focal loss')
-parser.add_argument('--arch', type=str, default='resnet18',
+parser.add_argument('--arch', type=str, default='DisNet_MaskedAutoencoder',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
@@ -83,9 +83,9 @@ parser.add_argument('--GPU', type=str, default='0',
 args = parser.parse_args()
 print(args)
 
-sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
+sys.path.append(os.path.join(os.getcwd(), '/home/userfs/j/jrs596/scripts/CocoaReader/utils'))
 import toolbox
-from training_loop import train_model
+from training_loop_MAE import train_model
 
 
 def train():
@@ -100,69 +100,50 @@ def train():
 
     data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
     device = torch.device("cuda:" + args.GPU)
-
-    #define config dictionary with wandb
+    
     config = {
-        'input_size': wandb.config.input_size,
-        'dim_1': wandb.config.dim_1, 
-        'dim_2': wandb.config.dim_2, 
-        'dim_3': wandb.config.dim_3,
-        'kernel_1': wandb.config.kernel_1, 
-        'kernel_2': wandb.config.kernel_2,
-        'kernel_3': wandb.config.kernel_3,
-        'num_blocks_1': wandb.config.num_blocks_1,
-        'num_blocks_2': wandb.config.num_blocks_2,
-        'out_channels': int(num_classes * wandb.config.out_channels),        
+        'DFLoss_delta': 0.06379802231720144,
+        'beta1': 0.928018334605748,
+        'beta2': 0.943630021404608,
+        'dim_1': 116,
+        'dim_2': 106,
+        'dim_3': 84, #Hard coded as 84, not 83, for now as this number needs to be divisible by number of attention heads
+        'input_size': 240, #Hard coded as 240, not 233, for now this number needs to match the output size of the decoder
+        'kernel_1': 3,
+        'kernel_2': 5,
+        'kernel_3': 13,
+        'learning_rate': 0.00027319079821934975,
+        'num_blocks_1': 4,
+        'num_blocks_2': 1,
+        'out_channels': int(num_classes*1.396007582340178),
+        'num_heads': wandb.config.num_heads,
+        'num_decoder_layers': wandb.config.num_decoder_layers,
     }
-        
-    model = toolbox.build_model(arch=args.arch, num_classes=None, config=config).to(device)
-  
+          
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
-    criterion = {'train': toolbox.DynamicFocalLoss(delta=wandb.config.DFLoss_delta, dataloader=dataloaders_dict['train']), 'val': nn.CrossEntropyLoss()}    
+    criterion = nn.MSELoss()
     
-    input_size = torch.Size([3, config['input_size'], config['input_size']])
-    inputs = torch.randn(1, *input_size).to(device)
-    with torch.no_grad():
-        model(inputs)
-    
-    GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
-    wandb.log({'GFLOPs': GFLOPs, 'n_params': n_params})  # Log the GFLOPs and n_params of the model
-    del model
-    print()
-    print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
+    model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
 
-    if GFLOPs < 6 and n_params < 50000000:
-        model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
-
-        optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
-                                        weight_decay=args.weight_decay, eps=args.eps, betas=(wandb.config.beta1, wandb.config.beta2))
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
         
-        trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, 
-                                                                                          model=model, 
-                                                                                          optimizer=optimizer, 
-                                                                                          device=device, 
-                                                                                          dataloaders_dict=dataloaders_dict, 
-                                                                                          criterion=criterion, 
-                                                                                          patience=args.patience, 
-                                                                                          initial_bias=initial_bias, 
-                                                                                          batch_size=args.batch_size,
-                                                                                          num_classes=num_classes)
-        config['Run_name'] = run_name
-        
-    else: 
-        print()
-        print('Model too large, aborting training')
-        print()
-        run.log({'Status': 'aborted'})  # Log the status as 'aborted'
-        run.finish()  # Finish the run
-
-        trained_model, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
+    trained_model, _, best_loss, _, run_name, _, _ = train_model(args=args, 
+                                                                 model=model, 
+                                                                 optimizer=optimizer, 
+                                                                 device=device, 
+                                                                 dataloaders_dict=dataloaders_dict, 
+                                                                 criterion=criterion, 
+                                                                 patience=args.patience, 
+                                                                 initial_bias=initial_bias, 
+                                                                 batch_size=args.batch_size,
+                                                                 num_classes=config['out_channels'])
+    config['Run_name'] = run_name
 
 
-    return trained_model, best_f1, best_f1_loss, best_train_f1, config
+    return trained_model, None, best_loss, None, config
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:

@@ -1,0 +1,13 @@
+2023-10-03 16:22:23,903 INFO    MainThread:968013 [wandb_setup.py:_flush():76] Current SDK version is 0.15.10
+2023-10-03 16:22:23,903 INFO    MainThread:968013 [wandb_setup.py:_flush():76] Configure stats pid to 968013
+2023-10-03 16:22:23,904 INFO    MainThread:968013 [wandb_setup.py:_flush():76] Loading settings from /home/userfs/j/jrs596/.config/wandb/settings
+2023-10-03 16:22:23,904 INFO    MainThread:968013 [wandb_setup.py:_flush():76] Loading settings from /home/userfs/j/jrs596/scripts/CocoaReader/wandb/settings
+2023-10-03 16:22:23,905 INFO    MainThread:968013 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'_service_wait': '300'}
+2023-10-03 16:22:23,905 INFO    MainThread:968013 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-10-03 16:22:23,906 INFO    MainThread:968013 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'CocoaNet/DisNet-FAIGB-MAE/Torch_Custom_CNNs2.2.1.py', 'program': '/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB-MAE/Torch_Custom_CNNs2.2.1.py'}
+2023-10-03 16:22:23,907 INFO    MainThread:968013 [wandb_init.py:_log_setup():524] Logging user logs to /home/userfs/j/jrs596/scripts/CocoaReader/wandb/run-20231003_162223-qvcaf968/logs/debug.log
+2023-10-03 16:22:23,907 INFO    MainThread:968013 [wandb_init.py:_log_setup():525] Logging internal logs to /home/userfs/j/jrs596/scripts/CocoaReader/wandb/run-20231003_162223-qvcaf968/logs/debug-internal.log
+2023-10-03 16:22:23,908 INFO    MainThread:968013 [wandb_init.py:init():564] calling init triggers
+2023-10-03 16:22:23,908 INFO    MainThread:968013 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-10-03 16:22:23,909 INFO    MainThread:968013 [wandb_init.py:init():609] wandb.init() called when a run is still active

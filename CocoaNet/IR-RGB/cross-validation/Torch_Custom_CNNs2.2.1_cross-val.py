@@ -96,7 +96,7 @@ def train():
     data_dir, _, initial_bias, _ = toolbox.setup(args)
     device = torch.device("cuda:" + args.GPU)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = {'train': nn.CrossEntropyLoss(), 'val': nn.CrossEntropyLoss()}
 
     # Initialize lists to store results
     train_metrics_dict = {'loss': [], 'f1': [], 'acc': [], 'precision': [], 'recall': [], 'BPR_F1': [], 'FPR_F1': [], 'Healthy_F1': [], 'WBD_F1': []}
@@ -111,25 +111,24 @@ def train():
         wandb.save(os.path.join(script_dir, '*')) 
         
         #define config dictionary with wandb
-        # config = {
-        #     "beta1": 0.9531276695000606,
-        #     "beta2": 0.9758172413959572,
-        #     "dim_1": 124,
-        #     "dim_2": 35,
-        #     "dim_3": 104,
-        #     "kernel_1": 9,
-        #     "kernel_2": 17,
-        #     "kernel_3": 5,
-        #     "learning_rate": 0.0008565830975374916,
-        #     "num_blocks_1": 2,
-        #     "num_blocks_2": 3,
-        #     "out_channels": 8
-        # }
+        config = {
+            "beta1": 0.9051880132274126,
+            "beta2": 0.9630258300974864,
+            "dim_1": 49,
+            "dim_2": 97,
+            "dim_3": 68,
+            "kernel_1": 11,
+            "kernel_2": 9,
+            "kernel_3": 13,
+            "learning_rate": 0.0005921981578304907,
+            "num_blocks_1": 2,
+            "num_blocks_2": 4,      
+            "out_channels": 7
+        }
 
         toolbox.SetSeeds(42)
 
-        model = toolbox.build_model(num_classes=4, arch=args.arch, config=None).to(device)
-
+        model = toolbox.build_model(arch=args.arch, config=config, num_classes=None).to(device)
         # Create training and validation datasets using the current fold
         image_datasets = toolbox.build_datasets(input_size=args.input_size, data_dir=os.path.join(data_dir, f'fold_{fold}'))
     
@@ -139,21 +138,21 @@ def train():
             'val': torch.utils.data.DataLoader(image_datasets['val'], batch_size=args.batch_size, shuffle=True, num_workers=6, drop_last=False)
         }
         
-        input_size = torch.Size([3, args.input_size, args.input_size])
-        inputs = torch.randn(1, *input_size).to(device)
+        # input_size = torch.Size([3, args.input_size, args.input_size])
+        # inputs = torch.randn(1, *input_size).to(device)
 
-        with torch.no_grad():
-            model(inputs)
+        # with torch.no_grad():
+        #     model(inputs)
 
-        GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
-        del model
-        print()
-        print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
+        # GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
+        # del model
+        # print()
+        # print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
 
-        model = toolbox.build_model(num_classes=4, arch=args.arch, config=None).to(device)
-        
-        optimizer = torch.optim.AdamW(model.parameters(), lr=5.140551979453639e-05,
-                                        weight_decay=args.weight_decay, eps=args.eps, betas=(0.9841235203771193, 0.9895409209654844))
+        # model = toolbox.build_model(arch=args.arch, config=None, num_classes=None).to(device)
+        # print('\ntwo')
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
         # Train the model and store the results
         _, _, _, _, run_name, best_train_metrics, best_val_metrics = train_model(
             model=model,
@@ -164,79 +163,43 @@ def train():
             criterion=criterion,
             patience=args.patience,
             initial_bias=initial_bias,
-            batch_size=args.batch_size
+            batch_size=args.batch_size,
+            num_classes=4
         )
-########################################
-        # if args.log_preds == True:
-        #     val_data = torch.utils.data.DataLoader(image_datasets['val'], batch_size=1, shuffle=False, num_workers=6, drop_last=False)
-        #     model.eval()
-        #     out_list = []
-
-        #     with torch.no_grad():
-
-        #         for inputs, labels in val_data:
-        #             inputs = inputs.to(device)
-        #             labels = labels.to(device)
-
-        #             out_list.append((labels.item(), *model(inputs).tolist()[0]))
-
-        #     path = '/users/jrs596/scratch/dat/cross_val_predictions'
-        #     with open(os.path.join(path, args.arch + '.csv'), 'a', newline='') as file:
-        #         writer = csv.writer(file)
-        #         writer.writerows(out_list)
-  ########################################
       
         wandb.finish()
 
 
-        # Store the results for this fold
+         # Store the results for this fold
         for metric in train_metrics_dict:
             train_metrics_dict[metric].append(best_train_metrics[metric])
         for metric in val_metrics_dict:
             val_metrics_dict[metric].append(best_val_metrics[metric])                                                   
-                                                 
-    #Divide all values in the dictionaries by 10 to get the mean
-    mean_train_metrics_dict = {}
-    mean_val_metrics_dict = {}
 
-    for metric in train_metrics_dict:
-        mean_train_metrics_dict[metric] = np.mean(train_metrics_dict[metric])
-    for metric in val_metrics_dict:
-        mean_val_metrics_dict[metric] = np.mean(val_metrics_dict[metric])
-
-    #Calculate standard error metrics dict
-    train_se_metrics_dict = {}
-    val_se_metrics_dict = {}
-
-    for metric in train_metrics_dict:
-        train_se_metrics_dict[metric] = np.std(train_metrics_dict[metric]) / np.sqrt(len(train_metrics_dict[metric]))
-    for metric in val_metrics_dict:
-        val_se_metrics_dict[metric] = np.std(val_metrics_dict[metric]) / np.sqrt(len(val_metrics_dict[metric]))
+    # Save raw data to CSV
+    with open(run_name + '_train_metrics.csv', 'w') as f:
+        writer = csv.writer(f)
+        for metric, values in train_metrics_dict.items():
+            writer.writerow([metric] + values)
+    
+    with open(run_name + '_val_metrics.csv', 'w') as f:
+        writer = csv.writer(f)
+        for metric, values in val_metrics_dict.items():
+            writer.writerow([metric] + values)
 
 
-    print()
-    print(f'Mean train metrics: {mean_train_metrics_dict}')
-    print(f'Standard error train metrics: {train_se_metrics_dict}')
-    print()
-    print(f'Mean val metrics: {mean_val_metrics_dict}')
-    print(f'Standard error val metrics: {val_se_metrics_dict}')
-    print()
-          
     run = wandb.init(project=args.project_name)
     artifact = wandb.Artifact(run_name + '_results', type='dataset')
 
-    # Log the results as wandb artifacts
-    mean_dict = {'train_mean_metrics': mean_train_metrics_dict, 'val_mean_metrics': mean_val_metrics_dict,
-                     'train_se_metrics': train_se_metrics_dict, 'val_se_metrics': val_se_metrics_dict}
-    
-    with open(run_name + '_results_dict.json', 'w') as f:
-        json.dump(mean_dict, f)
-
-    artifact.add_file(run_name + '_results_dict.json')
+    # Log the raw data as wandb artifacts
+    artifact.add_file(run_name + '_train_metrics.csv')
+    artifact.add_file(run_name + '_val_metrics.csv')
     run.log_artifact(artifact)
 
     wandb.finish()
-    os.remove(run_name + '_results_dict.json')
+    os.remove(run_name + '_train_metrics.csv')
+    os.remove(run_name + '_val_metrics.csv')
+
     
     
 train()

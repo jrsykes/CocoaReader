@@ -14,7 +14,7 @@ source activate torch5
 # Set wandb directory
 # export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
 export WANDB_DIR="/local/scratch/jrs596/WANDB_cache"
-
+# export WANDB_DIR="/scratch/staff/jrs596/WANDB_cache"
 
 python /home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB_weigths/Torch_Custom_CNNs2.2.1.py \
         --model_name 'DisNet' \
@@ -29,5 +29,5 @@ python /home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB_weigths/T
         --GPU 0 \
         --sweep_count 10000 \
         --sweep_config '/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB_weigths/DisNet_V1_3_config.yml' \
-        --sweep_id 'xvc1dc99' \
+        --sweep_id 'xx8lk2pu' \
 

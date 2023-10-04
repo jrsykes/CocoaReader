@@ -4,81 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import sys
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
-from torchvision.ops import SqueezeExcitation
-
-
-
-class CNBlock_pico(nn.Module):
-    def __init__(self, dim, kernel_3, kernel_4, layer_scale=0.3, dropout=0.5):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.Conv2d(dim, dim, kernel_size=kernel_3, padding='same', groups=dim, bias=True),
-            nn.ReLU(),
-            nn.Conv2d(dim, dim, kernel_size=kernel_4, padding='same'),
-            nn.Dropout(dropout),  
-        )
-        nn.init.kaiming_normal_(self.block[0].weight, mode='fan_out', nonlinearity='relu')
-        nn.init.kaiming_normal_(self.block[2].weight, mode='fan_out', nonlinearity='relu')
-
-        self.layer_scale = nn.Parameter(torch.ones(dim, 1, 1) * layer_scale)
-
-    def forward(self, input):
-        result = self.layer_scale * self.block(input)
-        result += input
-        return result
-  
-
-class DisNet(nn.Module):
-
-    def __init__(self, out_channels, config=None):
-        super(DisNet, self).__init__()
-        self.config_dict = config
-        
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=self.config_dict['dim_1'], kernel_size=self.config_dict['kernel_1'], padding='same') 
-        nn.init.kaiming_normal_(self.conv1.weight, mode='fan_out', nonlinearity='relu')
-        
-
-        self.cnblock1 = CNBlock_pico(dim=self.config_dict['dim_1'], kernel_3=self.config_dict['kernel_3'], kernel_4=self.config_dict['kernel_4'], dropout=self.config_dict['drop_out'])
-        self.se1 = SqueezeExcitation(input_channels=self.config_dict['dim_1'], squeeze_channels=1)
-        
-        self.conv2 = nn.Conv2d(in_channels=self.config_dict['dim_1'], out_channels=self.config_dict['dim_2'], kernel_size=self.config_dict['kernel_2'], padding='same')
-        nn.init.kaiming_normal_(self.conv2.weight, mode='fan_out', nonlinearity='relu')
-        
-        self.cnblock2 = CNBlock_pico(dim=self.config_dict['dim_2'], kernel_3=self.config_dict['kernel_5'], kernel_4=self.config_dict['kernel_6'], dropout=self.config_dict['drop_out'])
-
-        # self.fc1 = None
-        self.fc1 = nn.Linear(39690, self.config_dict['nodes_1'])
-        
-        self.fc2 = nn.Linear(self.config_dict['nodes_1'], self.config_dict['nodes_2'])
-        nn.init.kaiming_normal_(self.fc2.weight, mode='fan_out', nonlinearity='relu')
-        self.fc2_norm = nn.LayerNorm(self.config_dict['nodes_2']) 
-        
-        self.fc3 = nn.Linear(self.config_dict['nodes_2'], out_channels)
-        nn.init.kaiming_normal_(self.fc3.weight, mode='fan_out', nonlinearity='relu')
-        
-        self.Maxpool = nn.MaxPool2d(2, 2) 
-        self.Avgpool = nn.AvgPool2d(2, 2)
-    
-    def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.cnblock1(x)
-        x = self.se1(x)         
-        x = self.Maxpool(x)            
-        x = self.conv2(x)   
-        x = F.relu(x)
-        x = self.cnblock2(x)   
-        x = self.Avgpool(x)     
-        x = torch.flatten(x, 1)     
-          
-        if self.fc1 is None:
-            self.fc1 = nn.Linear(x.shape[1], self.config_dict['nodes_1']).to(x.device)
-            nn.init.kaiming_normal_(self.fc1.weight, mode='fan_out', nonlinearity='relu')
-    
-        x = F.gelu(self.fc1(x))     
-        x = F.gelu(self.fc2_norm(self.fc2(x)))     
-        x = self.fc3(x) 
-        return x
 
 
 class Bottleneck(nn.Module):
@@ -123,7 +48,7 @@ class Bottleneck(nn.Module):
 
 
 class DisNetV1_2(nn.Module):
-    def __init__(self, config=None):
+    def __init__(self, config):
         super(DisNetV1_2, self).__init__()
         self.config_dict = config
         
@@ -148,7 +73,21 @@ class DisNetV1_2(nn.Module):
         for _ in range(1, blocks):  # Use blocks parameter to determine the number of Bottleneck blocks
             layers.append(Bottleneck(out_channels, out_channels, kernel_size=kernel_size))
         return nn.Sequential(*layers)
-         
+    
+    #Alternative forward pass to get feature map before fc layer.
+    #Only used for Maksed Autoencoder method.
+    def forward_features(self, x):
+        x = self.conv1(x)
+        x = self.gn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        
+        x = self.layer1(x)
+        x = self.layer2(x)
+        
+        return x
+      
+    
     def forward(self, x):
         x = self.conv1(x)
         x = self.gn1(x)
@@ -162,78 +101,155 @@ class DisNetV1_2(nn.Module):
         x = torch.flatten(x, 1)
         
         x = self.fc(x)
+        
         return x
 
 
 
-# class AttentionNet(nn.Module):
-#     def __init__(self, num_classes, num_tokens):
-#         super(AttentionNet, self).__init__()
-#         num_heads = num_classes
-#         embed_dim = num_tokens**2*num_classes
-#         head_dim = embed_dim//num_heads
-#         # define linear transformations for queries, keys, and values
-#         self.query_transform = nn.Linear(embed_dim, num_heads * head_dim)
-#         self.key_transform = nn.Linear(embed_dim, num_heads * head_dim)
-#         self.value_transform = nn.Linear(embed_dim, num_heads * head_dim)
-#         #apply muti-AttentionNet head
-#         self.Attention = nn.MultiheadAttention(embed_dim=embed_dim, num_heads=num_heads)
-#         #apply layer normalisation
-#         self.layernorm = nn.LayerNorm(embed_dim)
-#         #apply linear layer
-#         self.fc1 = nn.Linear(embed_dim, embed_dim)
-#         self.fc2 = nn.Linear(embed_dim, num_classes)
-
-
+# class Decoder(nn.Module):
+#     def __init__(self, config):
+#         super(Decoder, self).__init__()
+        
+#         # Extracting configurations
+#         dim_1 = config['dim_1']
+#         dim_2 = config['dim_2']
+#         dim_3 = config['dim_3']
+#         kernel_1 = config['kernel_1']
+#         kernel_2 = config['kernel_2']
+#         kernel_3 = config['kernel_3']
+#         num_blocks_1 = config['num_blocks_1']
+#         num_blocks_2 = config['num_blocks_2']
+        
+#         # Upsampling Layer 2 to Layer 1
+#         self.layer2_up = self._make_upsample_layer(dim_3, dim_2, num_blocks_2, kernel_3)
+        
+#         # Upsampling Layer 1 to Initial Layer
+#         self.layer1_up = self._make_upsample_layer(dim_2, dim_1, num_blocks_1, kernel_2)
+        
+#         # Final Upsampling to reconstruct the original input
+#         self.final_upsample = nn.Sequential(
+#             nn.ConvTranspose2d(dim_1, dim_1, kernel_size=kernel_1, stride=2, padding=kernel_1//2, output_padding=1),
+#             nn.ReLU(inplace=True)
+#         )
+        
+#         # Reconstructing the original 3 channel image
+#         self.reconstruct = nn.ConvTranspose2d(dim_1, 3, kernel_size=kernel_1, stride=2, padding=kernel_1//2, output_padding=1)
+        
+#     def _make_upsample_layer(self, in_channels, out_channels, blocks, kernel_size):
+#         layers = []
+#         for _ in range(blocks):
+#             layers.append(Bottleneck(in_channels, out_channels, stride=2, kernel_size=kernel_size))  # You might need to adjust stride and kernel_size
+#         layers.append(nn.ConvTranspose2d(out_channels, out_channels, kernel_size=kernel_size, stride=2, padding=kernel_size//2, output_padding=1))
+#         layers.append(nn.ReLU(inplace=True))
+#         return nn.Sequential(*layers)
+    
 #     def forward(self, x):
-#         #apply AttentionNet
-#         queries = self.query_transform(x)
-#         keys = self.key_transform(x)
-#         values = self.value_transform(x)
-#         x, _ = self.Attention(queries, keys, values)
-#         x = self.fc1(x)
-#         #apply layer normalisation
-#         x = self.layernorm(x)
-#         #apply linear layer
-#         x = self.fc2(x)
-#         #apply relu activation
-#         x = F.softmax(x, dim=1)
+#         x = self.layer2_up(x)
+#         x = self.layer1_up(x)
+#         x = self.final_upsample(x)
+#         x = self.reconstruct(x)
 #         return x
 
-# Define the meta-model
-class MetaModel(nn.Module):
-    def __init__(self, config):
-        super(MetaModel, self).__init__()
-        self.config = config
-        self.fc1 = nn.Linear(self.config['trans_nodes']*2, self.config['nodes_3'])
-        self.bn1 = nn.LayerNorm(self.config['nodes_3'])
-        self.fc2 = nn.Linear(self.config['nodes_3'], self.config['nodes_4'])
-        self.bn2 = nn.LayerNorm(self.config['nodes_4'])
-        self.fc3 = nn.Linear(self.config['nodes_4'], self.config['num_classes'])
-        self.dropout = nn.Dropout(self.config['drop_out2'])
+class PositionalEncoding2D(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super(PositionalEncoding2D, self).__init__()
+        self.encoding = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(torch.log(torch.tensor(10000.0)) / d_model))
         
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.bn1(x)
-        x = nn.ReLU()(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        x = self.bn2(x)
-        x = nn.ReLU()(x)
-        x = self.dropout(x)
-        x = self.fc3(x)
-        return x
-    
-# Define the unified model
-class UnifiedModel(nn.Module):
-    def __init__(self, CNN1, CNN2, MetaModel):
-        super(UnifiedModel, self).__init__()
-        self.cnn1 = CNN1
-        self.cnn2 = CNN2
-        self.meta = MetaModel
+        self.encoding[:, 0::2] = torch.sin(position * div_term)
+        
+        # Handling the case when d_model is odd
+        if d_model % 2 == 0:
+            self.encoding[:, 1::2] = torch.cos(position * div_term)
+        else:
+            self.encoding[:, 1::2] = torch.cos(position * div_term)[:,:-1]
+        
+        self.encoding = self.encoding.unsqueeze(0).transpose(0, 1)
 
     def forward(self, x):
-        out1 = self.cnn1(x)
-        out2 = self.cnn2(x)
-        merged = torch.cat((out1, out2), dim=1)
-        return self.meta(merged)
+        x = x.flatten(2).permute(2, 0, 1)
+        y = self.encoding[:x.size(0), :].to(x.device)
+        return x + y
+
+class TransformerDecoderBlock(nn.Module):
+    def __init__(self, d_model, nhead):
+        super(TransformerDecoderBlock, self).__init__()
+        self.self_attn = nn.MultiheadAttention(d_model, nhead)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(0.1)
+        self.fc = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.1),
+            nn.Linear(d_model, d_model)
+        )
+
+    def forward(self, x, memory):
+        attn_output, _ = self.self_attn(x, x, x)  # Self attention
+        x = x + self.dropout(attn_output)
+        x = self.norm1(x)
+        fc_output = self.fc(x)
+        x = x + self.dropout(fc_output)
+        x = self.norm2(x)
+        return x
+
+class TransformerDecoder(nn.Module):
+    def __init__(self, feature_dim, num_heads, num_layers, img_size):
+        super(TransformerDecoder, self).__init__()
+        self.feature_dim = feature_dim
+        self.img_size = img_size
+        self.positional_encoding = PositionalEncoding2D(feature_dim)
+        self.decoder_blocks = nn.ModuleList([TransformerDecoderBlock(feature_dim, num_heads) for _ in range(num_layers)])
+        
+        # Upsampling layers
+        self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        
+        self.final_conv = nn.Conv2d(feature_dim, 3, kernel_size=1)  # Assuming the output has 3 channels
+
+    def forward(self, x):
+        # x is the encoded feature map: [batch_size, feature_dim, height, width]
+        batch_size, _, height, width = x.size()
+        x = self.positional_encoding(x)
+        
+        for decoder_block in self.decoder_blocks:
+            x = decoder_block(x, x)  # Pass through each transformer block
+        
+        # Upsampling steps
+        x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
+        x = self.upsample2(x)
+        x = self.upsample3(x)
+        
+        x = self.final_conv(x)
+        return x
+
+
+class DisNet_MaskedAutoencoder(nn.Module):
+    def __init__(self, config):
+        super(DisNet_MaskedAutoencoder, self).__init__()
+        
+        # Initialize the encoder
+        self.encoder = DisNetV1_2(config)
+        
+        # Extract necessary parameters from config or define them manually
+        feature_dim = config['dim_3']
+        num_heads = config['num_heads'] 
+        num_layers = config['num_decoder_layers']
+        img_size = config['input_size'] 
+        
+        # Initialize the transformer decoder
+        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, img_size)
+
+
+    def forward(self, x, mask):
+        x_masked = x * mask  # Apply mask to input
+        
+        encoded = self.encoder.forward_features(x_masked)  # Get feature map before the fc layer
+        decoded = self.decoder(encoded)
+ 
+        return  decoded 
+
+

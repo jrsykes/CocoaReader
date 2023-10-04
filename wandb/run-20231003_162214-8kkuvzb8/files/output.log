@@ -1,0 +1,14 @@
+Setting stuff up...
+##################################################
+Image input size:  233
+Image resize applied
+Initializing Datasets and Dataloaders...
+Building model...
+DisNet_MaskedAutoencoder loaded
+##################################################
+Epoch 0
+----------
+Patience: 1/1
+train
+Learning... |                                | 0/20/local/scratch/jrs596/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/loss.py:536: UserWarning: Using a target size (torch.Size([42, 3, 233, 233])) that is different to the input size (torch.Size([42, 3, 240, 240])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)

@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNet, DisNetV1_2
+from ArchitectureZoo import DisNetV1_2, DisNet_MaskedAutoencoder
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
@@ -28,12 +28,10 @@ def build_model(num_classes, arch, config):
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif arch == 'DisNet':
-        model_ft = DisNet(out_channels=num_classes, config=config)
-        
+    elif arch == 'DisNet_MaskedAutoencoder':
+        model_ft = DisNet_MaskedAutoencoder(config=config)
     elif arch == 'DisNetV1_2':
         model_ft = DisNetV1_2(config=config)
-    
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
@@ -42,10 +40,7 @@ def build_model(num_classes, arch, config):
         model_ft = timm.create_model('efficientnet_b0', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
-    elif arch == 'Meta':
-        model_ft = MetaModel(config=config)
-    elif arch == 'Unified':
-        model_ft = UnifiedModel(CNN1=config['CNN1'], CNN2=config['CNN2'], MetaModel=config['MetaModel'])
+
                              
     else:
         print("Architecture name not recognised")
@@ -209,44 +204,60 @@ def SetSeeds(seed=42):
 
 
 class Metrics:
-    def __init__(self, num_classes=4):
+    def __init__(self, metric_names, num_classes):
+        if metric_names == "All":
+            metric_names = ['loss', 'corrects', 'precision', 'recall', 'f1']
+        self.metric_names = metric_names
         self.num_classes = num_classes
         self.reset()
 
     def reset(self):
-        self.running_loss = 0.0
-        self.running_corrects = 0
-        self.running_precision = 0.0
-        self.running_recall = 0.0
-        self.running_f1 = 0.0
+        self.metrics = {
+            'loss': 0.0,
+            'corrects': 0,
+            'precision': 0.0,
+            'recall': 0.0,
+            'f1': 0.0
+        }
         self.n = 0
         self.all_preds = []
         self.all_labels = []
 
     def update(self, loss, preds, labels, stats_out):
         inputs_size = labels.size(0)
-        self.running_loss += loss.item() * inputs_size
-        self.running_corrects += torch.sum(preds == labels.data)
-        self.running_precision += stats_out['precision'] * inputs_size
-        self.running_recall += stats_out['recall'] * inputs_size
-        self.running_f1 += stats_out['f1-score'] * inputs_size
+        if 'loss' in self.metric_names:
+            self.metrics['loss'] += loss.item() * inputs_size
+        if 'corrects' in self.metric_names:
+            self.metrics['corrects'] += torch.sum(preds == labels.data)
+        if 'precision' in self.metric_names:
+            self.metrics['precision'] += stats_out['precision'] * inputs_size
+        if 'recall' in self.metric_names:
+            self.metrics['recall'] += stats_out['recall'] * inputs_size
+        if 'f1' in self.metric_names:
+            self.metrics['f1'] += stats_out['f1-score'] * inputs_size
         self.n += inputs_size
 
-        # Store all predictions and labels for later calculation
-        self.all_preds.extend(preds.cpu().numpy())
-        self.all_labels.extend(labels.cpu().numpy())
+        if preds != None:
+            # Store all predictions and labels for later calculation
+            self.all_preds.extend(preds.cpu().numpy())
+            self.all_labels.extend(labels.cpu().numpy())
 
     def calculate(self):
-        loss = self.running_loss / self.n
-        acc = self.running_corrects.double() / self.n
-        precision = self.running_precision / self.n
-        recall = self.running_recall / self.n
-        f1 = self.running_f1 / self.n
+        results = {}
+        if 'loss' in self.metric_names:
+            results['loss'] = self.metrics['loss'] / self.n
+        if 'corrects' in self.metric_names:
+            results['acc'] = self.metrics['corrects'].double() / self.n
+        if 'precision' in self.metric_names:
+            results['precision'] = self.metrics['precision'] / self.n
+        if 'recall' in self.metric_names:
+            results['recall'] = self.metrics['recall'] / self.n
+        if 'f1' in self.metric_names:
+            results['f1'] = self.metrics['f1'] / self.n
+            results['f1_per_class'] = f1_score(self.all_labels, self.all_preds, average=None)
 
-        # Calculate per class F1 scores
-        f1_per_class = f1_score(self.all_labels, self.all_preds, average=None)
+        return results
 
-        return loss, acc, precision, recall, f1, f1_per_class
 
 
 def count_flops(model, device, input_size):
@@ -256,3 +267,33 @@ def count_flops(model, device, input_size):
     # Convert to GFLOPs
     GFLOPs = flops / 1e9
     return GFLOPs, params
+
+
+def generate_random_mask(input_size, mask_ratio=0.6, device='cuda'):
+    """
+    Generates a random binary mask with multiple masked patches.
+    :param input_size: tuple, the size of the input image (C, H, W).
+    :param mask_size: tuple, the size of the masked region (h, w).
+    :param mask_ratio: float, the proportion of the image to be masked.
+    :param device: str, the device to create the mask on.
+    :return: torch.Tensor, a binary mask of size (1, C, H, W).
+    """
+    _, _, H, W = input_size
+    h, w = H // 8, W // 8  # Size of the patches
+    
+    # Calculate the number of patches to mask
+    total_patches = (H * W) / (h * w)
+    num_masked_patches = int(total_patches * mask_ratio)
+    
+    # Creating the mask
+    mask = torch.ones(*input_size, device=device)
+    
+    for _ in range(num_masked_patches):
+        # Starting coordinates for the mask
+        top = torch.randint(0, H - h + 1, (1,)).item()
+        left = torch.randint(0, W - w + 1, (1,)).item()
+        
+        mask[:, :, top:top + h, left:left + w] = 0
+    
+    return mask
+
