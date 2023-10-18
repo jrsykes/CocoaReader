@@ -106,50 +106,6 @@ class DisNetV1_2(nn.Module):
 
 
 
-# class Decoder(nn.Module):
-#     def __init__(self, config):
-#         super(Decoder, self).__init__()
-        
-#         # Extracting configurations
-#         dim_1 = config['dim_1']
-#         dim_2 = config['dim_2']
-#         dim_3 = config['dim_3']
-#         kernel_1 = config['kernel_1']
-#         kernel_2 = config['kernel_2']
-#         kernel_3 = config['kernel_3']
-#         num_blocks_1 = config['num_blocks_1']
-#         num_blocks_2 = config['num_blocks_2']
-        
-#         # Upsampling Layer 2 to Layer 1
-#         self.layer2_up = self._make_upsample_layer(dim_3, dim_2, num_blocks_2, kernel_3)
-        
-#         # Upsampling Layer 1 to Initial Layer
-#         self.layer1_up = self._make_upsample_layer(dim_2, dim_1, num_blocks_1, kernel_2)
-        
-#         # Final Upsampling to reconstruct the original input
-#         self.final_upsample = nn.Sequential(
-#             nn.ConvTranspose2d(dim_1, dim_1, kernel_size=kernel_1, stride=2, padding=kernel_1//2, output_padding=1),
-#             nn.ReLU(inplace=True)
-#         )
-        
-#         # Reconstructing the original 3 channel image
-#         self.reconstruct = nn.ConvTranspose2d(dim_1, 3, kernel_size=kernel_1, stride=2, padding=kernel_1//2, output_padding=1)
-        
-#     def _make_upsample_layer(self, in_channels, out_channels, blocks, kernel_size):
-#         layers = []
-#         for _ in range(blocks):
-#             layers.append(Bottleneck(in_channels, out_channels, stride=2, kernel_size=kernel_size))  # You might need to adjust stride and kernel_size
-#         layers.append(nn.ConvTranspose2d(out_channels, out_channels, kernel_size=kernel_size, stride=2, padding=kernel_size//2, output_padding=1))
-#         layers.append(nn.ReLU(inplace=True))
-#         return nn.Sequential(*layers)
-    
-#     def forward(self, x):
-#         x = self.layer2_up(x)
-#         x = self.layer1_up(x)
-#         x = self.final_upsample(x)
-#         x = self.reconstruct(x)
-#         return x
-
 class PositionalEncoding2D(nn.Module):
     def __init__(self, d_model, max_len=5000):
         super(PositionalEncoding2D, self).__init__()
@@ -204,9 +160,10 @@ class TransformerDecoder(nn.Module):
         self.decoder_blocks = nn.ModuleList([TransformerDecoderBlock(feature_dim, num_heads) for _ in range(num_layers)])
         
         # Upsampling layers
-        self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
         self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        # self.upsample4 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=1, padding=1, output_padding=1)
         
         self.final_conv = nn.Conv2d(feature_dim, 3, kernel_size=1)  # Assuming the output has 3 channels
 
@@ -222,9 +179,37 @@ class TransformerDecoder(nn.Module):
         x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
         x = self.upsample2(x)
         x = self.upsample3(x)
+        # x = self.upsample4(x)
         
         x = self.final_conv(x)
         return x
+
+
+
+class DisNet_SRAutoencoder(nn.Module):
+    def __init__(self, config):
+        super(DisNet_SRAutoencoder, self).__init__()
+        
+        # Initialize the encoder
+        self.encoder = DisNetV1_2(config)
+        
+        # Extract necessary parameters from config or define them manually
+        feature_dim = config['dim_3']
+        num_heads = config['num_heads'] 
+        num_layers = config['num_decoder_layers']
+        img_size = config['input_size'] 
+        
+        # Initialize the transformer decoder
+        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, img_size)
+
+
+    def forward(self, x):
+        
+        encoded = self.encoder.forward_features(x)  # Get feature map before the fc layer
+        decoded = self.decoder(encoded)
+
+        return encoded, decoded 
+
 
 
 class DisNet_MaskedAutoencoder(nn.Module):
@@ -251,5 +236,3 @@ class DisNet_MaskedAutoencoder(nn.Module):
         decoded = self.decoder(encoded)
  
         return  decoded 
-
-

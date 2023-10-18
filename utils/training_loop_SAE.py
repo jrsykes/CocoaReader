@@ -5,16 +5,20 @@ from __future__ import division
 import torch
 import numpy as np
 import time
-import copy
+# import copy
 import wandb
-from sklearn import metrics
+# from sklearn import metrics
 from progress.bar import Bar
 import os
 #import sys
 from random_word import RandomWords
 import toolbox
 #sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
-from toolbox import DynamicFocalLoss
+# from toolbox import DynamicFocalLoss
+import torch.nn.functional as F
+import pandas as pd
+from itertools import combinations
+
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes):      
     # @torch.compile
@@ -43,19 +47,12 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     
-    my_metrics = toolbox.Metrics(metric_names='All', num_classes=num_classes)
+    my_metrics = toolbox.Metrics(metric_names= ['loss'], num_classes=num_classes)
 
     since = time.time()
     val_loss_history = []
-    best_f1 = 0.0
-    best_f1_acc = 0.0
-    best_train_f1 = 0.0
+    best_loss = 10000.0
     
-    #Save current weights as 'best_model_wts' variable. 
-    #This will be reviewed each epoch and updated with each improvment in validation recall
-    # best_model_wts = copy.deepcopy(model.state_dict())
-    # best_model_wts['module.fc.bias'] = initial_bias.to(device)
-
     epoch = 0
     # Run untill validation loss has not improved for n epochs=patience or max_epochs is reached
     while patience > 0 and epoch < args.max_epochs:
@@ -76,6 +73,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
    
        #Training and validation loop
         for phase in ['train', 'val']:
+            encoded_images_lst = []
             if phase == 'train':
                 model.train()  # Set model to training mode
  
@@ -101,23 +99,47 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # Get model outputs and calculate loss
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
+                                              
+                        #compress inputs to 240 x 240
                         
+                        SRinputs = inputs
+                        inputs = F.interpolate(inputs, size=(240, 240), mode='bilinear', align_corners=True)
 
-                        outputs = model(inputs)
-                        # if isinstance(criterion[phase], DynamicFocalLoss):
-                        #     loss, step = criterion[phase](outputs, labels, step)
-                        # else:
-                        #     loss = criterion[phase](outputs, labels)
-                        loss = criterion(outputs, labels)
+                        encoded, decoded  = model(inputs)
+                     
+                        #read csv 
+                        distance_df = pd.read_csv('/scratch/staff/jrs596/dat/FAIGB/DisNet_TaxonomyMatrix.csv', header=0)                     
+                        
+                        class_list = list(distance_df.columns)
+                        
+                        encoded_images_lst.extend([(encoded[i], class_list[i]) for i in range(encoded.size(0))])
 
+
+                        # dist = distance_df.iloc[encoded_images_lst[0][1].item(), encoded_images_lst[1][1].item()]
+                        # print()
+                        # #print label pair
+                        # print(encoded_images_lst[0][1].item(), encoded_images_lst[1][1].item())
+                        # #latent space pair
+                        # print(encoded_images_lst[0][0].size(), encoded_images_lst[1][0].size())
+                        # #print distance
+                        # print(dist)
+                        
+                        
+    
+                        contrastive_loss = toolbox.average_contrastive_loss(encoded_images_lst, distance_df)
+                        print()
+                        print(contrastive_loss.size())
+                        exit()
+                                                
+                        loss = criterion(decoded, SRinputs)
+
+                        
+                        
+                        
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
                         
                         loss += args.l1_lambda * l1_norm                     
-                        
-                        _, preds = torch.max(outputs, 1)    
-                        stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-                        stats_out = stats['weighted avg']
-                       
+                                               
                   
                        # backward + optimize only if in training phase
                         if phase == 'train':
@@ -125,46 +147,32 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             optimizer.step()  
                            
                         #Update metrics
-                        my_metrics.update(loss, preds, labels, stats_out)
+                        my_metrics.update(loss, None, labels, None)
 
                     bar.next()  
 
             # Calculate metrics for the epoch
-            epoch_metrics = my_metrics.calculate()
-       
+            results = my_metrics.calculate()
+    
             if phase == 'train':
-                train_f1 = epoch_metrics['f1'] 
-                train_metrics = {'loss': epoch_metrics['loss'], 
-                       'f1': epoch_metrics['f1'], 
-                       'acc': epoch_metrics['acc'].item(), 
-                       'precision': epoch_metrics['precision'], 
-                       'recall': epoch_metrics['recall'], 
-                       'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
+                train_metrics = {'loss': [results['loss']], 
                         }
             
 
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_metrics['loss'], epoch_metrics['acc']))
-            print('{} Precision: {:.4f} Recall: {:.4f} F1: {:.4f}'.format(phase, epoch_metrics['precision'], epoch_metrics['recall'], epoch_metrics['f1']))           
+            print('{} Loss: {:.4f}'.format(phase, results['loss']))
 
            # Save model and update best weights only if recall has improved
-            if phase == 'val' and epoch_metrics['f1'] > best_f1:
-                best_f1 = epoch_metrics['f1']
-                best_f1_acc = epoch_metrics['acc']
-                best_f1_loss = epoch_metrics['loss']
-                best_train_f1 = train_f1
+            if phase == 'val' and results['loss'] < best_loss:
+                best_loss = results['loss']
                 # best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
 
                 best_train_metrics = train_metrics
-                best_val_metrics = {'loss': epoch_metrics['loss'], 
-                                    'f1': epoch_metrics['f1'], 
-                                    'acc': epoch_metrics['acc'].item(), 
-                                    'precision': epoch_metrics['precision'], 
-                                    'recall': epoch_metrics['recall'], 
-                                    'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
+                best_val_metrics = {'loss': [results['loss']]
                                     }
     
-                PATH = os.path.join(args.root, 'models', args.model_name)
+                PATH = os.path.join(args.root, 'models', 'FAIGB_SAE_' + run_name)
+  
                 os.makedirs(os.path.join(args.root, 'models'), exist_ok=True)
                 if args.save == 'model':
                     print('Saving model to: ' + PATH + '.pth')
@@ -190,12 +198,12 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     
   
             if phase == 'val':
-                val_loss_history.append(epoch_metrics['loss'])
+                val_loss_history.append(results['loss'])
             
             if phase == 'train':
-                wandb.log({"Train_loss": epoch_metrics['loss'], "Train_acc": epoch_metrics['acc'], "Train_F1": epoch_metrics['f1'], "Best_train_f1": best_train_f1})  
+                wandb.log({"Train_loss": results['loss']})  
             else:
-                wandb.log({"Val_loss": epoch_metrics['loss'], "Val_acc": epoch_metrics['acc'], "Val_F1": epoch_metrics['f1'], "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
+                wandb.log({"Val_loss": results['loss']})
         
             # Reset metrics for the next epoch
             my_metrics.reset()
@@ -208,6 +216,5 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Acc of saved model: {:4f}'.format(best_f1_acc))
-    print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss, best_train_f1, run_name, best_train_metrics, best_val_metrics
+    print('Loss of saved model: {:4f}'.format(best_loss))
+    return model_out, None, best_loss, None, run_name, best_train_metrics, best_val_metrics

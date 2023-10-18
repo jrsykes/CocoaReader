@@ -6,10 +6,12 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNetV1_2, DisNet_MaskedAutoencoder
+from ArchitectureZoo import DisNetV1_2, DisNet_MaskedAutoencoder, DisNet_SRAutoencoder
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
+from itertools import combinations
+
 
 def build_model(num_classes, arch, config):
     print()
@@ -30,6 +32,8 @@ def build_model(num_classes, arch, config):
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'DisNet_MaskedAutoencoder':
         model_ft = DisNet_MaskedAutoencoder(config=config)
+    elif arch == 'DisNet_SRAutoencoder':
+        model_ft = DisNet_SRAutoencoder(config=config)
     elif arch == 'DisNetV1_2':
         model_ft = DisNetV1_2(config=config)
     elif arch == 'efficientnetv2_s':
@@ -81,18 +85,18 @@ def setup(args):
 
     ### Calculate and set bias for final layer based on imbalance in dataset classes
     
-    list_cats = []
-    for i in sorted(os.listdir(dir_)):
-        _, _, files = next(os.walk(os.path.join(dir_, i)))
-        list_cats.append(len(files))
+    # list_cats = []
+    # for i in sorted(os.listdir(dir_)):
+    #     _, _, files = next(os.walk(os.path.join(dir_, i)))
+    #     list_cats.append(len(files))
 
-    weights = []
-    for i in list_cats:
-        weights.append(np.log((max(list_cats)/i)))
+    # weights = []
+    # for i in list_cats:
+    #     weights.append(np.log((max(list_cats)/i)))
 
-    initial_bias = torch.FloatTensor(weights)
+    # initial_bias = torch.FloatTensor(weights)
 
-    return data_dir, num_classes, initial_bias, device
+    return data_dir, num_classes, device
 
 def worker_init_fn(worker_id):
     np.random.seed(np.random.get_state()[1][0] + worker_id)
@@ -296,4 +300,47 @@ def generate_random_mask(input_size, mask_ratio=0.6, device='cuda'):
         mask[:, :, top:top + h, left:left + w] = 0
     
     return mask
+
+
+
+def average_contrastive_loss(encoded_images_lst, distance_df):
+    total_loss = 0.0
+    num_pairs = 0
+    class_list = list(distance_df.columns)
+
+    for (encoded1, label1), (encoded2, label2) in combinations(encoded_images_lst, 2):
+        label1_idx, label2_idx = class_list.index(label1), class_list.index(label2)
+        genetic_distance = distance_df.iloc[label1_idx, label2_idx]
+        loss = contrastive_loss_with_dynamic_margin(encoded1, encoded2, label1, label2, genetic_distance)
+        total_loss += loss
+        num_pairs += 1
+
+    avg_loss = total_loss / num_pairs if num_pairs > 0 else 0.0
+    return avg_loss
+
+def contrastive_loss_with_dynamic_margin(encoded1, encoded2, label1, label2, genetic_distance):
+
+    euclidean_distance = torch.mean(torch.nn.functional.pairwise_distance(encoded1, encoded2))
+    
+    print()
+    print(euclidean_distance.size())
+    exit()
+    # Extract the species and disease state from the labels
+    species1, state1 = label1.rsplit('_', 1)
+    species2, state2 = label2.rsplit('_', 1)
+    
+    disease_distance = 1.0  # Define a fixed distance for disease state
+    
+    # Adjust the genetic distance based on disease state
+    if state1 == state2:
+        genetic_distance += disease_distance
+    
+    y = 1.0 if genetic_distance > 0 else 0.0
+    loss = (1 - y) * (euclidean_distance**2) + (y) * torch.clamp(genetic_distance - euclidean_distance, min=0.0)**2
+    print()
+    print(loss)
+    exit()
+    return loss
+
+
 

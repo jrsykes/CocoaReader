@@ -10,11 +10,11 @@ parameters:
         max: 500
     beta1:
         distribution: uniform
-        min: 0.89
-        max: 0.99
+        min: 0.80
+        max: 0.999
     beta2:
         distribution: uniform
-        min: 0.94
+        min: 0.80
         max: 0.999
     learning_rate:
         distribution: uniform

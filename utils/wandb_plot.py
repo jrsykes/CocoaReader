@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-df = pd.read_csv('/local/scratch/jrs596/dat/wandb_export_2023-01-30T16_47_11.784+00_00.csv')
+df = pd.read_csv('/home/userfs/j/jrs596/wandb_export_2023-10-11T08_36_58.484+01_00.csv')
 
 
 f1 = df['Best_F1']
@@ -79,6 +79,7 @@ plt.rc('ytick', labelsize=fontsize)
 # plt.clf()
 
 
+plt.savefig('/local/scratch/jrs596/dat/wandb_plot.png', dpi=600, format='png', bbox_inches='tight')
 
 plt.show()
 #plt.savefig('/local/scratch/jrs596/dat/wandb_plot.png')

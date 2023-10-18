@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 import random
+import torch.nn.functional as F
 
 sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
@@ -33,7 +34,7 @@ def load_model(model_path):
         'num_heads': 3
     }
         
-    model = toolbox.build_model(num_classes=None, arch='DisNet_MaskedAutoencoder', config=config).to(device)
+    model = toolbox.build_model(num_classes=None, arch='DisNet_SRAutoencoder', config=config).to(device)
 
     model.load_state_dict(torch.load(model_path))
     model.eval()  # Set the model to evaluation mode
@@ -44,79 +45,50 @@ def load_image(image_path, transform):
     image = Image.open(image_path).convert('RGB')
     return transform(image).to(device)
 
-# # Visualize original and reconstructed images
-# def visualize(original, reconstructed):
-#     plt.figure(figsize=(10, 5))
-    
-#     # Original image
-#     plt.subplot(1, 2, 1)
-#     plt.imshow(original.squeeze(0).permute(1, 2, 0).cpu())
-#     plt.title('Original Image')
-    
-#     # Reconstructed image
-#     plt.subplot(1, 2, 2)
-#     plt.imshow(reconstructed.permute(1, 2, 0).cpu())
-#     plt.title('Reconstructed Image')
-    
-#     plt.savefig('MAE_out_V2.png')
 
-# def main():
-#     # Define transformations for the test image
-#     transform = transforms.Compose([
-#         transforms.Resize((240, 240)),  # Assuming the input size is 128x128
-#         transforms.ToTensor()
-#     ])
-    
-#     # Load the model and image
-#     model_path = '/scratch/staff/jrs596/models/FAIGB_MAE_vibrant-sweep-20_weights.pth'
-#     image_path = '/scratch/staff/jrs596/dat/FAIGB/FAIGB_FinalSplit_700_TrainVal/val/CocoaHealthy/1647617506.134829.jpeg'
-#     model = load_model(model_path)
-#     image = load_image(image_path, transform)
-    
-#     mask = toolbox.generate_random_mask(image.unsqueeze(0).size(), device=image.device)
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
-
-#     with torch.no_grad():
-#         reconstructed = model(image.unsqueeze(0), mask)
-    
-#     image = image * mask
-#     # Visualize the results
-#     visualize(image, reconstructed.squeeze(0))
-
-# if __name__ == '__main__':
-#     main()
-
-
-###############################################
-
-
-# Visualize original and reconstructed images
 def visualize(images, reconstructions):
     num_images = len(images)
-    plt.figure(figsize=(10*num_images, 5))
+    
+    # Calculate the width and height ratios based on the image sizes
+    total_width = 240 + 356
+    total_height = max(240, 356)
+    
+    width_ratio_original = 240 / total_width
+    width_ratio_reconstructed = 356 / total_width
+    
+    fig = plt.figure(figsize=(total_width/100, num_images * total_height/100))
+    
+    spec = gridspec.GridSpec(num_images, 2, width_ratios=[width_ratio_original, width_ratio_reconstructed], wspace=0.05)
     
     for i, (original, reconstructed) in enumerate(zip(images, reconstructions)):
         # Original image
-        plt.subplot(2, num_images, i+1)
-        plt.imshow(original.squeeze(0).permute(1, 2, 0).cpu())
-        plt.title(f'Original Image {i+1}')
+        ax = fig.add_subplot(spec[i, 0])
+        ax.imshow(original.squeeze(0).permute(1, 2, 0).cpu())
+        ax.axis('off')
         
         # Reconstructed image
-        plt.subplot(2, num_images, num_images+i+1)
-        plt.imshow(reconstructed.permute(1, 2, 0).cpu())
-        plt.title(f'Reconstructed Image {i+1}')
+        ax = fig.add_subplot(spec[i, 1])
+        ax.imshow(reconstructed.permute(1, 2, 0).cpu())
+        ax.axis('off')
     
-    plt.savefig('MAE_out_NoMaskV3.png')
+    plt.savefig('SAE_out_V1.png')
+
+
+
+
 
 def main():
     # Define transformations for the test image
     transform = transforms.Compose([
-        transforms.Resize((240, 240)),
+        transforms.Resize((356, 356)),
         transforms.ToTensor()
     ])
     
     # Load the model
-    model_path = '/scratch/staff/jrs596/models/FAIGB_MAE_vibrant-sweep-20_weights.pth'
+    model_path = '/scratch/staff/jrs596/models/FAIGB_MAE_subirrigation_75_weights.pth'
     model = load_model(model_path)
     
     base_dir = '/scratch/staff/jrs596/dat/FAIGB/FAIGB_FinalSplit_700_TrainVal/val/'
@@ -133,15 +105,13 @@ def main():
         image_name = os.listdir(subdir_path)[0]  # take the first image
         image_path = os.path.join(subdir_path, image_name)
         
-        image = load_image(image_path, transform)
-        mask = toolbox.generate_random_mask(image.unsqueeze(0).size(), device=image.device)
-        mask = torch.ones_like(mask)
+        SRimage = load_image(image_path, transform)
 
+        image = F.interpolate(SRimage.unsqueeze(0), size=(240, 240), mode='bilinear', align_corners=True)
 
         with torch.no_grad():
-            reconstructed = model(image.unsqueeze(0), mask)
+            _, reconstructed = model(image)
         
-        image = image * mask
         images.append(image)
         reconstructions.append(reconstructed.squeeze(0))
     
