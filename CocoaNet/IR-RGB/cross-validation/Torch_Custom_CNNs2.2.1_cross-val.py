@@ -93,10 +93,10 @@ from training_loop import train_model
 
 
 def train():
-    data_dir, _, initial_bias, _ = toolbox.setup(args)
+    data_dir, _, _ = toolbox.setup(args)
     device = torch.device("cuda:" + args.GPU)
 
-    criterion = {'train': nn.CrossEntropyLoss(), 'val': nn.CrossEntropyLoss()}
+    criterion = nn.CrossEntropyLoss()
 
     # Initialize lists to store results
     train_metrics_dict = {'loss': [], 'f1': [], 'acc': [], 'precision': [], 'recall': [], 'BPR_F1': [], 'FPR_F1': [], 'Healthy_F1': [], 'WBD_F1': []}
@@ -111,24 +111,24 @@ def train():
         wandb.save(os.path.join(script_dir, '*')) 
         
         #define config dictionary with wandb
-        config = {
-            "beta1": 0.9051880132274126,
-            "beta2": 0.9630258300974864,
-            "dim_1": 49,
-            "dim_2": 97,
-            "dim_3": 68,
-            "kernel_1": 11,
-            "kernel_2": 9,
-            "kernel_3": 13,
-            "learning_rate": 0.0005921981578304907,
-            "num_blocks_1": 2,
-            "num_blocks_2": 4,      
-            "out_channels": 7
-        }
+        # config = {
+        #     "beta1": 0.9051880132274126,
+        #     "beta2": 0.9630258300974864,
+        #     "dim_1": 49,
+        #     "dim_2": 97,
+        #     "dim_3": 68,
+        #     "kernel_1": 11,
+        #     "kernel_2": 9,
+        #     "kernel_3": 13,
+        #     "learning_rate": 0.0005921981578304907,
+        #     "num_blocks_1": 2,
+        #     "num_blocks_2": 4,      
+        #     "out_channels": 7
+        # }
 
         toolbox.SetSeeds(42)
 
-        model = toolbox.build_model(arch=args.arch, config=config, num_classes=None).to(device)
+        model = toolbox.build_model(arch=args.arch, config=None, num_classes=4).to(device)
         # Create training and validation datasets using the current fold
         image_datasets = toolbox.build_datasets(input_size=args.input_size, data_dir=os.path.join(data_dir, f'fold_{fold}'))
     
@@ -151,8 +151,8 @@ def train():
 
         # model = toolbox.build_model(arch=args.arch, config=None, num_classes=None).to(device)
         # print('\ntwo')
-        optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
-                                        weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
+        optimizer = torch.optim.AdamW(model.parameters(), lr=0.00004604292127630006,
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(0.8978106335663742, 0.8882203479500345))
         # Train the model and store the results
         _, _, _, _, run_name, best_train_metrics, best_val_metrics = train_model(
             model=model,
@@ -162,7 +162,6 @@ def train():
             dataloaders_dict=dataloaders_dict,
             criterion=criterion,
             patience=args.patience,
-            initial_bias=initial_bias,
             batch_size=args.batch_size,
             num_classes=4
         )

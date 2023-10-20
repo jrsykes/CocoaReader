@@ -14,19 +14,19 @@
 source activate torch5
 
 # Set wandb directory
-export WANDB_DIR="/scratch/staff/jrs596/WANDB_cache/"
+export WANDB_DIR="/local/scratch/jrs596/WANDB_cache/"
 
 
 # Run the python script with srun
-python 'scripts/CocoaReader/CocoaNet/IR-RGB/cross-validation/Torch_Custom_CNNs2.2.1_cross-val.py' \
+python '/home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/cross-validation/Torch_Custom_CNNs2.2.1_cross-val.py' \
         --project_name 'IR-RGB_cross-val' \
-        --run_name 'ResNet18_CrossVal_IR' \
-        --root '/scratch/staff/jrs596' \
+        --run_name 'ConvNext_tiny_CrossVal_IR' \
+        --root '/local/scratch/jrs596' \
         --data_dir 'dat/IR_RGB_Comp_data/cross-val_IR' \
-        --input_size 285 \
+        --input_size 212 \
         --min_epochs 10 \
         --max_epochs 200 \
         --batch_size 21 \
         --patience 20 \
-        --arch 'DisNetV1_2' \
-        --GPU 2
+        --arch 'convnext_tiny' \
+        --GPU 0

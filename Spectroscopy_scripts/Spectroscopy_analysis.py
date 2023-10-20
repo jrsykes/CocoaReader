@@ -13,7 +13,7 @@ from scipy.ndimage import gaussian_filter1d
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 
-root = "/local/scratch/jrs596/dat/Ecuador_data/CocoaSpectroscopy/tech5_FieldSpec_CocoaData"
+root = "/home/jamiesykes/Documents/Ecuador_data/CocoaSpectroscopy/tech5_FieldSpec_CocoaData"
 
 # %%
 #empty pd df
@@ -63,6 +63,8 @@ for c in classes:
 cmap = mcolors.LinearSegmentedColormap.from_list("spectrum", ["violet", "blue", "green", "yellow", "orange", "red", "darkred",                                                        
                                             "maroon", "maroon", "maroon", "maroon", "maroon"] , N=1100)
 
+plt.figure(figsize=(10, 6))
+
 for c in classes:
     df = compiled_dat.loc[compiled_dat['Class'] == c]
     df = df.drop(columns=['Class'])
@@ -95,22 +97,26 @@ for c in classes:
     plt.axvline(x=400, color='black', linestyle='--')
 
 # Add a text box to the graph
-plt.text(900, 17500, 'Frosty pod rot', fontsize=12, bbox=dict(facecolor='white', edgecolor='white', boxstyle='round'))
+plt.text(900, 17500, 'Frosty pod rot', fontsize=16, bbox=dict(facecolor='white', edgecolor='white', boxstyle='round'))
 plt.plot([785, 900], [16500, 17800], 'k-')
 
-plt.text(500, 18000, 'Black pod rot', fontsize=12, bbox=dict(facecolor='white', edgecolor='white', boxstyle='round'))
+plt.text(500, 18000, 'Black pod rot', fontsize=16, bbox=dict(facecolor='white', edgecolor='white', boxstyle='round'))
 plt.plot([630, 755], [18500, 17600], 'k-')
 
-plt.text(500, 20000, 'Healthy', fontsize=12, bbox=dict(facecolor='white', edgecolor='white', boxstyle='round'))
+plt.text(500, 20000, 'Healthy', fontsize=16, bbox=dict(facecolor='white', edgecolor='white', boxstyle='round'))
 plt.plot([600, 775], [20000, 19400], 'k-')
 
 
 #set axis lables size
-plt.tick_params(axis='both', which='major', labelsize=12)
+plt.tick_params(axis='both', which='major', labelsize=16)
+
 #set ylab size
-plt.ylabel('Reflectance count ±1 SE', fontsize=14)
+plt.ylabel('Mean reflectance count ±1 SE', fontsize=20)
 #set xlab size
-plt.xlabel('Wavelength (nm)', fontsize=14)
+plt.xlabel('Wavelength (nm)', fontsize=20)
+plt.tight_layout()
+
+plt.savefig("/home/jamiesykes/Documents/Ecuador_data/CocoaSpectroscopy/ReflectanceSpectra.png", format="png", dpi=300)
 
 plt.show()
 
@@ -133,58 +139,38 @@ y = pd.factorize(y)[0]
 
 acc_dict = {}
 model_dict = {}
-for i in range(1, 100):
-    # Split the data into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i, stratify=y)
-    # X_train, X_test, y_train, y_test = train_test_split(subset, y, test_size=0.2, random_state=42, stratify=y)
+dat = {}
+key = 0
+for i in range(1, 20):
+    for j in range(1, 20):
+        key += 1
+        # Split the data into training and test sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=i, stratify=y)
 
-
-    # param_grid = {
-    #     'n_estimators': [58, 59, 60, 61, 62],
-    #     'max_depth': [10, 20, 20, None],  # Added max depth
-    #     'min_samples_split': [5,6,7,8],
-    #     'min_samples_leaf': [1, 2, 3]
-    # }
-
-    # rf = RandomForestClassifier(random_state=42)
-
-    # grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, 
-    #                            cv=5, n_jobs=-1, verbose=2, scoring='accuracy')  # Changed scoring to 'accuracy'
-
-    # grid_search.fit(X_train, y_train)
-
-    # best_params = grid_search.best_params_
+        params = {'max_depth': 10, 'min_samples_leaf': 2, 'min_samples_split': 8, 'n_estimators': 61}
+        rf = RandomForestClassifier(**params, random_state=j)
+        model = rf.fit(X_train, y_train)
+        # Make predictions
     
-    # print(f"Best parameters: {best_params}")
-    # print()
-    # best_model = grid_search.best_estimator_
+        # Generate the confusion matrix
+        # cm = confusion_matrix(y_test, y_pred)
 
-    params = {'max_depth': 10, 'min_samples_leaf': 2, 'min_samples_split': 8, 'n_estimators': 61}
-    rf = RandomForestClassifier(**params)
-    model = rf.fit(X_train, y_train)
-    # Make predictions
-   
-    # Generate the confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
+        y_pred = model.predict(X_train)
+        train_accuracy = accuracy_score(y_train, y_pred)
 
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    
-    if cm[0][0] >= 3:
-        # best_model = model
-        acc_dict[i] = accuracy
-        model_dict[i] = model
-    
+        y_pred = model.predict(X_test)
+        val_accuracy = accuracy_score(y_test, y_pred)
 
+        acc_dict[key] = val_accuracy
+        model_dict[key] = model
+        dat[key] = X_train, X_test, y_train, y_test    
 
+#%%
 #print max value in acc_dict
 max_key = max(acc_dict, key=acc_dict.get)
-print(max_key)
-print(acc_dict[max_key])
 best_model = model_dict[max_key]
-        
-    
-#%%
+X_train, X_test, y_train, y_test = dat[max_key]     
+
 y_pred = best_model.predict(X_train)
 accuracy = accuracy_score(y_train, y_pred)
 print(f"Train accuracy: {accuracy}")
@@ -261,7 +247,7 @@ lower_bound = np.array(top_mean_importances) - np.array(top_margin_of_error)
 upper_bound = np.array(top_mean_importances) + np.array(top_margin_of_error)
 
 # Smooth the lines using a Gaussian filter
-sigma = 4 # Standard deviation for Gaussian kernel
+sigma = 2 # Standard deviation for Gaussian kernel
 smoothed_mean_importances = gaussian_filter1d(top_mean_importances, sigma)
 smoothed_lower_bound = gaussian_filter1d(lower_bound, sigma)
 smoothed_upper_bound = gaussian_filter1d(upper_bound, sigma)
@@ -291,10 +277,13 @@ ax.spines['right'].set_visible(False)
 
 # Add x and y labels and ticks
 plt.xticks(tick_indices, tick_spectral_values, fontsize=16)
-plt.xlabel("Wavelength (nm)", fontsize=16)
-plt.ylabel("Feature Importance", fontsize=16)
+plt.yticks(fontsize=16)
+plt.xlabel("Wavelength (nm)", fontsize=20)
+plt.ylabel("Feature Importance", fontsize=20)
 
 # Show the plot
+plt.savefig("/home/jamiesykes/Documents/Ecuador_data/CocoaSpectroscopy/spectoscopy_RandomForest.png", format="png", dpi=300)
+
 plt.show()
 
 
