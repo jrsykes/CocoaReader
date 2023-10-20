@@ -2,8 +2,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from textwrap import wrap
-import numpy as np
 import textwrap
+import seaborn as sns
+
 
 root = "/home/jamiesykes/Documents/Ecuador_data/CocoaSpectroscopy/Photosynq-cocoa-disease-detection.csv"
 
@@ -20,69 +21,6 @@ data["Suspected disease state"] = data["Suspected disease state"].replace("Witch
 data["Suspected disease state"] = data["Suspected disease state"].replace("Witches broom adjacent tissue", "Witches' broom (adjacent tissue)")
 
 #%%
-
-# fig = plt.figure()
-# ax = fig.add_axes([0,0,1,1])
-
-# labels = ['\n'.join(wrap(l, 20)) for l in data["Suspected disease state"].values]
-
-# # Calculate mean and standard error for each group
-# mean = data.groupby('Suspected disease state')['NPQt'].mean()
-# standard_error = data.groupby('Suspected disease state')['NPQt'].std() / np.sqrt(data.groupby('Suspected disease state').size())
-
-# # Create labels for each group
-# labels = ['\n'.join(wrap(l, 20)) for l in mean.index]
-
-# # Plot mean with error bars
-# ax.errorbar(labels, mean, yerr=standard_error, fmt='o', color='black')
-
-# #remove grid lines
-# ax.grid(False)
-# #remove top and right spines
-# ax.spines['top'].set_visible(False)
-# ax.spines['right'].set_visible(False)
-# #Add Y axis label
-# ax.set_ylabel('NPQt ± 1 SE', fontsize=12)
-# #set size of x axis labels
-# ax.tick_params(axis='x', labelsize=12)
-# ax.tick_params(axis='y', labelsize=12)
-
-# plt.show()
-
-# # %%
-
-# fig = plt.figure()
-# ax = fig.add_axes([0,0,1,1])
-
-# labels = ['\n'.join(wrap(l, 20)) for l in data["Suspected disease state"].values]
-
-# # Calculate mean and standard error for each group
-# mean = data.groupby('Suspected disease state')['Phi2'].mean()
-# standard_error = data.groupby('Suspected disease state')['Phi2'].std() / np.sqrt(data.groupby('Suspected disease state').size())
-
-# # Create labels for each group
-# labels = ['\n'.join(wrap(l, 20)) for l in mean.index]
-
-# # Plot mean with error bars
-# ax.errorbar(labels, mean, yerr=standard_error, fmt='o', color='black')
-
-# #remove grid lines
-# ax.grid(False)
-# #remove top and right spines
-# ax.spines['top'].set_visible(False)
-# ax.spines['right'].set_visible(False)
-# #Add Y axis label
-# ax.set_ylabel('Phi2 ± 1 SE', fontsize=12)
-# #set size of x axis labels
-# ax.tick_params(axis='x', labelsize=12)
-# ax.tick_params(axis='y', labelsize=12)
-
-# plt.show()# %%
-
-# %%
-import seaborn as sns
-from textwrap import wrap
-import matplotlib.pyplot as plt
 
 # Desired order and wrapped labels
 desired_order = ['Black pod rot', 'Healthy', 'Frosty pod rot', 'Witches\' broom (adjacent tissue)', 'Witches\' broom (affected tissue)']
@@ -150,69 +88,3 @@ ax.spines['right'].set_visible(False)
 plt.savefig('/home/jamiesykes/Documents/Ecuador_data/plots/Phi2_box.png', dpi=300, bbox_inches='tight')
 
 plt.show()
-
-# %%
-
-
-# import matplotlib.pyplot as plt
-# from textwrap import wrap
-# import numpy as np
-
-# # Function to calculate the margin of error for 95% CI
-# def margin_of_error(std, n):
-#     Z = 1.96  # Z-score for 95% CI
-#     return Z * (std / np.sqrt(n))
-
-# fig = plt.figure()
-# ax = fig.add_axes([0,0,1,1])
-
-# labels = ['\n'.join(wrap(l, 20)) for l in data["Suspected disease state"].values]
-
-# # Calculate mean and margin of error for each group
-# mean = data.groupby('Suspected disease state')['NPQt'].mean()
-# mo_error = data.groupby('Suspected disease state')['NPQt'].std().apply(lambda x: margin_of_error(x, len(data)))
-
-# # Create labels for each group
-# labels = ['\n'.join(wrap(l, 20)) for l in mean.index]
-
-# # Plot mean with error bars
-# ax.errorbar(labels, mean, yerr=mo_error, fmt='o', color='black')
-
-# # Formatting
-# ax.grid(False)
-# ax.spines['top'].set_visible(False)
-# ax.spines['right'].set_visible(False)
-# ax.set_ylabel('NPQt (95% CI)', fontsize=12)
-# ax.tick_params(axis='x', labelsize=12)
-# ax.tick_params(axis='y', labelsize=12)
-
-# plt.show()
-
-# # %%
-
-# fig = plt.figure()
-# ax = fig.add_axes([0,0,1,1])
-
-# labels = ['\n'.join(wrap(l, 20)) for l in data["Suspected disease state"].values]
-
-# # Calculate mean and margin of error for each group
-# mean = data.groupby('Suspected disease state')['Phi2'].mean()
-# mo_error = data.groupby('Suspected disease state')['Phi2'].std().apply(lambda x: margin_of_error(x, len(data)))
-
-# # Create labels for each group
-# labels = ['\n'.join(wrap(l, 20)) for l in mean.index]
-
-# # Plot mean with error bars
-# ax.errorbar(labels, mean, yerr=mo_error, fmt='o', color='black')
-
-# # Formatting
-# ax.grid(False)
-# ax.spines['top'].set_visible(False)
-# ax.spines['right'].set_visible(False)
-# ax.set_ylabel('Phi2 (95% CI)', fontsize=12)
-# ax.tick_params(axis='x', labelsize=12)
-# ax.tick_params(axis='y', labelsize=12)
-
-# plt.show()
-
-# %%
