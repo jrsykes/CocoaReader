@@ -9,7 +9,7 @@ import yaml
 import os
 import wandb
 import pprint
-
+import pandas as pd
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -129,7 +129,9 @@ def train():
     model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
-        
+
+    distance_df = pd.read_csv('/scratch/staff/jrs596/dat/FAIGB/DisNet_TaxonomyMatrix.csv', header=0, index_col=0)  
+
     trained_model, _, best_loss, _, run_name, _, _ = train_model(args=args, 
                                                                  model=model, 
                                                                  optimizer=optimizer, 
@@ -138,7 +140,8 @@ def train():
                                                                  criterion=criterion, 
                                                                  patience=args.patience, 
                                                                  batch_size=args.batch_size,
-                                                                 num_classes=config['out_channels'])
+                                                                 num_classes=config['out_channels'],
+                                                                 distances = distance_df)
     config['Run_name'] = run_name
 
 

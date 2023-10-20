@@ -84,6 +84,7 @@ class DisNetV1_2(nn.Module):
         
         x = self.layer1(x)
         x = self.layer2(x)
+        x = self.global_avg_pool(x)
         
         return x
       
@@ -212,27 +213,27 @@ class DisNet_SRAutoencoder(nn.Module):
 
 
 
-class DisNet_MaskedAutoencoder(nn.Module):
-    def __init__(self, config):
-        super(DisNet_MaskedAutoencoder, self).__init__()
+# class DisNet_MaskedAutoencoder(nn.Module):
+#     def __init__(self, config):
+#         super(DisNet_MaskedAutoencoder, self).__init__()
         
-        # Initialize the encoder
-        self.encoder = DisNetV1_2(config)
+#         # Initialize the encoder
+#         self.encoder = DisNetV1_2(config)
         
-        # Extract necessary parameters from config or define them manually
-        feature_dim = config['dim_3']
-        num_heads = config['num_heads'] 
-        num_layers = config['num_decoder_layers']
-        img_size = config['input_size'] 
+#         # Extract necessary parameters from config or define them manually
+#         feature_dim = config['dim_3']
+#         num_heads = config['num_heads'] 
+#         num_layers = config['num_decoder_layers']
+#         img_size = config['input_size'] 
         
-        # Initialize the transformer decoder
-        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, img_size)
+#         # Initialize the transformer decoder
+#         self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, img_size)
 
 
-    def forward(self, x, mask):
-        x_masked = x * mask  # Apply mask to input
+#     def forward(self, x, mask):
+#         x_masked = x * mask  # Apply mask to input
         
-        encoded = self.encoder.forward_features(x_masked)  # Get feature map before the fc layer
-        decoded = self.decoder(encoded)
+#         encoded = self.encoder.forward_features(x_masked)  # Get feature map before the fc layer
+#         decoded = self.decoder(encoded)
  
-        return  decoded 
+#         return  decoded 

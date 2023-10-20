@@ -20,7 +20,7 @@ import pandas as pd
 from itertools import combinations
 
 
-def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes):      
+def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, distances):      
     # @torch.compile
     # def run_model(x):
     #     return model(x)
@@ -108,27 +108,19 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         encoded, decoded  = model(inputs)
                      
                         #read csv 
-                        distance_df = pd.read_csv('/scratch/staff/jrs596/dat/FAIGB/DisNet_TaxonomyMatrix.csv', header=0)                     
-                        
-                        class_list = list(distance_df.columns)
-                        
-                        encoded_images_lst.extend([(encoded[i], class_list[i]) for i in range(encoded.size(0))])
+              
+                        class_list = distances.index.tolist()
+             
+                        encoded_images_lst.extend([(encoded[i], class_list[labels[i]]) for i in range(encoded.size(0))])
+                        pairs = [(encoded_images_lst[i], encoded_images_lst[j]) for i in range(len(encoded_images_lst)) for j in range(i+1, len(encoded_images_lst))]
 
-
-                        # dist = distance_df.iloc[encoded_images_lst[0][1].item(), encoded_images_lst[1][1].item()]
-                        # print()
-                        # #print label pair
-                        # print(encoded_images_lst[0][1].item(), encoded_images_lst[1][1].item())
-                        # #latent space pair
-                        # print(encoded_images_lst[0][0].size(), encoded_images_lst[1][0].size())
-                        # #print distance
-                        # print(dist)
-                        
-                        
-    
-                        contrastive_loss = toolbox.average_contrastive_loss(encoded_images_lst, distance_df)
+                        contrastive_loss = 0
+                        for encoded_images_pair in pairs:
+                            distance = distances.loc[encoded_images_pair[0][1]][encoded_images_pair[1][1]]
+                            contrastive_loss += toolbox.contrastive_loss_with_dynamic_margin(encoded_images_pair, distance)
+                        contrastive_loss = contrastive_loss/len(pairs)
                         print()
-                        print(contrastive_loss.size())
+                        print(contrastive_loss)
                         exit()
                                                 
                         loss = criterion(decoded, SRinputs)

@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNetV1_2, DisNet_MaskedAutoencoder, DisNet_SRAutoencoder
+from ArchitectureZoo import DisNetV1_2, DisNet_SRAutoencoder
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
@@ -30,8 +30,8 @@ def build_model(num_classes, arch, config):
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    elif arch == 'DisNet_MaskedAutoencoder':
-        model_ft = DisNet_MaskedAutoencoder(config=config)
+    # elif arch == 'DisNet_MaskedAutoencoder':
+    #     model_ft = DisNet_MaskedAutoencoder(config=config)
     elif arch == 'DisNet_SRAutoencoder':
         model_ft = DisNet_SRAutoencoder(config=config)
     elif arch == 'DisNetV1_2':
@@ -318,28 +318,20 @@ def average_contrastive_loss(encoded_images_lst, distance_df):
     avg_loss = total_loss / num_pairs if num_pairs > 0 else 0.0
     return avg_loss
 
-def contrastive_loss_with_dynamic_margin(encoded1, encoded2, label1, label2, genetic_distance):
-
+def contrastive_loss_with_dynamic_margin(encoded_images_pair, genetic_distance):
+    encoded1, encoded2 = encoded_images_pair[0][0], encoded_images_pair[1][0]
     euclidean_distance = torch.mean(torch.nn.functional.pairwise_distance(encoded1, encoded2))
     
-    print()
-    print(euclidean_distance.size())
-    exit()
     # Extract the species and disease state from the labels
-    species1, state1 = label1.rsplit('_', 1)
-    species2, state2 = label2.rsplit('_', 1)
+    # species1, state1 = label1.rsplit('_', 1)
+    # species2, state2 = label2.rsplit('_', 1)
     
-    disease_distance = 1.0  # Define a fixed distance for disease state
     
-    # Adjust the genetic distance based on disease state
-    if state1 == state2:
-        genetic_distance += disease_distance
-    
-    y = 1.0 if genetic_distance > 0 else 0.0
+    y = genetic_distance
     loss = (1 - y) * (euclidean_distance**2) + (y) * torch.clamp(genetic_distance - euclidean_distance, min=0.0)**2
-    print()
-    print(loss)
-    exit()
+    # print()
+    # print(loss)
+    # exit()
     return loss
 
 
