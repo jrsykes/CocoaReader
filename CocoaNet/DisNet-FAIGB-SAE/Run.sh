@@ -13,19 +13,19 @@ source activate torch5
 
 # Set wandb directory
 # export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
-export WANDB_DIR="/scratch/staff/jrs596/WANDB_cache"
+export WANDB_DIR="/local/scratch/jrs596/WANDB_cache"
 
 
 python /home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB-SAE/Torch_Custom_CNNs2.2.1.py \
         --model_name 'DisNet-FAIGB-SAE' \
         --project_name 'DisNet-FAIGB-SAE' \
-        --root '/scratch/staff/jrs596' \
-        --data_dir 'dat/FAIGB/FAIGB_FinalSplit_700_TrainVal' \
-        --input_size 356 \
+        --root '/local/scratch/jrs596' \
+        --data_dir 'dat/FAIGB/FAIGB_700_30-10-23_split' \
+        --input_size 536 \
         --min_epochs 15 \
         --max_epochs 120 \
-        --batch_size 6 \
+        --batch_size 10 \
         --patience 20 \
         --arch 'DisNet_SRAutoencoder' \
-        --GPU 6 \
-        --save 'both' \
+        --GPU 0 \
+        # --save 'both' \

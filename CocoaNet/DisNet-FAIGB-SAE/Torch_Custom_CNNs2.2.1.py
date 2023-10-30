@@ -98,8 +98,7 @@ def train():
     #Set seeds for reproducability
     toolbox.SetSeeds(42)
 
-    data_dir, num_classes, _ = toolbox.setup(args)
-    device = torch.device("cuda:" + args.GPU)
+    data_dir, num_classes, device = toolbox.setup(args)
     
     config = {
         'DFLoss_delta': 0.06379802231720144,
@@ -130,22 +129,22 @@ def train():
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
 
-    distance_df = pd.read_csv('/scratch/staff/jrs596/dat/FAIGB/DisNet_TaxonomyMatrix.csv', header=0, index_col=0)  
+    distance_df = pd.read_csv(os.path.join(args.root, 'dat/FAIGB/DisNet_TaxonomyMatrix.csv'), header=0, index_col=0)  
 
-    trained_model, _, best_loss, _, run_name, _, _ = train_model(args=args, 
-                                                                 model=model, 
-                                                                 optimizer=optimizer, 
-                                                                 device=device, 
-                                                                 dataloaders_dict=dataloaders_dict, 
-                                                                 criterion=criterion, 
-                                                                 patience=args.patience, 
-                                                                 batch_size=args.batch_size,
-                                                                 num_classes=config['out_channels'],
-                                                                 distances = distance_df)
+    _, best_loss, _, run_name, _, _ = train_model(args=args, 
+                                                model=model, 
+                                                optimizer=optimizer, 
+                                                device=device, 
+                                                dataloaders_dict=dataloaders_dict, 
+                                                criterion=criterion, 
+                                                patience=args.patience, 
+                                                batch_size=args.batch_size,
+                                                num_classes=config['out_channels'],
+                                                distances = distance_df)
     config['Run_name'] = run_name
 
 
-    return trained_model, None, best_loss, None, config
+    return None, best_loss, None, config
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:

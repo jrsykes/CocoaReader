@@ -108,9 +108,15 @@ def Randomise_Split(root, destination):
 		random.shuffle(images)
 		#images = images[:800]
 
-		dat_dict = {'train': images[:int(len(images)*0.9)], 
-			#'test': images[int(len(images)*0.8):int(len(images)*0.9)], 
-			'val': images[int(len(images)*0.9):]}										
+		if len(images) > 100: 
+			dat_dict = {'train': images[:int(len(images)*0.9)], 
+				'val': images[int(len(images)*0.9):]}
+		elif len(images) > 10:
+			dat_dict = {'train': images[:int(len(images)*0.8)],
+               'val': images[int(len(images)*0.8):]}
+		else:
+			dat_dict = {'train': images[:int(len(images)*0.5)],
+               'val': images[int(len(images)*0.5):]}
 		
 		for split, im_list in dat_dict.items():
 			#os.makedirs(os.path.join(root, split, class_), exist_ok = True)
@@ -120,17 +126,17 @@ def Randomise_Split(root, destination):
 				dest = os.path.join(destination, split, class_)
 				os.makedirs(dest, exist_ok = True)
 				#open image and compress to 330x330 pixels
-				im = Image.open(os.path.join(source))
-				im1 = im.resize((494,494))
-				im1.save(os.path.join(dest, image))
+				# im = Image.open(os.path.join(source))
+				# im1 = im.resize((494,494))
+				# im1.save(os.path.join(dest, image))
 
 				#shutil.copy(source, dest)
-				#os.symlink(source, os.path.join(dest, image))
+				os.symlink(source, os.path.join(dest, image))
 
-# root = '/local/scratch/jrs596/dat/FAIGB_PNPFiltered_HandFiltered_PinopsidaCollapsed'
-# destination = '/local/scratch/jrs596/dat/FAIGB_494'
+root = '/local/scratch/jrs596/dat/FAIGB/FAIGB_700_30-10-23'
+destination = '/local/scratch/jrs596/dat/FAIGB/FAIGB_700_30-10-23_split'
 
-# Randomise_Split(root, destination)
+Randomise_Split(root, destination)
 
 def compress_copy(root, destination):
 	for class_ in os.listdir(root):
@@ -298,4 +304,4 @@ def process_directory(input_directory, output_directory):
 input_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit'
 output_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit_700'
 
-process_directory(input_directory, output_directory)
+# process_directory(input_directory, output_directory)

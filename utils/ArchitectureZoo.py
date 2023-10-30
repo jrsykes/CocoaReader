@@ -73,21 +73,7 @@ class DisNetV1_2(nn.Module):
         for _ in range(1, blocks):  # Use blocks parameter to determine the number of Bottleneck blocks
             layers.append(Bottleneck(out_channels, out_channels, kernel_size=kernel_size))
         return nn.Sequential(*layers)
-    
-    #Alternative forward pass to get feature map before fc layer.
-    #Only used for Maksed Autoencoder method.
-    def forward_features(self, x):
-        x = self.conv1(x)
-        x = self.gn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.global_avg_pool(x)
-        
-        return x
-      
+         
     
     def forward(self, x):
         x = self.conv1(x)
@@ -98,12 +84,12 @@ class DisNetV1_2(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         
-        x = self.global_avg_pool(x)
-        x = torch.flatten(x, 1)
+        w = self.global_avg_pool(x)
+        w = torch.flatten(w, 1)
         
-        x = self.fc(x)
+        # x = self.fc(x)
         
-        return x
+        return x, w
 
 
 
@@ -164,7 +150,6 @@ class TransformerDecoder(nn.Module):
         self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
         self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
-        # self.upsample4 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=1, padding=1, output_padding=1)
         
         self.final_conv = nn.Conv2d(feature_dim, 3, kernel_size=1)  # Assuming the output has 3 channels
 
@@ -180,7 +165,6 @@ class TransformerDecoder(nn.Module):
         x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
         x = self.upsample2(x)
         x = self.upsample3(x)
-        # x = self.upsample4(x)
         
         x = self.final_conv(x)
         return x
@@ -206,10 +190,10 @@ class DisNet_SRAutoencoder(nn.Module):
 
     def forward(self, x):
         
-        encoded = self.encoder.forward_features(x)  # Get feature map before the fc layer
+        encoded, encode_pooled  = self.encoder.forward(x)  # Get feature map before the fc layer
         decoded = self.decoder(encoded)
 
-        return encoded, decoded 
+        return encode_pooled, decoded 
 
 
 

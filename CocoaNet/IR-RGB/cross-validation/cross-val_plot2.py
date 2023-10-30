@@ -55,9 +55,9 @@ df_combined = df_combined[df_combined[0] != 'acc']
 #%%
 x_axis_labels = ["F1", "Precision", "Recall", "BPR F1", "FPR F1", "Healthy F1", "WBD F1"]
 # Define font sizes
-tick_fontsize = 14
-legend_fontsize = 14
-legend_title_fontsize = 14
+tick_fontsize = 18
+legend_fontsize = 18
+legend_title_fontsize = 18
 
 # Plot the data
 for phase in ["train", "val"]:
@@ -77,11 +77,11 @@ for phase in ["train", "val"]:
 
     # Set the title and adjust the legend position based on the phase
     if phase == "train":
-        ax.set_title("Training", fontsize=20)
+        # ax.set_title("Training", fontsize=20)
         plt.legend(title="Model", loc="upper left", prop={'size': legend_fontsize}, 
                    title_fontsize=legend_title_fontsize, bbox_to_anchor=(0, 1.05))
     else:
-        ax.set_title("Validation", fontsize=20)
+        # ax.set_title("Validation", fontsize=20)
         ax.legend().set_visible(False)  # Hide the legend for "val" phase
                   
     sns.despine()  # This will remove the top and right spines

@@ -16,8 +16,9 @@ import toolbox
 #sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 # from toolbox import DynamicFocalLoss
 import torch.nn.functional as F
-import pandas as pd
-from itertools import combinations
+import umap
+import torchvision.utils as vutils
+from torch.utils.data import DataLoader
 
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, distances):      
@@ -25,7 +26,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     # def run_model(x):
     #     return model(x)
         
-    #Check environmental variable WANDB_MODE
+    # Check environmental variable WANDB_MODE
     if args.WANDB_MODE == 'offline':   
         if args.sweep_config == None:
             if args.run_name is None:
@@ -47,7 +48,18 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     
-    my_metrics = toolbox.Metrics(metric_names= ['loss'], num_classes=num_classes)
+    my_metrics = toolbox.Metrics(metric_names= ['cont_loss', 'MSE_loss'], num_classes=num_classes)
+
+
+    reducer = umap.UMAP(n_components=2)
+    
+    #sample images for visualisation
+    len_ = len(dataloaders_dict['val'].dataset)
+    selected_indices = [0, len_//10, len_//9, len_//8, len_//7, len_//6, len_//5, len_//4, len_//3]
+    sampler = toolbox.NineImageSampler(selected_indices)
+    sample_data_loader = DataLoader(dataloaders_dict['val'].dataset, batch_size=9, sampler=sampler)
+    sample_images, _ = next(iter(sample_data_loader))
+    sample_images = F.interpolate(sample_images, size=(356, 356), mode='bilinear', align_corners=True).to(device)
 
     since = time.time()
     val_loss_history = []
@@ -70,97 +82,79 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                #If validation loss improves by at least 0.5%, reset patient to initial value
                patience = args.patience
         print('Patience: ' + str(patience) + '/' + str(args.patience))
-   
+        
        #Training and validation loop
         for phase in ['train', 'val']:
-            encoded_images_lst = []
+
             if phase == 'train':
                 model.train()  # Set model to training mode
- 
+            else:
                 model.eval()   # Set model to evaluate mode
 
            #Get size of whole dataset split
             n = len(dataloaders_dict[phase].dataset)
            #Begin training
             print(phase)
+            all_encoded = []
+            all_labels = []
+            mean_loss = 0.00
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
                     
                     #Load images and lables from current batch onto GPU(s)
+                    SRinputs = inputs.to(device)
+                    inputs = F.interpolate(inputs, size=(356, 356), mode='bilinear', align_corners=True)
+                    
                     inputs = inputs.to(device)
                     labels = labels.to(device)
-                    # zero the parameter gradients
-                    optimizer.zero_grad()       
-
-                    # forward
-                    # track history if only in train
+                    
                     with torch.set_grad_enabled(phase == 'train'):
-                       # Get model outputs and calculate loss
-                       # In train mode we calculate the loss by summing the final output and the auxiliary output
-                       # but in testing we only consider the final output.
-                                              
-                        #compress inputs to 240 x 240
+                        #Forward pass   
+                        encoded, decoded = model(inputs)
                         
-                        SRinputs = inputs
-                        inputs = F.interpolate(inputs, size=(240, 240), mode='bilinear', align_corners=True)
-
-                        encoded, decoded  = model(inputs)
-                     
-                        #read csv 
-              
-                        class_list = distances.index.tolist()
-             
-                        encoded_images_lst.extend([(encoded[i], class_list[labels[i]]) for i in range(encoded.size(0))])
-                        pairs = [(encoded_images_lst[i], encoded_images_lst[j]) for i in range(len(encoded_images_lst)) for j in range(i+1, len(encoded_images_lst))]
-
-                        contrastive_loss = 0
-                        for encoded_images_pair in pairs:
-                            distance = distances.loc[encoded_images_pair[0][1]][encoded_images_pair[1][1]]
-                            contrastive_loss += toolbox.contrastive_loss_with_dynamic_margin(encoded_images_pair, distance)
-                        contrastive_loss = contrastive_loss/len(pairs)
-                        print()
-                        print(contrastive_loss)
-                        exit()
-                                                
-                        loss = criterion(decoded, SRinputs)
-
-                        
-                        
-                        
-                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
-                        
-                        loss += args.l1_lambda * l1_norm                     
+                        #Calculate losses and gradients then normalise the gradients
+                        contrastive_loss = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)
+                        MSE_loss = criterion(decoded, SRinputs)          
+                        l1_norm = torch.tensor(sum(p.abs().sum() for p in model.parameters() if p.dim() > 1).item(), requires_grad=True)
+                        mean_loss += ((contrastive_loss + MSE_loss + l1_norm)/3).detach()
                                                
-                  
-                       # backward + optimize only if in training phase
                         if phase == 'train':
-                            loss.backward()
-                            optimizer.step()  
+                            toolbox.compute_combined_gradients(model, optimizer, [MSE_loss, contrastive_loss, l1_norm])
+                                       
+                        if phase == 'val':
+                            all_encoded.append(encoded.cpu().detach().numpy())
+                            all_labels.append(labels.cpu().detach().numpy())
+                            if idx == 0:                                
+                                _, sample_decoded = model(inputs)
+                            
+                                grid = vutils.make_grid(sample_decoded, nrow=3, padding=0, normalize=False)
+                                vutils.save_image(grid, os.path.join(args.root, "reconstructions", "epoch_" + str(epoch) + ".png"))                    
                            
                         #Update metrics
-                        my_metrics.update(loss, None, labels, None)
+                        my_metrics.update(cont_loss=contrastive_loss, MSE_loss=MSE_loss, labels=labels)
 
                     bar.next()  
 
             # Calculate metrics for the epoch
             results = my_metrics.calculate()
-    
-            if phase == 'train':
-                train_metrics = {'loss': [results['loss']], 
-                        }
             
 
-            print('{} Loss: {:.4f}'.format(phase, results['loss']))
+            if phase == 'train':
+                train_metrics = {'cont_loss': results['cont_loss'], 
+                                    'MSE_loss': results['MSE_loss']                                    
+                                    }
+            
+            print('{} Contrastive loss: {:.4f} SR loss: {:.4f} '.format(phase, results['cont_loss'], results['MSE_loss']))
 
            # Save model and update best weights only if recall has improved
-            if phase == 'val' and results['loss'] < best_loss:
-                best_loss = results['loss']
-                # best_model_wts = copy.deepcopy(model.state_dict())  
-                model_out = model
+            if phase == 'val' and mean_loss < best_loss:
+                best_loss = mean_loss
+                val_loss_history.append(mean_loss)
 
                 best_train_metrics = train_metrics
-                best_val_metrics = {'loss': [results['loss']]
+                best_val_metrics = {'cont_loss': results['cont_loss'], 
+                                    'MSE_loss': results['MSE_loss']                                    
                                     }
     
                 PATH = os.path.join(args.root, 'models', 'FAIGB_SAE_' + run_name)
@@ -169,34 +163,46 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 if args.save == 'model':
                     print('Saving model to: ' + PATH + '.pth')
                     try:
-                        torch.save(model_out.module, PATH + '.pth')
+                        torch.save(model.module, PATH + '.pth')
                     except:
-                         torch.save(model_out, PATH + '.pth')
+                         torch.save(model, PATH + '.pth')
                 elif args.save == 'weights':
                     print('Saving model weights to: ' + PATH + '_weights.pth')
                     try:
-                        torch.save(model_out.module.state_dict(), PATH + '.pth')
+                        torch.save(model.module.state_dict(), PATH + '.pth')
                     except:
-                        torch.save(model_out.state_dict(), PATH + '.pth')
+                        torch.save(model.state_dict(), PATH + '.pth')
                 elif args.save == 'both':
                     if args.arch != 'parallel':
                         print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
                         try:
-                            torch.save(model_out.module, PATH + '.pth') 
-                            torch.save(model_out.module.state_dict(), PATH + '_weights.pth')
+                            torch.save(model.module, PATH + '.pth') 
+                            torch.save(model.module.state_dict(), PATH + '_weights.pth')
                         except:
-                            torch.save(model_out, PATH + '.pth')
-                            torch.save(model_out.state_dict(), PATH + '_weights.pth')
-                    
-  
-            if phase == 'val':
-                val_loss_history.append(results['loss'])
+                            torch.save(model, PATH + '.pth')
+                            torch.save(model.state_dict(), PATH + '_weights.pth')
+                     
             
             if phase == 'train':
-                wandb.log({"Train_loss": results['loss']})  
+                wandb.log({"Train_cont_loss": results['cont_loss'], "Train_MSE_loss": results['MSE_loss']})  
             else:
-                wandb.log({"Val_loss": results['loss']})
-        
+                wandb.log({"Val_cont_loss": results['cont_loss'], "Val_MSE_loss": results['MSE_loss']})
+                                
+                all_encoded_np = np.concatenate(all_encoded, axis=0)
+                all_labels_np = np.concatenate(all_labels, axis=0)
+
+                data_umap = reducer.fit_transform(all_encoded_np)
+                UMAP_table = wandb.Table(columns=["UMAP_X", "UMAP_Y", "Label", "Epoch"])
+                for i in range(data_umap.shape[0]):
+                    UMAP_table.add_data(data_umap[i, 0], data_umap[i, 1], all_labels_np[i], epoch)
+
+                # Log the table to wandb
+                wandb.log({"UMAP_table": UMAP_table})
+
+                # Clear the lists for the next epoch
+                all_encoded.clear()
+                all_labels.clear()
+
             # Reset metrics for the next epoch
             my_metrics.reset()
 
@@ -209,4 +215,4 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Loss of saved model: {:4f}'.format(best_loss))
-    return model_out, None, best_loss, None, run_name, best_train_metrics, best_val_metrics
+    return None, best_loss, None, run_name, best_train_metrics, best_val_metrics
