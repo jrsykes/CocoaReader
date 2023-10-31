@@ -54,8 +54,8 @@ parser.add_argument('--learning_rate', type=float, default=1e-3,
                         help='Learning rate, Default:1e-5')
 parser.add_argument('--l1_lambda', type=float, default=1e-5,
                         help='l1_lambda for regularization, Default:1e-5')
-parser.add_argument('--weight_decay', type=float, default=1e-4,
-                        help='Learning rate, Default:1e-5')
+parser.add_argument('--weight_decay', type=float, default=1e-6,
+                        help='Weight decay, Default:1e-5')
 parser.add_argument('--eps', type=float, default=1e-6,
                         help='eps, Default:1e-8')
 parser.add_argument('--batchnorm_momentum', type=float, default=1e-1,

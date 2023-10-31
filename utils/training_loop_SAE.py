@@ -19,6 +19,7 @@ import torch.nn.functional as F
 import umap
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
+from PIL import Image
 
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, distances):      
@@ -120,16 +121,21 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         mean_loss += ((contrastive_loss + MSE_loss + l1_norm)/3).detach()
                                                
                         if phase == 'train':
-                            toolbox.compute_combined_gradients(model, optimizer, [MSE_loss, contrastive_loss, l1_norm])
-                                       
+                            optimizer.zero_grad()
+                            total_loss = contrastive_loss + MSE_loss + l1_norm * args.l1_lambda
+                            total_loss.backward(retain_graph=True)
+                            optimizer.step()
+
                         if phase == 'val':
                             all_encoded.append(encoded.cpu().detach().numpy())
                             all_labels.append(labels.cpu().detach().numpy())
                             if idx == 0:                                
-                                _, sample_decoded = model(inputs)
+                                _, sample_decoded = model(sample_images)
                             
                                 grid = vutils.make_grid(sample_decoded, nrow=3, padding=0, normalize=False)
-                                vutils.save_image(grid, os.path.join(args.root, "reconstructions", "epoch_" + str(epoch) + ".png"))                    
+                                PATH = os.path.join(args.root, "reconstructions_" + args.model_name)
+                                os.makedirs(PATH, exist_ok=True)
+                                vutils.save_image(grid, os.path.join(PATH, "epoch_" + str(epoch) + ".png"))                      
                            
                         #Update metrics
                         my_metrics.update(cont_loss=contrastive_loss, MSE_loss=MSE_loss, labels=labels)

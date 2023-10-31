@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNetV1_2, DisNet_SRAutoencoder
+from ArchitectureZoo import DisNetV1_2, DisNet_SRAutoencoder, PhytNet_SRAutoencoder
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
@@ -32,8 +32,8 @@ def build_model(num_classes, arch, config):
         model_ft = models.resnet50(weights=None)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
-    # elif arch == 'DisNet_MaskedAutoencoder':
-    #     model_ft = DisNet_MaskedAutoencoder(config=config)
+    elif arch == 'PhytNet_SRAutoencoder':
+        model_ft = PhytNet_SRAutoencoder(config=config)
     elif arch == 'DisNet_SRAutoencoder':
         model_ft = DisNet_SRAutoencoder(config=config)
     elif arch == 'DisNetV1_2':
@@ -319,18 +319,16 @@ def count_flops(model, device, input_size):
 def contrastive_loss_with_dynamic_margin(encoded, distances, labels):
     
     class_list = distances.index.tolist()
-    max_distance = distances.max().max()
-    
     encoded_images_lst = [(enc, class_list[label]) for enc, label in zip(encoded, labels)]
 
     pairs = list(combinations(encoded_images_lst, 2))
 
-    num_pairs = len(pairs)
     loss = 0.0
 
     for (encoded1, class1), (encoded2, class2) in pairs:
-        margin = distances.loc[class1][class2] / max_distance
+        margin = distances.loc[class1][class2]
         euclidean_distance = torch.norm(encoded1 - encoded2)
+        
  
         if class1 == class2:
             y_true = 1
@@ -338,9 +336,8 @@ def contrastive_loss_with_dynamic_margin(encoded, distances, labels):
             y_true = 0
         
         loss += (1 - y_true) * 0.5 * euclidean_distance**2 + y_true * 0.5 * (torch.clamp(margin - euclidean_distance, min=0.0))**2
-
-
-    return loss / num_pairs
+        
+    return loss / len(pairs)
 
 
 
@@ -392,8 +389,10 @@ def compute_combined_gradients(model, optimizer, losses):
     for param, grad in zip(model.parameters(), combined_grads):
         if grad is not None and param.grad is not None:
             param.grad.data.copy_(grad)
-            param.grad = None
+            
     
+    # # Update the model's weights using the optimizer
+    # optimizer.step()
 
 
 class NineImageSampler(Sampler):

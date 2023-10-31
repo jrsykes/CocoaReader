@@ -9,7 +9,7 @@
 
 
 # Activate the conda environment
-source activate torch5
+# conda activate torch5
 
 # Set wandb directory
 # export WANDB_DIR="/users/jrs596/scratch/WANDB_cache"
@@ -20,12 +20,12 @@ python /home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB-SAE/Torch
         --model_name 'DisNet-FAIGB-SAE' \
         --project_name 'DisNet-FAIGB-SAE' \
         --root '/local/scratch/jrs596' \
-        --data_dir 'dat/FAIGB/FAIGB_700_30-10-23_split' \
+        --data_dir 'dat/test5' \
         --input_size 536 \
         --min_epochs 15 \
         --max_epochs 120 \
-        --batch_size 10 \
+        --batch_size 2 \
         --patience 20 \
-        --arch 'DisNet_SRAutoencoder' \
+        --arch 'PhytNet_SRAutoencoder' \
         --GPU 0 \
         # --save 'both' \
