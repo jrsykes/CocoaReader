@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
-import torchvision.transforms as transforms
+from diffusers import UNet2DModel
 
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 
@@ -201,48 +201,6 @@ class DisNet_SRAutoencoder(nn.Module):
 
 ##################################################
 
-class UNet(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(UNet, self).__init__()
-                
-        self.encoder1 = self.conv_block(in_channels, 64)
-        self.pool1 = nn.MaxPool2d(kernel_size=2)
-        self.encoder2 = self.conv_block(64, 128)
-        self.pool2 = nn.MaxPool2d(kernel_size=2)
-        
-        self.bottleneck = self.conv_block(128, 256)
-        
-        self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
-        self.decoder2 = self.conv_block(256, 128)
-        self.upconv1 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2)
-        self.decoder1 = self.conv_block(128, 64)
-        
-        self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)
-        
-    def conv_block(self, in_channels, out_channels):
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True)
-        )
-        
-    def forward(self, x):
-        enc1 = self.encoder1(x)
-        enc2 = self.encoder2(self.pool1(enc1))
-        bottleneck = self.bottleneck(self.pool2(enc2))
-        
-        dec2 = self.decoder2(torch.cat([enc2, self.upconv2(bottleneck)], 1))
-        dec1 = self.decoder1(torch.cat([enc1, self.upconv1(dec2)], 1))
-        
-        return self.final_conv(dec1)
-
-
-from diffusers import UNet2DModel
-from torch.nn import functional as F
-
-
-
 
 class PhytNet_SRAutoencoder(nn.Module):
     def __init__(self, config):
@@ -261,37 +219,35 @@ class PhytNet_SRAutoencoder(nn.Module):
         self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, img_size)
         
         # Diffusion parameters
-        self.noise_std = config.get('noise_std', 0.2)  # Default noise standard deviation
-        self.num_diffusion_steps = config.get('num_diffusion_steps', 10)  # Default number of diffusion steps
+        # self.num_diffusion_steps = config.get('num_diffusion_steps', 6)  # Default number of diffusion steps
         
-        # Add U-Net for refinement
-        # self.refinement_net = UNet(feature_dim, feature_dim)
-        self.refinement_net = UNet2DModel(
-                                    sample_size=(48, 48),
-                                    in_channels=84,
-                                    out_channels=84).float()
+        # # Add U-Net for refinement
+        # self.refinement_net = UNet2DModel(
+        #                             sample_size=(48, 48),
+        #                             in_channels=84,
+        #                             out_channels=84).float()
 
-    def latent_diffusion(self, encoded):
-        # Add noise to the encoded representations
-        noisy_encoded = encoded + torch.randn_like(encoded) * self.noise_std
-        noisy_encoded = F.pad(noisy_encoded, (1, 2, 1, 2))
+    # def latent_diffusion(self, encoded):
 
-        # Iteratively refine the noisy representations using the U-Net
-        for i in range(self.num_diffusion_steps):
-            noisy_encoded = self.refinement_net(sample=noisy_encoded, timestep=i)
-            noisy_encoded = noisy_encoded.sample
+    #     encoded = F.pad(encoded, (1, 2, 1, 2))
+
+    #     # Iteratively refine the noisy representations using the U-Net
+    #     for i in range(self.num_diffusion_steps):
+    #         noisy_encoded = self.refinement_net(sample=encoded, timestep=i)
+    #         noisy_encoded = noisy_encoded.sample
         
-        noisy_encoded = noisy_encoded[:, :, :45, :45]
+    #     noisy_encoded = noisy_encoded[:, :, :45, :45]
 
-        return noisy_encoded
+    #     return noisy_encoded
 
     def forward(self, x):
         encoded, encode_pooled  = self.encoder.forward(x)  # Get feature map before the fc layer
             
         # Apply latent diffusion to the encoded representations
-        diffused_encoded = self.latent_diffusion(encoded)
+        # diffused_encoded = self.latent_diffusion(encoded)
         
-        decoded = self.decoder(diffused_encoded)
+        decoded = self.decoder(encoded)
+        
         return encode_pooled, decoded 
     
 

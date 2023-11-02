@@ -19,8 +19,7 @@ import torch.nn.functional as F
 import umap
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
-from PIL import Image
-
+import pandas as pd
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, distances):      
     # @torch.compile
@@ -53,6 +52,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
 
     reducer = umap.UMAP(n_components=2)
+    if os.path.exists(os.path.join(args.root, 'umap_data.csv')):
+        os.remove(os.path.join(args.root, 'umap_data.csv'))
     
     #sample images for visualisation
     len_ = len(dataloaders_dict['val'].dataset)
@@ -123,6 +124,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         if phase == 'train':
                             optimizer.zero_grad()
                             total_loss = contrastive_loss + MSE_loss + l1_norm * args.l1_lambda
+                            # total_loss = contrastive_loss + l1_norm * args.l1_lambda
+
                             total_loss.backward(retain_graph=True)
                             optimizer.step()
 
@@ -196,11 +199,25 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                                 
                 all_encoded_np = np.concatenate(all_encoded, axis=0)
                 all_labels_np = np.concatenate(all_labels, axis=0)
-
+     
                 data_umap = reducer.fit_transform(all_encoded_np)
+      
                 UMAP_table = wandb.Table(columns=["UMAP_X", "UMAP_Y", "Label", "Epoch"])
+                csv_data = []  # List to hold data for CSV
+
                 for i in range(data_umap.shape[0]):
                     UMAP_table.add_data(data_umap[i, 0], data_umap[i, 1], all_labels_np[i], epoch)
+                    csv_data.append([data_umap[i, 0], data_umap[i, 1], all_labels_np[i], epoch])
+
+                # Convert the list of data to a pandas DataFrame
+                df = pd.DataFrame(csv_data, columns=["UMAP_X", "UMAP_Y", "Label", "Epoch"])
+
+                # Save or append the DataFrame to a CSV file
+                csv_filename = os.path.join(args.root, 'umap_data.csv')
+                
+                with open(csv_filename, 'a') as f:
+                    # If the file does not exist, write the header, otherwise append without the header
+                    df.to_csv(f, header=f.tell()==0, index=False)
 
                 # Log the table to wandb
                 wandb.log({"UMAP_table": UMAP_table})

@@ -326,17 +326,15 @@ def contrastive_loss_with_dynamic_margin(encoded, distances, labels):
     loss = 0.0
 
     for (encoded1, class1), (encoded2, class2) in pairs:
-        margin = distances.loc[class1][class2]
+        margin = distances.loc[class1][class2] / 3
         euclidean_distance = torch.norm(encoded1 - encoded2)
-        
- 
-        if class1 == class2:
-            y_true = 1
+           
+        if class1 != class2:
+            loss += (margin - euclidean_distance)**2 
+
         else:
-            y_true = 0
-        
-        loss += (1 - y_true) * 0.5 * euclidean_distance**2 + y_true * 0.5 * (torch.clamp(margin - euclidean_distance, min=0.0))**2
-        
+            loss += euclidean_distance**2 
+  
     return loss / len(pairs)
 
 

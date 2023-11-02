@@ -20,11 +20,11 @@ python /home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB-SAE/Torch
         --model_name 'DisNet-FAIGB-SAE' \
         --project_name 'DisNet-FAIGB-SAE' \
         --root '/local/scratch/jrs596' \
-        --data_dir 'dat/test5' \
+        --data_dir 'dat/test6' \
         --input_size 536 \
         --min_epochs 15 \
         --max_epochs 120 \
-        --batch_size 2 \
+        --batch_size 20 \
         --patience 20 \
         --arch 'PhytNet_SRAutoencoder' \
         --GPU 0 \

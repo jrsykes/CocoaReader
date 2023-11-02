@@ -126,7 +126,14 @@ def train():
     criterion = nn.MSELoss()
     
     model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
-
+    
+    # #Freeze parameters of Diffuser U-Net 
+    # for param in model.refinement_net.parameters():
+    #     param.requires_grad = False
+    
+    # if torch.cuda.device_count() > 1:
+    #     model = torch.nn.DataParallel(model)
+    
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
 
     distance_df = pd.read_csv(os.path.join(args.root, 'dat/FAIGB/DisNet_TaxonomyMatrix.csv'), header=0, index_col=0)  
