@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
-from diffusers import UNet2DModel
+from transformers import ViTModel
+import itertools
 
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 
@@ -140,21 +141,31 @@ class TransformerDecoderBlock(nn.Module):
         x = self.norm2(x)
         return x
 
+
+
 class TransformerDecoder(nn.Module):
-    def __init__(self, feature_dim, num_heads, num_layers, img_size):
+    def __init__(self, feature_dim, num_heads, num_layers, batch_size, reduced_dim=20):
         super(TransformerDecoder, self).__init__()
+        self.batch_size = batch_size
+        self.reduced_dim = reduced_dim
         self.feature_dim = feature_dim
-        self.img_size = img_size
         self.positional_encoding = PositionalEncoding2D(feature_dim)
         self.decoder_blocks = nn.ModuleList([TransformerDecoderBlock(feature_dim, num_heads) for _ in range(num_layers)])
         
+        # Dimensionality reduction for y before self-attention
+        self.reduce = nn.Linear(2025, reduced_dim)
+        # Self-attention for y
+        self.self_attn = nn.MultiheadAttention(embed_dim=1680, num_heads=8)
+
         # Upsampling layers
         self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
         self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
         
         self.final_conv = nn.Conv2d(feature_dim, 3, kernel_size=1)  # Assuming the output has 3 channels
-
+        self.compress = nn.Linear(1680, self.batch_size)
+        self.norm = nn.LayerNorm(1680)
+        
     def forward(self, x):
         # x is the encoded feature map: [batch_size, feature_dim, height, width]
         batch_size, _, height, width = x.size()
@@ -163,39 +174,22 @@ class TransformerDecoder(nn.Module):
         for decoder_block in self.decoder_blocks:
             x = decoder_block(x, x)  # Pass through each transformer block
         
+        y = x.permute(0, 1, 2).view(batch_size, self.feature_dim, -1)   # [batch_size, feature_dim, feature_length]
+        y = self.reduce(y)                                              # Project y down to a smaller space. [batch_size, 2025, reduced_dim]
+        y = y.view(batch_size, -1)                                      # [batch_size, 2025 * reduced_dim]
+        y = self.self_attn(y, y, y)[0]                                  # Self-attention
+        y = self.norm(y)                                                # Layer normalization   
+        distance_matrix = self.compress(y)                              # project to [batch_size, batch_size]
+
         # Upsampling steps
         x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
         x = self.upsample2(x)
         x = self.upsample3(x)
-        
         x = self.final_conv(x)
-        return x
+      
+        return x, distance_matrix
 
 
-
-class DisNet_SRAutoencoder(nn.Module):
-    def __init__(self, config):
-        super(DisNet_SRAutoencoder, self).__init__()
-        
-        # Initialize the encoder
-        self.encoder = DisNetV1_2(config)
-        
-        # Extract necessary parameters from config or define them manually
-        feature_dim = config['dim_3']
-        num_heads = config['num_heads'] 
-        num_layers = config['num_decoder_layers']
-        img_size = config['input_size'] 
-        
-        # Initialize the transformer decoder
-        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, img_size)
-
-
-    def forward(self, x):
-        
-        encoded, encode_pooled  = self.encoder.forward(x)  # Get feature map before the fc layer
-        decoded = self.decoder(encoded)
-
-        return encode_pooled, decoded 
 
 
 
@@ -213,41 +207,16 @@ class PhytNet_SRAutoencoder(nn.Module):
         feature_dim = config['dim_3']
         num_heads = config['num_heads'] 
         num_layers = config['num_decoder_layers']
-        img_size = config['input_size'] 
+        batch_size = config['batch_size']
         
         # Initialize the transformer decoder (assuming TransformerDecoder is defined elsewhere)
-        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, img_size)
+        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, batch_size)
         
-        # Diffusion parameters
-        # self.num_diffusion_steps = config.get('num_diffusion_steps', 6)  # Default number of diffusion steps
-        
-        # # Add U-Net for refinement
-        # self.refinement_net = UNet2DModel(
-        #                             sample_size=(48, 48),
-        #                             in_channels=84,
-        #                             out_channels=84).float()
-
-    # def latent_diffusion(self, encoded):
-
-    #     encoded = F.pad(encoded, (1, 2, 1, 2))
-
-    #     # Iteratively refine the noisy representations using the U-Net
-    #     for i in range(self.num_diffusion_steps):
-    #         noisy_encoded = self.refinement_net(sample=encoded, timestep=i)
-    #         noisy_encoded = noisy_encoded.sample
-        
-    #     noisy_encoded = noisy_encoded[:, :, :45, :45]
-
-    #     return noisy_encoded
-
+     
     def forward(self, x):
         encoded, encode_pooled  = self.encoder.forward(x)  # Get feature map before the fc layer
-            
-        # Apply latent diffusion to the encoded representations
-        # diffused_encoded = self.latent_diffusion(encoded)
         
-        decoded = self.decoder(encoded)
+        decoded, dist_matrix = self.decoder(encoded)
         
-        return encode_pooled, decoded 
+        return encode_pooled, decoded, dist_matrix 
     
-

@@ -24,7 +24,7 @@ python /home/userfs/j/jrs596/scripts/CocoaReader/CocoaNet/DisNet-FAIGB-SAE/Torch
         --input_size 536 \
         --min_epochs 15 \
         --max_epochs 120 \
-        --batch_size 20 \
+        --batch_size 5 \
         --patience 20 \
         --arch 'PhytNet_SRAutoencoder' \
         --GPU 0 \

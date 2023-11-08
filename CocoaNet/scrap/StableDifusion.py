@@ -66,5 +66,3 @@ loss = criterion(out.sample, encoded)
 
 print(loss)
 # %%
-# unet.conv_in = torch.nn.Conv2d(3, 224, kernel_size=3, padding=1).half()
-# unet.conv_out = torch.nn.Conv2d(224, 3, kernel_size=3, padding=1).half()

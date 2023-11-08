@@ -20,6 +20,10 @@ import umap
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
 import pandas as pd
+from io import StringIO
+from Bio.Phylo.TreeConstruction import DistanceTreeConstructor, _DistanceMatrix
+from Bio import Phylo
+from collections import defaultdict
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, distances):      
     # @torch.compile
@@ -27,6 +31,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     #     return model(x)
         
     # Check environmental variable WANDB_MODE
+    run_name = None
     if args.WANDB_MODE == 'offline':   
         if args.sweep_config == None:
             if args.run_name is None:
@@ -48,9 +53,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     
-    my_metrics = toolbox.Metrics(metric_names= ['cont_loss', 'MSE_loss'], num_classes=num_classes)
+    my_metrics = toolbox.Metrics(metric_names= ['Genetic_loss', 'MSE_loss'], num_classes=num_classes)
 
-
+    constructor = DistanceTreeConstructor()
     reducer = umap.UMAP(n_components=2)
     if os.path.exists(os.path.join(args.root, 'umap_data.csv')):
         os.remove(os.path.join(args.root, 'umap_data.csv'))
@@ -103,7 +108,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
-                    
+
+                    rows, cols = labels.numpy().tolist(), labels.numpy().tolist()
+                    labels_dist = distances.iloc[rows, cols]
+                    label_relationship_matrix = torch.tensor(labels_dist.values, dtype=torch.float).to(device)
+
                     #Load images and lables from current batch onto GPU(s)
                     SRinputs = inputs.to(device)
                     inputs = F.interpolate(inputs, size=(356, 356), mode='bilinear', align_corners=True)
@@ -113,18 +122,25 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     
                     with torch.set_grad_enabled(phase == 'train'):
                         #Forward pass   
-                        encoded, decoded = model(inputs)
+                        encoded, decoded, predicted_distances = model(inputs)
                         
                         #Calculate losses and gradients then normalise the gradients
-                        contrastive_loss = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)
-                        MSE_loss = criterion(decoded, SRinputs)          
+                        # contrastive_loss = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)/10    # weight to put on sensible scale
+                        MSE_loss = criterion(decoded, SRinputs)/100000                                                      # weight to put on sensible scale
+                        
+                        # predicted_distances = torch.cdist(encoded, encoded, p=2)
+
+                        # exit()
+                        genetic_loss = criterion(predicted_distances, label_relationship_matrix)
+                        
+     
                         l1_norm = torch.tensor(sum(p.abs().sum() for p in model.parameters() if p.dim() > 1).item(), requires_grad=True)
-                        mean_loss += ((contrastive_loss + MSE_loss + l1_norm)/3).detach()
+                        mean_loss += ((genetic_loss + MSE_loss + l1_norm)/3).detach()
                                                
                         if phase == 'train':
                             optimizer.zero_grad()
-                            total_loss = contrastive_loss + MSE_loss + l1_norm * args.l1_lambda
-                            # total_loss = contrastive_loss + l1_norm * args.l1_lambda
+                            total_loss = genetic_loss + MSE_loss + l1_norm * args.l1_lambda
+                            # total_loss = genetic_loss + l1_norm * args.l1_lambda
 
                             total_loss.backward(retain_graph=True)
                             optimizer.step()
@@ -133,16 +149,40 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             all_encoded.append(encoded.cpu().detach().numpy())
                             all_labels.append(labels.cpu().detach().numpy())
                             if idx == 0:                                
-                                _, sample_decoded = model(sample_images)
+                                _, sample_decoded, _ = model(sample_images)
                             
                                 grid = vutils.make_grid(sample_decoded, nrow=3, padding=0, normalize=False)
                                 PATH = os.path.join(args.root, "reconstructions_" + args.model_name)
                                 os.makedirs(PATH, exist_ok=True)
-                                vutils.save_image(grid, os.path.join(PATH, "epoch_" + str(epoch) + ".png"))                      
+                                vutils.save_image(grid, os.path.join(PATH, "epoch_" + str(epoch) + ".png"))     
+                                
+                        names = labels_dist.columns.tolist()
+                        
+                        name_count = defaultdict(int)
+                        unique_names = []
+                        for name in names:
+                            if name_count[name]:
+                                unique_name = f"{name}_{name_count[name]}"
+                            else:
+                                unique_name = name
+                            name_count[name] += 1
+                            unique_names.append(unique_name)
+                            
+                        
+                        lower_predicted_distances = lower_triangle(predicted_distances.cpu().detach().numpy())
+                        lower_label_relationship_matrix = lower_triangle(label_relationship_matrix.cpu().detach().numpy())
+
+                        tree_pred = constructor.upgma(_DistanceMatrix(names=unique_names, matrix=lower_predicted_distances))            
+                        tree_true = constructor.upgma(_DistanceMatrix(names=unique_names, matrix=lower_label_relationship_matrix))                     
+                        PATH = os.path.join(args.root, "trees_" + args.model_name)
+                        os.makedirs(PATH, exist_ok=True)
+                        Phylo.write(tree_pred, os.path.join(args.root, args.model_name, str(step) + "tree_pred.newick"), "newick") 
+                        Phylo.write(tree_true, os.path.join(args.root, args.model_name, str(step) + "tree_true.newick"), "newick")                    
                            
                         #Update metrics
-                        my_metrics.update(cont_loss=contrastive_loss, MSE_loss=MSE_loss, labels=labels)
-
+                        my_metrics.update(Genetic_loss=genetic_loss, MSE_loss=MSE_loss, labels=labels)
+                    
+  
                     bar.next()  
 
             # Calculate metrics for the epoch
@@ -150,11 +190,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             
 
             if phase == 'train':
-                train_metrics = {'cont_loss': results['cont_loss'], 
+                train_metrics = {'Genetic_loss': results['Genetic_loss'], 
                                     'MSE_loss': results['MSE_loss']                                    
                                     }
             
-            print('{} Contrastive loss: {:.4f} SR loss: {:.4f} '.format(phase, results['cont_loss'], results['MSE_loss']))
+            print('{} Contrastive loss: {:.4f} SR loss: {:.4f} '.format(phase, results['Genetic_loss'], results['MSE_loss']))
 
            # Save model and update best weights only if recall has improved
             if phase == 'val' and mean_loss < best_loss:
@@ -162,7 +202,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 val_loss_history.append(mean_loss)
 
                 best_train_metrics = train_metrics
-                best_val_metrics = {'cont_loss': results['cont_loss'], 
+                best_val_metrics = {'Genetic_loss': results['Genetic_loss'], 
                                     'MSE_loss': results['MSE_loss']                                    
                                     }
     
@@ -193,9 +233,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                      
             
             if phase == 'train':
-                wandb.log({"Train_cont_loss": results['cont_loss'], "Train_MSE_loss": results['MSE_loss']})  
+                wandb.log({"Train_Genetic_loss": results['Genetic_loss'], "Train_MSE_loss": results['MSE_loss']})  
             else:
-                wandb.log({"Val_cont_loss": results['cont_loss'], "Val_MSE_loss": results['MSE_loss']})
+                wandb.log({"Val_Genetic_loss": results['Genetic_loss'], "Val_MSE_loss": results['MSE_loss']})
                                 
                 all_encoded_np = np.concatenate(all_encoded, axis=0)
                 all_labels_np = np.concatenate(all_labels, axis=0)
@@ -239,3 +279,13 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Loss of saved model: {:4f}'.format(best_loss))
     return None, best_loss, None, run_name, best_train_metrics, best_val_metrics
+
+
+def lower_triangle(matrix):
+    lower = []
+    for i in range(len(matrix)):
+        row = []
+        for j in range(i + 1):
+            row.append(matrix[i][j])
+        lower.append(row)
+    return lower

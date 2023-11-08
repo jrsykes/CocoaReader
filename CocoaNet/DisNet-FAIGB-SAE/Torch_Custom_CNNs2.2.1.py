@@ -100,9 +100,10 @@ def train():
 
     data_dir, num_classes, device = toolbox.setup(args)
     
+    
     config = {
         'DFLoss_delta': 0.06379802231720144,
-        'beta1': 0.928018334605748,
+        'beta1': 0.9,
         'beta2': 0.943630021404608,
         'dim_1': 116,
         'dim_2': 106,
@@ -111,19 +112,20 @@ def train():
         'kernel_1': 3,
         'kernel_2': 5,
         'kernel_3': 13,
-        'learning_rate': 0.00027319079821934975,
+        'learning_rate': 0.0001,
         'num_blocks_1': 4,
         'num_blocks_2': 1,
         'out_channels': int(num_classes*1.396007582340178),
         'num_heads': 3,
         'num_decoder_layers': 4,
+        'batch_size': args.batch_size
     }
           
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=args.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=True) for x in ['train', 'val']}
     
-    criterion = nn.MSELoss()
+    criterion = nn.MSELoss(reduction='sum')
     
     model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
     
@@ -138,6 +140,7 @@ def train():
 
     distance_df = pd.read_csv(os.path.join(args.root, 'dat/FAIGB/DisNet_TaxonomyMatrix.csv'), header=0, index_col=0)  
 
+    
     _, best_loss, _, run_name, _, _ = train_model(args=args, 
                                                 model=model, 
                                                 optimizer=optimizer, 
@@ -147,7 +150,8 @@ def train():
                                                 patience=args.patience, 
                                                 batch_size=args.batch_size,
                                                 num_classes=config['out_channels'],
-                                                distances = distance_df)
+                                                distances = distance_df,
+                                                )
     config['Run_name'] = run_name
 
 
