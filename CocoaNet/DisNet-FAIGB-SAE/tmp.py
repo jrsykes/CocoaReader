@@ -1,36 +1,36 @@
+#%%
+from PIL import Image
 import os
-import shutil
 
-# Define the paths for train, val, and test directories
-val_dir = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit_700_backup/val'
-test_dir = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit_700_backup/test'
+# Define the directories where your training and validation images are stored
+data_directories = {
+    'train': 'scratch/dat/FAIGB/FAIGB_700_30-10-23_split/train',
+    'val': 'scratch/dat/FAIGB/FAIGB_700_30-10-23_split/val'
+}
+
+# Function to convert images
+def convert_images(root_dir):
+    for subdir, dirs, files in os.walk(root_dir):
+        for file in files:
+            if file.lower().endswith(('.png', '.gif')):  # Add or remove file types as needed
+                file_path = os.path.join(subdir, file)
+                with Image.open(file_path) as img:
+                    # Check if the image has a 'P' mode which indicates it's a palette-based image
+                    if img.mode == 'P':
+                        # Check if the image has transparency information
+                        if 'transparency' in img.info:
+                            print(f"Converting image {file_path} to RGBA.")
+                            # Convert the image to RGBA
+                            img = img.convert('RGBA')
+                            # Save the image back to the same path or a new one
+                            img.save(file_path)
+
+# Convert images in both train and val directories
+for dataset_type, directory in data_directories.items():
+    print(f"Processing {dataset_type} data...")
+    convert_images(directory)
+
+print("Conversion complete.")
 
 
-def combine_test_val_images(test_dir, val_dir):
-    # Check if test and val directories exist
-    if not os.path.exists(test_dir):
-        print(f"Error: {test_dir} directory does not exist!")
-        return
-    if not os.path.exists(val_dir):
-        print(f"Error: {val_dir} directory does not exist!")
-        return
-
-    # Loop through the class directories in the test directory
-    for class_name in os.listdir(test_dir):
-        test_class_dir = os.path.join(test_dir, class_name)
-        val_class_dir = os.path.join(val_dir, class_name)
-
-        # Check if the class directory exists in val
-        if not os.path.exists(val_class_dir):
-            os.makedirs(val_class_dir)
-
-        # Loop through the images in the class directory of test
-        for image_name in os.listdir(test_class_dir):
-            test_image_path = os.path.join(test_class_dir, image_name)
-            val_image_path = os.path.join(val_class_dir, image_name)
-
-            # Copy the image from test to val directory
-            shutil.copy(test_image_path, val_image_path)
-            print(f"Copied {image_name} from {test_class_dir} to {val_class_dir}")
-
-combine_test_val_images(test_dir, val_dir)
+# %%

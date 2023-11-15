@@ -3,10 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
-from transformers import ViTModel
-import itertools
+from diffusers import UNet2DModel
 
-sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
+sys.path.append('~/scripts/CocoaReader/utils')
 
 
 class Bottleneck(nn.Module):
@@ -141,8 +140,6 @@ class TransformerDecoderBlock(nn.Module):
         x = self.norm2(x)
         return x
 
-
-
 class TransformerDecoder(nn.Module):
     def __init__(self, feature_dim, num_heads, num_layers, batch_size, reduced_dim=20):
         super(TransformerDecoder, self).__init__()
@@ -153,9 +150,14 @@ class TransformerDecoder(nn.Module):
         self.decoder_blocks = nn.ModuleList([TransformerDecoderBlock(feature_dim, num_heads) for _ in range(num_layers)])
         
         # Dimensionality reduction for y before self-attention
-        self.reduce = nn.Linear(2025, reduced_dim)
+        self.downsample1 = nn.Sequential(
+            nn.Linear(2025, reduced_dim),
+            nn.ReLU(inplace=True),
+        )
+        self.downsample2 = nn.Linear(1680, self.batch_size)
+        
         # Self-attention for y
-        self.self_attn = nn.MultiheadAttention(embed_dim=1680, num_heads=8)
+        self.self_attn = nn.MultiheadAttention(embed_dim=1680, num_heads=self.batch_size)
 
         # Upsampling layers
         self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
@@ -163,7 +165,7 @@ class TransformerDecoder(nn.Module):
         self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
         
         self.final_conv = nn.Conv2d(feature_dim, 3, kernel_size=1)  # Assuming the output has 3 channels
-        self.compress = nn.Linear(1680, self.batch_size)
+
         self.norm = nn.LayerNorm(1680)
         
     def forward(self, x):
@@ -174,13 +176,13 @@ class TransformerDecoder(nn.Module):
         for decoder_block in self.decoder_blocks:
             x = decoder_block(x, x)  # Pass through each transformer block
         
-        y = x.permute(0, 1, 2).view(batch_size, self.feature_dim, -1)   # [batch_size, feature_dim, feature_length]
-        y = self.reduce(y)                                              # Project y down to a smaller space. [batch_size, 2025, reduced_dim]
+        y = x.view(batch_size, self.feature_dim, -1)                    # [batch_size, feature_dim, feature_length]
+        y = self.downsample1(y)                                              # Project y down to a smaller space. [batch_size, 2025, reduced_dim]
         y = y.view(batch_size, -1)                                      # [batch_size, 2025 * reduced_dim]
-        y = self.self_attn(y, y, y)[0]                                  # Self-attention
-        y = self.norm(y)                                                # Layer normalization   
-        distance_matrix = self.compress(y)                              # project to [batch_size, batch_size]
-
+        y, _ = self.self_attn(y, y, y)                                  # Self-attention
+        y = self.norm(y)                                                # Layer normalization  
+        distance_matrix = self.downsample2(y)                              # project to [batch_size, batch_size]
+        
         # Upsampling steps
         x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
         x = self.upsample2(x)
@@ -188,9 +190,6 @@ class TransformerDecoder(nn.Module):
         x = self.final_conv(x)
       
         return x, distance_matrix
-
-
-
 
 
 ##################################################
@@ -210,9 +209,8 @@ class PhytNet_SRAutoencoder(nn.Module):
         batch_size = config['batch_size']
         
         # Initialize the transformer decoder (assuming TransformerDecoder is defined elsewhere)
-        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, batch_size)
-        
-     
+        self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, batch_size)   
+
     def forward(self, x):
         encoded, encode_pooled  = self.encoder.forward(x)  # Get feature map before the fc layer
         

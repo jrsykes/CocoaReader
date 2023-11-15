@@ -1,0 +1,22 @@
+sweep_config:
+    method: bayes
+metric:
+    name: Best_F1
+    goal: maximize
+parameters:
+    input_size:
+        distribution: int_uniform
+        min: 200
+        max: 500
+    beta1:
+        distribution: uniform
+        min: 0.80
+        max: 0.999
+    beta2:
+        distribution: uniform
+        min: 0.80
+        max: 0.999
+    learning_rate:
+        distribution: uniform
+        min: 0.000001
+        max: 0.001

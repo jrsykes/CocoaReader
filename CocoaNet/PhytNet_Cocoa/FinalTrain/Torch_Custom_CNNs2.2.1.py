@@ -7,9 +7,10 @@ import argparse
 import sys
 import yaml
 import os
+import json
 import wandb
 import pprint
-import pandas as pd
+
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
@@ -18,6 +19,8 @@ parser.add_argument('--project_name', type=str, default='test',
                         help='Name for wandb project')
 parser.add_argument('--run_name', type=str, default=None,
                         help='Name for wandb run')
+parser.add_argument('--sweep', action='store_true', default=False,
+                        help='Run Waits and Biases optimisation sweep')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
 parser.add_argument('--WANDB_MODE', type=str, default='online',
@@ -26,21 +29,21 @@ parser.add_argument('--sweep_config', type=str, default=None,
                         help='.yml sweep configuration file')
 parser.add_argument('--model_config', type=str, default=None,
                         help='.yml model configuration file')
-parser.add_argument('--sweep_count', type=int, default=1000,
+parser.add_argument('--sweep_count', type=int, default=100,
                         help='Number of models to train in sweep')
 parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat/',
                         help='location of all data')
 parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
-parser.add_argument('--save', type=bool, default=False,
-                        help='save model?')
-parser.add_argument('--custom_pretrained', action='store_true', default=False,
-                        help='Train useing specified pre-trained weights?')
-parser.add_argument('--custom_pretrained_weights', type=str,
+parser.add_argument('--save', type=str, default=None,
+                        help='save "model", "weights" or "both" ?')
+parser.add_argument('--weights', type=str, default=None,
                         help='location of pre-trained weights')
 parser.add_argument('--quantise', action='store_true', default=False,
                         help='Train with Quantization Aware Training?')
-parser.add_argument('--batch_size', type=int, default=42,
+parser.add_argument('--ema_beta', type=float, default=None,
+                        help='beta value for exponential moving average of weights')
+parser.add_argument('--batch_size', type=int, default=21,
                         help='Initial batch size')
 parser.add_argument('--max_epochs', type=int, default=2,
                         help='n epochs before early stopping')
@@ -64,7 +67,7 @@ parser.add_argument('--input_size', type=int, default=None,
                         help='image input size')
 parser.add_argument('--delta', type=float, default=1.4,
                         help='delta for dynamic focal loss')
-parser.add_argument('--arch', type=str, default='DisNet_MaskedAutoencoder',
+parser.add_argument('--arch', type=str, default='resnet18',
                         help='Model architecture. resnet18, resnet50, resnext50, resnext101 or convnext_tiny')
 parser.add_argument('--cont_train', action='store_true', default=False,
                         help='Continue training from previous checkpoint?')
@@ -79,84 +82,71 @@ parser.add_argument('--criterion', type=str, default='crossentropy',
 parser.add_argument('--GPU', type=str, default='0',
                         help='Which GPU device to use')
 
-
 args = parser.parse_args()
 print(args)
 
-# sys.path.append('~/scripts/CocoaReader/utils')
+sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
-from training_loop_SAE import train_model
-
+from training_loop import train_model
 
 def train():
+    # config = {
+    #     "beta1": 0.9051880132274126,
+    #     "beta2": 0.9630258300974864,
+    #     "dim_1": 49,
+    #     "dim_2": 97,
+    #     "dim_3": 68,
+    #     "kernel_1": 11,
+    #     "kernel_2": 9,
+    #     "kernel_3": 13,
+    #     "learning_rate": 0.0005921981578304907,
+    #     "num_blocks_1": 2,
+    #     "num_blocks_2": 4,
+    #     "out_channels": 7
+    # }
 
-    run = wandb.init(project=args.project_name, settings=wandb.Settings(_service_wait=300))
+    toolbox.SetSeeds(42)
+    
+    wandb.init(project=args.project_name)
     script_path = os.path.abspath(__file__)
     script_dir = os.path.dirname(script_path)
-    wandb.save(os.path.join(script_dir, '*'), base_path=script_dir) 
+    wandb.save(os.path.join(script_dir, '*'))
     
-    #Set seeds for reproducability
-    toolbox.SetSeeds(42)
+    data_dir, num_classes, _ = toolbox.setup(args)
+    device = torch.device("cuda:" + args.GPU)
 
-    data_dir, num_classes, device = toolbox.setup(args)
+    model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=None).to(device)
 
-
-    config = {
-        'DFLoss_delta': 0.06379802231720144,
-        'beta1': 0.9,
-        'beta2': 0.943630021404608,
-        'dim_1': 116,
-        'dim_2': 106,
-        'dim_3': 84, #Hard coded as 84, not 83, for now as this number needs to be divisible by number of attention heads
-        'input_size': 240, #Hard coded as 240, not 233, for now this number needs to match the output size of the decoder
-        'kernel_1': 3,
-        'kernel_2': 5,
-        'kernel_3': 13,
-        'learning_rate': 0.0001,
-        'num_blocks_1': 4,
-        'num_blocks_2': 1,
-        'out_channels': int(num_classes*1.396007582340178),
-        'num_heads': 3,
-        'num_decoder_layers': 4,
-        'batch_size': args.batch_size
-    }
-          
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=args.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
-
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=True) for x in ['train', 'val']}
+    input_size = torch.Size([3, wandb.config.input_size, wandb.config.input_size])
+    inputs = torch.randn(1, *input_size).to(device)
     
-    criterion = nn.MSELoss(reduction='sum')
+    with torch.no_grad():
+        model(inputs)
     
-    model = toolbox.build_model(num_classes=None, arch=args.arch, config=config)
+    GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
+    # del model
+    wandb.log({'GFLOPs': GFLOPs, 'n_params': n_params})
+    print()
+    print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
     
-        
-    if torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model)
-        
-    model = model.to(device)
-    torch.set_float32_matmul_precision('high')
-    model = torch.compile(model)
+    # model = toolbox.build_model(num_classes=num_classes, arch=args.arch, config=None).to(device)
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(wandb.config.beta1, wandb.config.beta2))
+
+    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=wandb.config.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+
+    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
     
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
+    criterion = nn.CrossEntropyLoss()
 
-    distance_df = pd.read_csv(os.path.join(args.root, 'dat/FAIGB/PhytNet_TaxonomyMatrix.csv'), header=0, index_col=0)  
+    trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, batch_size=args.batch_size, num_classes=num_classes)
 
-    _, best_loss, _, run_name, _, _ = train_model(args=args, 
-                                                model=model, 
-                                                optimizer=optimizer, 
-                                                device=device, 
-                                                dataloaders_dict=dataloaders_dict, 
-                                                criterion=criterion, 
-                                                patience=args.patience, 
-                                                batch_size=args.batch_size,
-                                                num_classes=config['out_channels'],
-                                                distances = distance_df)
-    config['Run_name'] = run_name
+    
+    return trained_model, best_f1, best_f1_loss, best_train_f1
 
 
-    return None, best_loss, None, config
 
-os.environ["WANDB__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:
     with open(args.sweep_config) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)

@@ -20,15 +20,12 @@ import umap
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
 import pandas as pd
-from io import StringIO
 from Bio.Phylo.TreeConstruction import DistanceTreeConstructor, _DistanceMatrix
 from Bio import Phylo
 from collections import defaultdict
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, distances):      
-    # @torch.compile
-    # def run_model(x):
-    #     return model(x)
+
         
     # Check environmental variable WANDB_MODE
     run_name = None
@@ -53,10 +50,10 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     
-    my_metrics = toolbox.Metrics(metric_names= ['Genetic_loss', 'MSE_loss'], num_classes=num_classes)
+    my_metrics = toolbox.Metrics(metric_names= ['Genetic_loss', 'SR_loss', 'Euclid_loss'], num_classes=num_classes)
 
     constructor = DistanceTreeConstructor()
-    reducer = umap.UMAP(n_components=2)
+    reducer = umap.UMAP(n_components=3)
     if os.path.exists(os.path.join(args.root, 'umap_data.csv')):
         os.remove(os.path.join(args.root, 'umap_data.csv'))
     
@@ -75,6 +72,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     epoch = 0
     # Run untill validation loss has not improved for n epochs=patience or max_epochs is reached
     while patience > 0 and epoch < args.max_epochs:
+        
         print('\nEpoch {}'.format(epoch))
         print('-' * 10) 
         step  = 0
@@ -104,7 +102,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             print(phase)
             all_encoded = []
             all_labels = []
-            mean_loss = 0.00
+            total_loss = 0.00
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
@@ -112,7 +110,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     rows, cols = labels.numpy().tolist(), labels.numpy().tolist()
                     labels_dist = distances.iloc[rows, cols]
                     label_relationship_matrix = torch.tensor(labels_dist.values, dtype=torch.float).to(device)
-
+             
                     #Load images and lables from current batch onto GPU(s)
                     SRinputs = inputs.to(device)
                     inputs = F.interpolate(inputs, size=(356, 356), mode='bilinear', align_corners=True)
@@ -124,25 +122,25 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         #Forward pass   
                         encoded, decoded, predicted_distances = model(inputs)
                         
-                        #Calculate losses and gradients then normalise the gradients
-                        # contrastive_loss = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)/10    # weight to put on sensible scale
-                        MSE_loss = criterion(decoded, SRinputs)/100000                                                      # weight to put on sensible scale
-                        
-                        # predicted_distances = torch.cdist(encoded, encoded, p=2)
+                        euclid_distances = torch.cdist(encoded, encoded, p=2)
 
-                        # exit()
-                        genetic_loss = criterion(predicted_distances, label_relationship_matrix)
-                        
+                        #Calculate losses and gradients then normalise the gradients
+                        # contrastive_loss = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)/100    # weight to put on sensible scale
+                        SR_loss = criterion(decoded, SRinputs)/100000                                                      # weight to put on sensible scale    
+                        genetic_loss = criterion(predicted_distances, label_relationship_matrix) / 10000
+                        # euclid_loss = criterion(euclid_distances, label_relationship_matrix) / 10000
+                        euclid_loss, _ = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)
+                        euclid_loss = euclid_loss/1000    # weight to put on sensible scale
      
                         l1_norm = torch.tensor(sum(p.abs().sum() for p in model.parameters() if p.dim() > 1).item(), requires_grad=True)
-                        mean_loss += ((genetic_loss + MSE_loss + l1_norm)/3).detach()
+                        total_loss += (genetic_loss + SR_loss + euclid_loss).detach()
                                                
+
                         if phase == 'train':
                             optimizer.zero_grad()
-                            total_loss = genetic_loss + MSE_loss + l1_norm * args.l1_lambda
-                            # total_loss = genetic_loss + l1_norm * args.l1_lambda
+                            quad_loss = genetic_loss + SR_loss + euclid_loss + l1_norm * args.l1_lambda
 
-                            total_loss.backward(retain_graph=True)
+                            quad_loss.backward(retain_graph=True)
                             optimizer.step()
 
                         if phase == 'val':
@@ -155,32 +153,32 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                                 PATH = os.path.join(args.root, "reconstructions_" + args.model_name)
                                 os.makedirs(PATH, exist_ok=True)
                                 vutils.save_image(grid, os.path.join(PATH, "epoch_" + str(epoch) + ".png"))     
-                                
-                        names = labels_dist.columns.tolist()
-                        
-                        name_count = defaultdict(int)
-                        unique_names = []
-                        for name in names:
-                            if name_count[name]:
-                                unique_name = f"{name}_{name_count[name]}"
-                            else:
-                                unique_name = name
-                            name_count[name] += 1
-                            unique_names.append(unique_name)
-                            
-                        
-                        lower_predicted_distances = lower_triangle(predicted_distances.cpu().detach().numpy())
-                        lower_label_relationship_matrix = lower_triangle(label_relationship_matrix.cpu().detach().numpy())
+                                ################################################################################################
+                                names = labels_dist.columns.tolist()
 
-                        tree_pred = constructor.upgma(_DistanceMatrix(names=unique_names, matrix=lower_predicted_distances))            
-                        tree_true = constructor.upgma(_DistanceMatrix(names=unique_names, matrix=lower_label_relationship_matrix))                     
-                        PATH = os.path.join(args.root, "trees_" + args.model_name)
-                        os.makedirs(PATH, exist_ok=True)
-                        Phylo.write(tree_pred, os.path.join(args.root, args.model_name, str(step) + "tree_pred.newick"), "newick") 
-                        Phylo.write(tree_true, os.path.join(args.root, args.model_name, str(step) + "tree_true.newick"), "newick")                    
+                                name_count = defaultdict(int)
+                                unique_names = []
+                                for name in names:
+                                    if name_count[name]:
+                                        unique_name = f"{name}_{name_count[name]}"
+                                    else:
+                                        unique_name = name
+                                    name_count[name] += 1
+                                    unique_names.append(unique_name)
+
+
+                                lower_predicted_distances = toolbox.lower_triangle(predicted_distances.cpu().detach().numpy())
+                                lower_label_relationship_matrix = toolbox.lower_triangle(label_relationship_matrix.cpu().detach().numpy())
+
+                                tree_pred = constructor.upgma(_DistanceMatrix(names=unique_names, matrix=lower_predicted_distances))            
+                                tree_true = constructor.upgma(_DistanceMatrix(names=unique_names, matrix=lower_label_relationship_matrix))                     
+                                PATH = os.path.join(args.root, "trees_" + args.model_name)
+                                os.makedirs(PATH, exist_ok=True)
+                                Phylo.write(tree_pred, os.path.join(PATH, str(epoch) + "tree_pred.newick"), "newick") 
+                                Phylo.write(tree_true, os.path.join(PATH, str(epoch) + "tree_true.newick"), "newick")                   
                            
                         #Update metrics
-                        my_metrics.update(Genetic_loss=genetic_loss, MSE_loss=MSE_loss, labels=labels)
+                        my_metrics.update(Genetic_loss=genetic_loss, SR_loss=SR_loss, Euclid_loss=euclid_loss, labels=labels)
                     
   
                     bar.next()  
@@ -191,51 +189,53 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
             if phase == 'train':
                 train_metrics = {'Genetic_loss': results['Genetic_loss'], 
-                                    'MSE_loss': results['MSE_loss']                                    
+                                    'SR_loss': results['SR_loss'], 'Euclid_loss': results['Euclid_loss']                                    
                                     }
             
-            print('{} Contrastive loss: {:.4f} SR loss: {:.4f} '.format(phase, results['Genetic_loss'], results['MSE_loss']))
+            print('{} Genetic loss: {:.4f} SR loss: {:.4f} Euclid loss: {:.4f} '.format(phase, results['Genetic_loss'], results['SR_loss'], results['Euclid_loss']))
+            
 
            # Save model and update best weights only if recall has improved
-            if phase == 'val' and mean_loss < best_loss:
-                best_loss = mean_loss
-                val_loss_history.append(mean_loss)
+            if phase == 'val' and total_loss < best_loss:
+                best_loss = total_loss
+                val_loss_history.append(total_loss)
 
                 best_train_metrics = train_metrics
                 best_val_metrics = {'Genetic_loss': results['Genetic_loss'], 
-                                    'MSE_loss': results['MSE_loss']                                    
+                                    'SR_loss': results['SR_loss'], 'Euclid_loss': results['Euclid_loss']                                    
                                     }
     
-                PATH = os.path.join(args.root, 'models', 'FAIGB_SAE_' + run_name)
+                PATH = os.path.join(args.root, 'models', args.model_name + '_epoch_' + str(epoch))
   
                 os.makedirs(os.path.join(args.root, 'models'), exist_ok=True)
-                if args.save == 'model':
-                    print('Saving model to: ' + PATH + '.pth')
-                    try:
-                        torch.save(model.module, PATH + '.pth')
-                    except:
-                         torch.save(model, PATH + '.pth')
-                elif args.save == 'weights':
+                # if args.save == 'model':
+                #     print('Saving model to: ' + PATH + '.pth')
+                #     try:
+                #         torch.save(model.module, PATH + '.pth')
+                #     except:
+                #          torch.save(model, PATH + '.pth')
+                # elif args.save == 'weights':
+                if args.save:
                     print('Saving model weights to: ' + PATH + '_weights.pth')
                     try:
                         torch.save(model.module.state_dict(), PATH + '.pth')
                     except:
                         torch.save(model.state_dict(), PATH + '.pth')
-                elif args.save == 'both':
-                    if args.arch != 'parallel':
-                        print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
-                        try:
-                            torch.save(model.module, PATH + '.pth') 
-                            torch.save(model.module.state_dict(), PATH + '_weights.pth')
-                        except:
-                            torch.save(model, PATH + '.pth')
-                            torch.save(model.state_dict(), PATH + '_weights.pth')
+                # elif args.save == 'both':
+                #     if args.arch != 'parallel':
+                #         print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
+                #         try:
+                #             torch.save(model.module, PATH + '.pth') 
+                #             torch.save(model.module.state_dict(), PATH + '_weights.pth')
+                #         except:
+                #             torch.save(model, PATH + '.pth')
+                #             torch.save(model.state_dict(), PATH + '_weights.pth')
                      
             
             if phase == 'train':
-                wandb.log({"Train_Genetic_loss": results['Genetic_loss'], "Train_MSE_loss": results['MSE_loss']})  
+                wandb.log({"Train_Genetic_loss": results['Genetic_loss'], "Train_SR_loss": results['SR_loss'], "Train_Euclid_loss": results['Euclid_loss']})  
             else:
-                wandb.log({"Val_Genetic_loss": results['Genetic_loss'], "Val_MSE_loss": results['MSE_loss']})
+                wandb.log({"Val_Genetic_loss": results['Genetic_loss'], "Val_SR_loss": results['SR_loss'], "Val_Euclid_loss": results['Euclid_loss']})
                                 
                 all_encoded_np = np.concatenate(all_encoded, axis=0)
                 all_labels_np = np.concatenate(all_labels, axis=0)
@@ -253,7 +253,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 df = pd.DataFrame(csv_data, columns=["UMAP_X", "UMAP_Y", "Label", "Epoch"])
 
                 # Save or append the DataFrame to a CSV file
-                csv_filename = os.path.join(args.root, 'umap_data.csv')
+                csv_filename = os.path.join(args.root, args.model_name + '_umap_data.csv')
                 
                 with open(csv_filename, 'a') as f:
                     # If the file does not exist, write the header, otherwise append without the header
@@ -279,13 +279,3 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Loss of saved model: {:4f}'.format(best_loss))
     return None, best_loss, None, run_name, best_train_metrics, best_val_metrics
-
-
-def lower_triangle(matrix):
-    lower = []
-    for i in range(len(matrix)):
-        row = []
-        for j in range(i + 1):
-            row.append(matrix[i][j])
-        lower.append(row)
-    return lower

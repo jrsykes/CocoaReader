@@ -11,12 +11,9 @@ import timm
 from thop import profile
 from sklearn.metrics import f1_score
 from itertools import combinations
-# import torch.nn.functional as F
+import torch.nn.functional as F
 from torch.utils.data import Sampler
-import pandas as pd
-from ete3 import Tree
-from Bio import Phylo
-from io import StringIO
+
 
 def build_model(num_classes, arch, config):
     print()
@@ -225,7 +222,8 @@ class Metrics:
             'loss': 0.0,
             'cont_loss': 0.0,
             'Genetic_loss': 0.0,
-            'MSE_loss': 0.0,
+            'SR_loss': 0.0,
+            'Euclid_loss': 0.0,
             'corrects': 0,
             'precision': 0.0,
             'recall': 0.0,
@@ -235,7 +233,7 @@ class Metrics:
         self.all_preds = []
         self.all_labels = []
 
-    def update(self, loss=None, cont_loss=None, Genetic_loss=None, MSE_loss=None, preds=None, labels=None, stats_out=None):
+    def update(self, loss=None, cont_loss=None, Genetic_loss=None, SR_loss=None, Euclid_loss=None, preds=None, labels=None, stats_out=None):
         inputs_size = labels.size(0)
         if 'loss' in self.metric_names:
             self.metrics['loss'] += loss.item() * inputs_size
@@ -244,9 +242,11 @@ class Metrics:
             
         if 'Genetic_loss' in self.metric_names:
             self.metrics['Genetic_loss'] += Genetic_loss.item() * inputs_size
+        if 'Euclid_loss' in self.metric_names:
+            self.metrics['Euclid_loss'] += Euclid_loss.item() * inputs_size
             
-        if 'MSE_loss' in self.metric_names:
-            self.metrics['MSE_loss'] += MSE_loss.item() * inputs_size
+        if 'SR_loss' in self.metric_names:
+            self.metrics['SR_loss'] += SR_loss.item() * inputs_size
         if 'corrects' in self.metric_names:
             self.metrics['corrects'] += torch.sum(preds == labels.data)
         if 'precision' in self.metric_names:
@@ -270,8 +270,10 @@ class Metrics:
             results['cont_loss'] = self.metrics['cont_loss'] / self.n
         if 'Genetic_loss' in self.metric_names:
             results['Genetic_loss'] = self.metrics['Genetic_loss'] / self.n
-        if 'MSE_loss' in self.metric_names:
-            results['MSE_loss'] = self.metrics['MSE_loss'] / self.n
+        if 'Euclid_loss' in self.metric_names:
+            results['Euclid_loss'] = self.metrics['Euclid_loss'] / self.n
+        if 'SR_loss' in self.metric_names:
+            results['SR_loss'] = self.metrics['SR_loss'] / self.n
         if 'corrects' in self.metric_names:
             results['acc'] = self.metrics['corrects'].double() / self.n
         if 'precision' in self.metric_names:
@@ -295,28 +297,110 @@ def count_flops(model, device, input_size):
     return GFLOPs, params
 
 
+# def generate_random_mask(input_size, mask_ratio=0.6, device='cuda'):
+#     """
+#     Generates a random binary mask with multiple masked patches.
+#     :param input_size: tuple, the size of the input image (C, H, W).
+#     :param mask_size: tuple, the size of the masked region (h, w).
+#     :param mask_ratio: float, the proportion of the image to be masked.
+#     :param device: str, the device to create the mask on.
+#     :return: torch.Tensor, a binary mask of size (1, C, H, W).
+#     """
+#     _, _, H, W = input_size
+#     h, w = H // 8, W // 8  # Size of the patches
+    
+#     # Calculate the number of patches to mask
+#     total_patches = (H * W) / (h * w)
+#     num_masked_patches = int(total_patches * mask_ratio)
+    
+#     # Creating the mask
+#     mask = torch.ones(*input_size, device=device)
+    
+#     for _ in range(num_masked_patches):
+#         # Starting coordinates for the mask
+#         top = torch.randint(0, H - h + 1, (1,)).item()
+#         left = torch.randint(0, W - w + 1, (1,)).item()
+        
+#         mask[:, :, top:top + h, left:left + w] = 0
+    
+#     return mask
+
 
 
 
 def contrastive_loss_with_dynamic_margin(encoded, distances, labels):
+    
     class_list = distances.index.tolist()
     encoded_images_lst = [(enc, class_list[label]) for enc, label in zip(encoded, labels)]
 
     pairs = list(combinations(encoded_images_lst, 2))
 
-    loss = 0.0
+    loss, loss2 = 0.0, 0.0
     alpha = 7 #Weigths the relative importance of genetic distance vs euclidian distance. Higher = euclid, lower = genetic
     beta = distances.values.max() #A constant forcing all values to be positive
-
+    
     for (encoded1, class1), (encoded2, class2) in pairs:
         margin = distances.loc[class1][class2]
         euclidean_distance = torch.norm(encoded1 - encoded2)
+           
+        loss += (euclidean_distance*alpha-margin)+beta
+        loss2 += euclidean_distance*(1-margin/beta)
+  
+    return loss, loss2
 
-        loss += (euclidean_distance*alpha-margin)+beta 
-
-    return loss
 
 
+# def compute_combined_gradients(model, optimizer, losses):
+#     """
+#     Compute combined gradients for a list of losses.
+
+#     Parameters:
+#     - model: The model for which gradients are computed.
+#     - optimizer: The optimizer used to zero out gradients.
+#     - losses: A list of losses.
+
+#     Returns:
+#     - combined_grads: A list of combined gradients for each model parameter.
+#     """
+    
+#     all_grads = []
+
+#     for loss in losses:
+#         # Zero the gradients
+#         optimizer.zero_grad()
+
+#         # Compute gradients for the current loss
+#         loss.backward(retain_graph=True)
+#         current_grads = []
+#         for param in model.parameters():
+#             if param.grad is not None:
+#                 current_grads.append(param.grad.data.clone())
+#             else:
+#                 current_grads.append(None)
+#         all_grads.append(current_grads)
+
+#     # Normalize the gradients for each loss
+#     normalized_all_grads = []
+#     for grads in all_grads:
+#         norm = torch.sqrt(sum(torch.sum((g ** 2)) for g in grads if g is not None) + torch.tensor(0.0))
+#         normalized_grads = [g / norm if g is not None else None for g in grads]
+#         normalized_all_grads.append(normalized_grads)
+
+#     # Combine the normalized gradients
+#     num_losses = len(losses)
+#     combined_grads = []
+#     for grads in zip(*normalized_all_grads):
+#         valid_grads = [g for g in grads if g is not None]
+#         combined_grad = sum(valid_grads) / num_losses
+#         combined_grads.append(combined_grad)
+
+#     # Manually update the model parameters using the combined gradients
+#     for param, grad in zip(model.parameters(), combined_grads):
+#         if grad is not None and param.grad is not None:
+#             param.grad.data.copy_(grad)
+    
+#     # Update the model's weights using the optimizer
+#     optimizer.step()
 
 
 class NineImageSampler(Sampler):
@@ -329,80 +413,11 @@ class NineImageSampler(Sampler):
     def __len__(self):
         return len(self.indices)
 
-class Node:
-    def __init__(self, name):
-        self.name = name
-        self.children = []
-
-    def get_or_create_child(self, name):
-        for child in self.children:
-            if child.name == name:
-                return child
-        new_child = Node(name)
-        self.children.append(new_child)
-        return new_child
-
-    def to_ete(self):
-        t = Tree()
-        t.name = self.name
-        for child in self.children:
-            t.add_child(child.to_ete())
-        return t
-
-def generate_newick(data):
-    root = Node('Root')
-
-    # Traverse the DataFrame to build the tree structure
-    for _, row in data.iterrows():
-        current = root
-        for col in data.columns[1:-1]:
-            taxon = row[col]
-            if pd.notna(taxon):
-                current = current.get_or_create_child(taxon)
-
-
-    # Convert to ete3 tree
-    ete_tree = root.to_ete()
-
-    newick_str = ete_tree.write(format=9)  # format=1 includes branch lengths
-    
-    return newick_str
-
-
-
-
-def traverse_and_tokenize(tree):
-    tokens = []
-
-    def preorder(node):
-        if node.is_terminal():  # It's a leaf node
-            tokens.append(node.name)
-        else:
-            tokens.append('(')
-            for idx, child in enumerate(node.clades):
-                preorder(child)
-                if idx < len(node.clades) - 1:
-                    tokens.append(',')
-            tokens.append(')')
-
-    preorder(tree.root)
-    return tokens
-
-
-def generate_label_relationship_matrix(tree):
-    # Get all terminal (leaf) node names
-    terminals = tree.get_terminals()
-    terminal_names = [terminal.name for terminal in terminals]
-    
-    # Initialize an empty matrix
-    num_terminals = len(terminal_names)
-    label_relationship_matrix = np.zeros((num_terminals, num_terminals))
-    
-    # Fill the matrix with distances
-    for i, terminal_i in enumerate(terminals):
-        for j, terminal_j in enumerate(terminals):
-            # Calculate the distance between each pair of terminals
-            distance = tree.distance(terminal_i, terminal_j)
-            label_relationship_matrix[i, j] = distance
-    
-    return label_relationship_matrix
+def lower_triangle(matrix):
+    lower = []
+    for i in range(len(matrix)):
+        row = []
+        for j in range(i + 1):
+            row.append(matrix[i][j])
+        lower.append(row)
+    return lower
