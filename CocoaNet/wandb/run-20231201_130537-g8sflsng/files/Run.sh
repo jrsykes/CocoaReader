@@ -1,0 +1,1 @@
+/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Run.sh

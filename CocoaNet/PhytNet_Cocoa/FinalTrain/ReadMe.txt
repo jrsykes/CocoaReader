@@ -1,6 +1,6 @@
-Training the final models for the infrared - RGB model comparison.
+Sweep to find the best architecture values for DisNet-pico for infrared and RGB photos. One model train for each dataset.
+DisNet-pico was trained with the colour grading layer for the infrared photos. 
+Trained on GViking and CSGPU5
+Two datasets each of about 240 image sof black pod rot, frosty pod rot, healthy and witches broom disease infected cacoa.
 
-Best architeture metrics for IR model: https://wandb.ai/frankslab/DisNet-Pico-IR/runs/irtou29x?workspace=user-jrsykes
-n.b. these were the second best results from the sweep. The best results could not be replicated for unknown reasons
-
-Best architeture metrics for RGB model: https://wandb.ai/frankslab/DisNet-Pico-IR/runs/iu2bnjzk?workspace=user-jrsykes
+Sweep results found here: https://wandb.ai/frankslab/DisNet-Pico-IR/runs/3yi55fiy/files/config.yaml

@@ -49,9 +49,9 @@ class Bottleneck(nn.Module):
         return out
 
 
-class DisNetV1_2(nn.Module):
+class PhytNetV0(nn.Module):
     def __init__(self, config):
-        super(DisNetV1_2, self).__init__()
+        super(PhytNetV0, self).__init__()
         self.config_dict = config
         
         out_channels = self.config_dict['out_channels']
@@ -84,14 +84,13 @@ class DisNetV1_2(nn.Module):
         x = self.maxpool(x)
         
         x = self.layer1(x)
-        x = self.layer2(x)
-        
+        x = self.layer2(x)       
+
         w = self.global_avg_pool(x)
-        w = torch.flatten(w, 1)
+        w = torch.flatten(w, 1)      
+        y = self.fc(w)
         
-        # x = self.fc(x)
-        
-        return x, w
+        return x, w, y
 
 
 
@@ -140,6 +139,27 @@ class TransformerDecoderBlock(nn.Module):
         x = self.norm2(x)
         return x
 
+class PolynomialLayer2D(nn.Module):
+    def __init__(self, degree):
+        super(PolynomialLayer2D, self).__init__()
+        # Initialize coefficients for the polynomial of the given degree
+        self.coefficients = nn.Parameter(torch.randn(degree + 1))
+
+    def forward(self, x):
+        # Ensure input x is a 2D tensor
+        if x.ndim != 2:
+            raise ValueError("Input must be a 2D tensor")
+
+        # Create a tensor of powers of x
+        # [x^0, x^1, x^2, ..., x^n]
+        powers = torch.stack([x ** i for i in range(len(self.coefficients))], dim=-1)
+        
+        # Apply the polynomial transformation
+        # This multiplies each coefficient with the corresponding power of x
+        # and sums across the last dimension to get the final output
+        y = torch.sum(self.coefficients * powers, dim=-1)
+        return y
+    
 class TransformerDecoder(nn.Module):
     def __init__(self, feature_dim, num_heads, num_layers, batch_size, reduced_dim=20):
         super(TransformerDecoder, self).__init__()
@@ -176,12 +196,15 @@ class TransformerDecoder(nn.Module):
         for decoder_block in self.decoder_blocks:
             x = decoder_block(x, x)  # Pass through each transformer block
         
-        y = x.view(batch_size, self.feature_dim, -1)                    # [batch_size, feature_dim, feature_length]
-        y = self.downsample1(y)                                              # Project y down to a smaller space. [batch_size, 2025, reduced_dim]
-        y = y.view(batch_size, -1)                                      # [batch_size, 2025 * reduced_dim]
-        y, _ = self.self_attn(y, y, y)                                  # Self-attention
-        y = self.norm(y)                                                # Layer normalization  
-        distance_matrix = self.downsample2(y)                              # project to [batch_size, batch_size]
+        # y = x.view(batch_size, self.feature_dim, -1)                    # [batch_size, feature_dim, feature_length]
+        # y = self.downsample1(y)                                         # Project y down to a smaller space. [batch_size, 2025, reduced_dim]
+        # y = y.view(batch_size, -1)                                      # [batch_size, 2025 * reduced_dim]
+        # y, _ = self.self_attn(y, y, y)                                  # Self-attention
+        # y = self.norm(y) 
+        # distance_matrix = self.downsample2(y)                              # project to [batch_size, batch_size]
+        
+        # y = x.view(batch_size, self.feature_dim, -1)                    # [batch_size, feature_dim, feature_length]
+        
         
         # Upsampling steps
         x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
@@ -189,9 +212,10 @@ class TransformerDecoder(nn.Module):
         x = self.upsample3(x)
         x = self.final_conv(x)
       
-        return x, distance_matrix
+        return x#, G_out
 
 
+    
 ##################################################
 
 
@@ -200,7 +224,7 @@ class PhytNet_SRAutoencoder(nn.Module):
         super(PhytNet_SRAutoencoder, self).__init__()
         
         # Initialize the encoder (assuming DisNetV1_2 is defined elsewhere)
-        self.encoder = DisNetV1_2(config)
+        self.encoder = PhytNetV0(config)
         
         # Extract necessary parameters from config or define them manually
         feature_dim = config['dim_3']
@@ -211,10 +235,17 @@ class PhytNet_SRAutoencoder(nn.Module):
         # Initialize the transformer decoder (assuming TransformerDecoder is defined elsewhere)
         self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, batch_size)   
 
+        self.poly_layer = PolynomialLayer2D(1)
+ 
     def forward(self, x):
-        encoded, encode_pooled  = self.encoder.forward(x)  # Get feature map before the fc layer
         
-        decoded, dist_matrix = self.decoder(encoded)
+        encoded, encode_pooled, _  = self.encoder.forward(x)  # Get feature map before the fc layer
+
+        # euclid_distances = torch.cdist(encode_pooled, encode_pooled, p=2)
         
-        return encode_pooled, decoded, dist_matrix 
+        # poly_euclid_distances = self.poly_layer(euclid_distances)
+
+        SRdecoded = self.decoder(encoded)
+        
+        return encode_pooled, SRdecoded
     

@@ -6,13 +6,14 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import DisNetV1_2, PhytNet_SRAutoencoder
+from ArchitectureZoo import PhytNetV0, PhytNet_SRAutoencoder
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
 from itertools import combinations
 import torch.nn.functional as F
 from torch.utils.data import Sampler
+import networkx as nx
 
 
 def build_model(num_classes, arch, config):
@@ -25,7 +26,7 @@ def build_model(num_classes, arch, config):
         in_feat = model_ft.classifier[2].in_features
         model_ft.classifier[2] = torch.nn.Linear(in_feat, num_classes)
     elif arch == 'resnet18':
-        model_ft = models.resnet18(weights=None)
+        model_ft = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
         in_feat = model_ft.fc.in_features
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'resnet50':
@@ -34,10 +35,8 @@ def build_model(num_classes, arch, config):
         model_ft.fc = nn.Linear(in_feat, num_classes)
     elif arch == 'PhytNet_SRAutoencoder':
         model_ft = PhytNet_SRAutoencoder(config=config)
-    elif arch == 'DisNet_SRAutoencoder':
-        model_ft = DisNet_SRAutoencoder(config=config)
-    elif arch == 'DisNetV1_2':
-        model_ft = DisNetV1_2(config=config)
+    elif arch == 'PhytNetV0':
+        model_ft = PhytNetV0(config=config)
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features
@@ -214,6 +213,7 @@ class Metrics:
         if metric_names == "All":
             metric_names = ['loss', 'corrects', 'precision', 'recall', 'f1']
         self.metric_names = metric_names
+        print("\nMetrics to be calculated: ", self.metric_names)
         self.num_classes = num_classes
         self.reset()
 
@@ -224,6 +224,9 @@ class Metrics:
             'Genetic_loss': 0.0,
             'SR_loss': 0.0,
             'Euclid_loss': 0.0,
+            'RF_loss': 0.0,
+            'ESS': 0.0,
+            'L1': 0.0,
             'corrects': 0,
             'precision': 0.0,
             'recall': 0.0,
@@ -233,20 +236,27 @@ class Metrics:
         self.all_preds = []
         self.all_labels = []
 
-    def update(self, loss=None, cont_loss=None, Genetic_loss=None, SR_loss=None, Euclid_loss=None, preds=None, labels=None, stats_out=None):
+    def update(self, loss=None, cont_loss=None, Genetic_loss=None, SR_loss=None, 
+               Euclid_loss=None, RF_loss=None, ESS=None, L1=None,
+               preds=None, labels=None, stats_out=None):
         inputs_size = labels.size(0)
         if 'loss' in self.metric_names:
             self.metrics['loss'] += loss.item() * inputs_size
         if 'cont_loss' in self.metric_names:
             self.metrics['cont_loss'] += cont_loss.item() * inputs_size
-            
         if 'Genetic_loss' in self.metric_names:
             self.metrics['Genetic_loss'] += Genetic_loss.item() * inputs_size
         if 'Euclid_loss' in self.metric_names:
             self.metrics['Euclid_loss'] += Euclid_loss.item() * inputs_size
-            
         if 'SR_loss' in self.metric_names:
             self.metrics['SR_loss'] += SR_loss.item() * inputs_size
+        if 'RF_loss' in self.metric_names:
+            self.metrics['RF_loss'] += RF_loss.item() * inputs_size
+        if 'ESS' in self.metric_names:
+            self.metrics['ESS'] += ESS.item() * inputs_size  
+        if 'L1' in self.metric_names:
+            self.metrics['L1'] += L1.item() * inputs_size  
+            
         if 'corrects' in self.metric_names:
             self.metrics['corrects'] += torch.sum(preds == labels.data)
         if 'precision' in self.metric_names:
@@ -274,6 +284,13 @@ class Metrics:
             results['Euclid_loss'] = self.metrics['Euclid_loss'] / self.n
         if 'SR_loss' in self.metric_names:
             results['SR_loss'] = self.metrics['SR_loss'] / self.n
+        if 'RF_loss' in self.metric_names:
+            results['RF_loss'] = self.metrics['RF_loss'] / self.n
+        if 'ESS' in self.metric_names:
+            results['ESS'] = self.metrics['ESS'] / self.n
+        if 'L1' in self.metric_names:
+            results['L1'] = self.metrics['L1'] / self.n
+            
         if 'corrects' in self.metric_names:
             results['acc'] = self.metrics['corrects'].double() / self.n
         if 'precision' in self.metric_names:
@@ -328,79 +345,31 @@ def count_flops(model, device, input_size):
 
 
 
-def contrastive_loss_with_dynamic_margin(encoded, distances, labels):
+# def contrastive_loss_with_dynamic_margin(encoded, distances, labels):
     
-    class_list = distances.index.tolist()
-    encoded_images_lst = [(enc, class_list[label]) for enc, label in zip(encoded, labels)]
+#     class_list = distances.index.tolist()
+#     encoded_images_lst = [(enc, class_list[label]) for enc, label in zip(encoded, labels)]
 
-    pairs = list(combinations(encoded_images_lst, 2))
+#     pairs = list(combinations(encoded_images_lst, 2))
 
-    loss, loss2 = 0.0, 0.0
-    alpha = 7 #Weigths the relative importance of genetic distance vs euclidian distance. Higher = euclid, lower = genetic
-    beta = distances.values.max() #A constant forcing all values to be positive
+#     loss, loss2 = 0.0, 0.0
+#     # alpha = 10 #Weigths the relative importance of genetic distance vs euclidian distance. Higher = euclid, lower = genetic
+#     # beta = distances.values.max() #A constant forcing all values to be positive
+#     # beta = 40
     
-    for (encoded1, class1), (encoded2, class2) in pairs:
-        margin = distances.loc[class1][class2]
-        euclidean_distance = torch.norm(encoded1 - encoded2)
-           
-        loss += (euclidean_distance*alpha-margin)+beta
-        loss2 += euclidean_distance*(1-margin/beta)
+#     for (encoded1, class1), (encoded2, class2) in pairs:
+#         margin = distances.loc[class1][class2]
+#         euclidean_distance = torch.norm(encoded1 - encoded2)
+        
+        
+#         # loss += torch.MSELoss(reduction=None)(euclidean_distance, margin)
+#         loss += (euclidean_distance*alpha-margin)+beta
+#         # loss += (margin-euclidean_distance*alpha)+beta
+#         # loss = (margin+euclidean_distance*alpha)+beta
+#         # loss2 += torch.exp(euclidean_distance*(1-margin/beta))-1
   
-    return loss, loss2
+#     return loss/10000
 
-
-
-# def compute_combined_gradients(model, optimizer, losses):
-#     """
-#     Compute combined gradients for a list of losses.
-
-#     Parameters:
-#     - model: The model for which gradients are computed.
-#     - optimizer: The optimizer used to zero out gradients.
-#     - losses: A list of losses.
-
-#     Returns:
-#     - combined_grads: A list of combined gradients for each model parameter.
-#     """
-    
-#     all_grads = []
-
-#     for loss in losses:
-#         # Zero the gradients
-#         optimizer.zero_grad()
-
-#         # Compute gradients for the current loss
-#         loss.backward(retain_graph=True)
-#         current_grads = []
-#         for param in model.parameters():
-#             if param.grad is not None:
-#                 current_grads.append(param.grad.data.clone())
-#             else:
-#                 current_grads.append(None)
-#         all_grads.append(current_grads)
-
-#     # Normalize the gradients for each loss
-#     normalized_all_grads = []
-#     for grads in all_grads:
-#         norm = torch.sqrt(sum(torch.sum((g ** 2)) for g in grads if g is not None) + torch.tensor(0.0))
-#         normalized_grads = [g / norm if g is not None else None for g in grads]
-#         normalized_all_grads.append(normalized_grads)
-
-#     # Combine the normalized gradients
-#     num_losses = len(losses)
-#     combined_grads = []
-#     for grads in zip(*normalized_all_grads):
-#         valid_grads = [g for g in grads if g is not None]
-#         combined_grad = sum(valid_grads) / num_losses
-#         combined_grads.append(combined_grad)
-
-#     # Manually update the model parameters using the combined gradients
-#     for param, grad in zip(model.parameters(), combined_grads):
-#         if grad is not None and param.grad is not None:
-#             param.grad.data.copy_(grad)
-    
-#     # Update the model's weights using the optimizer
-#     optimizer.step()
 
 
 class NineImageSampler(Sampler):
@@ -421,3 +390,38 @@ def lower_triangle(matrix):
             row.append(matrix[i][j])
         lower.append(row)
     return lower
+
+def create_phylogenetic_dag(data):
+    # Create a directed graph
+    G = nx.DiGraph()
+
+    # Add edges based on the hierarchy
+    # clade1 -> clade2 -> clade3 -> order -> family -> subfamily -> genus
+    for _, row in data.iterrows():
+        G.add_edge(row['clade0'], row['clade1'])
+        G.add_edge(row['clade1'], row['clade2'])
+        G.add_edge(row['clade2'], row['clade3'])
+        G.add_edge(row['clade3'], row['order'])
+        G.add_edge(row['order'], row['family'])
+        G.add_edge(row['family'], row['subfamily'])
+        G.add_edge(row['subfamily'], row['genus'])
+        G.add_edge(row['genus'], row['label'])
+
+    # Check if the graph has cycles and convert to DAG if necessary
+    while True:
+        try:
+            # Finds a cycle and returns an iterator that can be used to remove the edge.
+            cycle = nx.find_cycle(G, orientation='original')
+            # Remove the last edge in the cycle, which should break the cycle
+            G.remove_edge(cycle[-1][0], cycle[-1][1])
+        except nx.NetworkXNoCycle:
+            # If no cycle is found, break the loop
+            break
+    
+    for u, v in G.edges():
+        # Calculate path length
+        path_length = nx.shortest_path_length(G, source=u, target=v)
+        # Apply logarithmic transformation
+        G[u][v]['weight'] = np.log(1e-6 + path_length)
+        
+    return G

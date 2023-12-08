@@ -1,0 +1,32 @@
+Setting stuff up...
+##################################################
+Image input size:  620
+Image resize applied
+Initializing Datasets and Dataloaders...
+Building model...
+PhytNet_SRAutoencoder loaded
+##################################################
+Metrics to be calculated:  ['ESS', 'SR_loss', 'L1']
+Epoch 0
+----------
+Patience: 20/20
+train
+train SR_loss: 9.9955 ESS: 0.4300 L1_norm: 1.8131
+val
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:110: UserWarning: 'has_cuda' is deprecated, please use 'torch.backends.cuda.is_built()'
+  torch.has_cuda,
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:111: UserWarning: 'has_cudnn' is deprecated, please use 'torch.backends.cudnn.is_available()'
+  torch.has_cudnn,
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:117: UserWarning: 'has_mps' is deprecated, please use 'torch.backends.mps.is_built()'
+  torch.has_mps,
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:118: UserWarning: 'has_mkldnn' is deprecated, please use 'torch.backends.mkldnn.is_available()'
+  torch.has_mkldnn,
+val SR_loss: 3.5855 ESS: 0.4393 L1_norm: 1.8126
+Traceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py", line 180, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py", line 142, in train
+    _, best_loss, _, run_name, _, _ = train_model(args=args,
+  File "/users/jrs596/scripts/CocoaReader/utils/training_loop_Phylo_SR.py", line 185, in train_model
+    best_val_metrics = {'Genetic_loss': results['Genetic_loss'],
+KeyError: 'Genetic_loss'

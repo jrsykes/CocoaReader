@@ -85,8 +85,7 @@ print(args)
 
 # sys.path.append('~/scripts/CocoaReader/utils')
 import toolbox
-from training_loop_SAE import train_model
-
+from training_loop_PytNetMCMC import train_model
 
 def train():
 
@@ -139,8 +138,8 @@ def train():
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
 
-    distance_df = pd.read_csv(os.path.join(args.root, 'dat/FAIGB/PhytNet_TaxonomyMatrix.csv'), header=0, index_col=0)  
-
+    distance_df = pd.read_csv(os.path.join(args.root, 'dat/FAIGB/PhytNet_TaxonomyMatrix.csv'), header=0, index_col=0)
+    
     _, best_loss, _, run_name, _, _ = train_model(args=args, 
                                                 model=model, 
                                                 optimizer=optimizer, 
@@ -151,6 +150,7 @@ def train():
                                                 batch_size=args.batch_size,
                                                 num_classes=config['out_channels'],
                                                 distances = distance_df)
+                                                
     config['Run_name'] = run_name
 
 

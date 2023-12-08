@@ -1,0 +1,63 @@
+Setting stuff up...
+##################################################
+Image input size:  620
+Image resize applied
+Initializing Datasets and Dataloaders...
+Building model...
+PhytNet_SRAutoencoder loaded
+##################################################
+Metrics to be calculated:  ['ESS', 'SR_loss', 'L1']
+Epoch 0
+----------
+Patience: 20/20
+train
+
+Learning... |                                | 2/663
+[?25hTraceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py", line 180, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py", line 142, in train
+    _, best_loss, _, run_name, _, _ = train_model(args=args,
+  File "/users/jrs596/scripts/CocoaReader/utils/training_loop_Phylo_SR.py", line 127, in train_model
+    encoded_pooled, SRdecoded = model(inputs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 328, in _fn
+    return fn(*args, **kwargs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/users/jrs596/scripts/CocoaReader/utils/ArchitectureZoo.py", line 240, in forward
+    def forward(self, x):
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 328, in _fn
+    return fn(*args, **kwargs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_dynamo/external_utils.py", line 17, in inner
+    return fn(*args, **kwargs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 3905, in forward
+    return compiled_fn(full_args)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1482, in g
+    return f(*args)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 2527, in runtime_wrapper
+    all_outs = call_func_with_args(
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1506, in call_func_with_args
+    out = normalize_as_list(f(args))
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1482, in g
+    return f(*args)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/autograd/function.py", line 539, in apply
+    return super().apply(*args, **kwargs)  # type: ignore[misc]
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 3010, in forward
+    fw_outs = call_func_with_args(
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1506, in call_func_with_args
+    out = normalize_as_list(f(args))
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_inductor/codecache.py", line 374, in __call__
+    return self.get_current_callable()(inputs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 628, in run
+    return model(new_inputs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_inductor/codecache.py", line 401, in _run_from_cache
+    return compiled_graph.compiled_artifact(inputs)
+  File "/tmp/torchinductor_jrs596/qh/cqhgj2vqucegd5r5l2silsegwcpsggtqodzbyti5tfyijfrv4dpf.py", line 3236, in call
+    buf293 = extern_kernels.convolution(buf292, buf4, stride=(2, 2), padding=(1, 1), dilation=(1, 1), transposed=True, output_padding=(1, 1), groups=1, bias=None)
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 5.59 GiB. GPU 0 has a total capacty of 79.11 GiB of which 3.01 GiB is free. Including non-PyTorch memory, this process has 76.09 GiB memory in use. Of the allocated memory 72.87 GiB is allocated by PyTorch, and 2.43 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF

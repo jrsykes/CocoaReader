@@ -1,0 +1,80 @@
+wandb: Currently logged in as: jrsykes (frankslab). Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.16.0
+wandb: Run data is saved locally in /users/jrs596/scripts/CocoaReader/CocoaNet/wandb/run-20231201_132550-aeutrfsq
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run vocal-deluge-79
+wandb: ⭐️ View project at https://wandb.ai/frankslab/DisNet-FAIGB-RF
+wandb: 🚀 View run at https://wandb.ai/frankslab/DisNet-FAIGB-RF/runs/aeutrfsq
+Namespace(model_name='PhyloNet_SR_V0', project_name='DisNet-FAIGB-RF', run_name=None, sweep_id=None, WANDB_MODE='online', sweep_config=None, model_config=None, sweep_count=1000, root='/users/jrs596/scratch', data_dir='dat/FAIGB/FAIGB_700_30-10-23_split', save=False, custom_pretrained=False, custom_pretrained_weights=None, quantise=False, batch_size=42, max_epochs=1000, min_epochs=15, patience=20, beta=1.0, learning_rate=0.001, l1_lambda=1e-05, weight_decay=0.0001, eps=1e-06, batchnorm_momentum=0.1, input_size=620, delta=1.4, arch='PhytNet_SRAutoencoder', cont_train=False, remove_batch_norm=False, split_image=False, n_tokens=4, criterion='crossentropy', GPU='0')
+Setting stuff up...
+##################################################
+Image input size:  620
+Image resize applied
+Initializing Datasets and Dataloaders...
+
+Building model...
+
+PhytNet_SRAutoencoder loaded
+##################################################
+
+
+Metrics to be calculated:  ['ESS', 'SR_loss', 'L1']
+
+Epoch 0
+----------
+Patience: 20/20
+train
+train SR_loss: 9.9955 ESS: 0.4300 L1_norm: 1.8131
+val
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:110: UserWarning: 'has_cuda' is deprecated, please use 'torch.backends.cuda.is_built()'
+  torch.has_cuda,
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:111: UserWarning: 'has_cudnn' is deprecated, please use 'torch.backends.cudnn.is_available()'
+  torch.has_cudnn,
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:117: UserWarning: 'has_mps' is deprecated, please use 'torch.backends.mps.is_built()'
+  torch.has_mps,
+/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/overrides.py:118: UserWarning: 'has_mkldnn' is deprecated, please use 'torch.backends.mkldnn.is_available()'
+  torch.has_mkldnn,
+val SR_loss: 3.5855 ESS: 0.4393 L1_norm: 1.8126
+Traceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py", line 180, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py", line 142, in train
+    _, best_loss, _, run_name, _, _ = train_model(args=args,
+  File "/users/jrs596/scripts/CocoaReader/utils/training_loop_Phylo_SR.py", line 185, in train_model
+    best_val_metrics = {'Genetic_loss': results['Genetic_loss'],
+KeyError: 'Genetic_loss'
+wandb: - 0.027 MB of 0.027 MB uploadedwandb: \ 0.027 MB of 0.027 MB uploadedwandb: | 0.027 MB of 0.027 MB uploadedwandb: / 0.027 MB of 0.027 MB uploadedwandb: - 0.027 MB of 0.027 MB uploadedwandb: \ 0.027 MB of 0.027 MB uploadedwandb: 
+wandb: Run history:
+wandb:     Train_ESS ▁
+wandb: Train_L1_norm ▁
+wandb: Train_SR_loss ▁
+wandb: 
+wandb: Run summary:
+wandb:     Train_ESS 0.43
+wandb: Train_L1_norm 1.81314
+wandb: Train_SR_loss 9.99547
+wandb: 
+wandb: 🚀 View run vocal-deluge-79 at: https://wandb.ai/frankslab/DisNet-FAIGB-RF/runs/aeutrfsq
+wandb: ️⚡ View job at https://wandb.ai/frankslab/DisNet-FAIGB-RF/jobs/QXJ0aWZhY3RDb2xsZWN0aW9uOjEyMDEyNjk5Nw==/version_details/v1
+wandb: Synced 6 W&B file(s), 0 media file(s), 2 artifact file(s) and 5 other file(s)
+wandb: Find logs at: ./wandb/run-20231201_132550-aeutrfsq/logs
+
+============================
+ Job utilisation efficiency
+============================
+
+Job ID: 693665
+Cluster: viking2.yor.alces.network
+User/Group: jrs596/clusterusers
+State: FAILED (exit code 1)
+Nodes: 1
+Cores per node: 12
+CPU Utilized: 00:16:56
+CPU Efficiency: 20.91% of 01:21:00 core-walltime
+Job Wall-clock time: 00:06:45
+Memory Utilized: 17.13 GB
+Memory Efficiency: 17.13% of 100.00 GB
+ Requested wall clock time: 3-00:00:00
+    Actual wall clock time: 00:06:45
+Wall clock time efficiency: 0.2%
+           Job queued time: 00:00:02

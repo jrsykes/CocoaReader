@@ -10,18 +10,22 @@ import os
 import wandb
 import pprint
 import shutil
+from progress.bar import Bar
+from PIL import Image
+import numpy as np
+import socket
 
 parser = argparse.ArgumentParser('encoder decoder examiner')
 parser.add_argument('--model_name', type=str, default='test',
                         help='save name for model')
 parser.add_argument('--project_name', type=str, default='test',
                         help='Name for wandb project')
-parser.add_argument('--run_name', type=str, default=None,
+parser.add_argument('--run_name', type=str, default='test',
                         help='Name for wandb run')
 parser.add_argument('--sweep_id', type=str, default=None,
                         help='sweep if for weights and biases')
-parser.add_argument('--WANDB_MODE', type=str, default='online',
-                        help='WANDB_MODE for running offline')
+parser.add_argument('--wandb_MODE', type=str, default='online',
+                        help='wandb_MODE for running offline')
 parser.add_argument('--sweep_config', type=str, default=None,
                         help='.yml sweep configuration file')
 parser.add_argument('--model_config', type=str, default=None,
@@ -96,39 +100,87 @@ def train():
     #Set seeds for reproducability
     toolbox.SetSeeds(42)
 
-    data_dir, num_classes, _ = toolbox.setup(args)
+
+    # hostname = str(torch.cuda.current_device()) + socket.gethostname()
+    working_dir = os.path.join(args.root, args.data_dir, wandb.run.name)
+    # Ensure the working directory is empty
+    if os.path.exists(working_dir):
+        shutil.rmtree(working_dir)
+    os.makedirs(working_dir, exist_ok=True)
+
+    # Define source directories
+    src_dir_easy = os.path.join(args.root, "dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Easy")
+    # src_dir_difficult = os.path.join(args.root, "dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Difficult")
+    # src_dir_unsure = os.path.join(args.root, "dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Unsure")
+
+    # Define new subdirectories in the working directory
+    dest_dir_easy = os.path.join(working_dir, "Easy")
+    dest_dir_difficult = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Difficult"
+    dest_dir_unsure = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Unsure"
+
+    # Copy the contents of the source directories to the new subdirectories
+    shutil.copytree(src_dir_easy, dest_dir_easy)
+    # shutil.copytree(src_dir_difficult, dest_dir_difficult)
+    # shutil.copytree(src_dir_unsure, dest_dir_unsure)
+
+    classes = sorted(os.listdir(os.path.join(working_dir, "Easy/val")))
+
+    # Add a dumby read only image to each class file for the dificult images because when relabled 
+    # the directory can become empty thus causeing an error from the dataloader
+    # for class_ in classes:
+    #     # Define the path for the dummy JPEG file
+    #     dif_dummy_file_path = os.path.join(working_dir, "Difficult/val", class_, "dummy.jpeg")
+    #     uns_dummy_file_path = os.path.join(working_dir, "Unsure/val", class_, "dummy.jpeg")
+
+    #     # Create a valid dummy JPEG image
+    #     dummy_image = Image.fromarray(np.zeros((10, 10, 3), dtype=np.uint8))  # Creates a 10x10 black image
+    #     dummy_image.save(dif_dummy_file_path, "JPEG")
+    #     dummy_image.save(uns_dummy_file_path, "JPEG")
+
+    #     # Set the file to read-only state
+    #     os.chmod(dif_dummy_file_path, 0o444)  # Read-only permissions
+    #     os.chmod(uns_dummy_file_path, 0o444)  # Read-only permissions
+
+    num_classes = len(os.listdir(dest_dir_easy + "/train"))
+    # data_dir, num_classes, _ = toolbox.setup(args)
     device = torch.device("cuda:" + args.GPU)
 
+
+
     #define config dictionary with wandb
-    # config = {
-    #     'input_size': wandb.config.input_size,
-    #     'dim_1': wandb.config.dim_1, 
-    #     'dim_2': wandb.config.dim_2, 
-    #     'dim_3': wandb.config.dim_3,
-    #     'kernel_1': wandb.config.kernel_1, 
-    #     'kernel_2': wandb.config.kernel_2,
-    #     'kernel_3': wandb.config.kernel_3,
-    #     'num_blocks_1': wandb.config.num_blocks_1,
-    #     'num_blocks_2': wandb.config.num_blocks_2,
-    #     'out_channels': wandb.config.out_channels,        
-    # }
-    config = {    
-        'DFLoss_delta': 0.06379802231720144,
-        'beta1': 0.9,
-        'beta2': 0.943630021404608,
-        'dim_1': 116,
-        'dim_2': 106,
-        'dim_3': 84, 
-        'input_size': 240, 
-        'kernel_1': 3,
-        'kernel_2': 5,
-        'kernel_3': 13,
-        'learning_rate': 0.0001,
-        'num_blocks_1': 4,
-        'num_blocks_2': 1,
-        'out_channels': int(num_classes*1.396007582340178),
-        'batch_size': args.batch_size
+    config = {
+        'input_size': wandb.config.input_size,
+        'dim_1': wandb.config.dim_1, 
+        'dim_2': wandb.config.dim_2, 
+        'dim_3': wandb.config.dim_3,
+        'kernel_1': wandb.config.kernel_1, 
+        'kernel_2': wandb.config.kernel_2,
+        'kernel_3': wandb.config.kernel_3,
+        'num_blocks_1': wandb.config.num_blocks_1,
+        'num_blocks_2': wandb.config.num_blocks_2,
+        'out_channels': wandb.config.out_channels,    
+        'batch_size': args.batch_size,
+        'beta1': wandb.config.beta1,
+        'beta2': wandb.config.beta2,  
+        'learning_rate': wandb.config.learning_rate,
     }
+    # config = {    
+    #     'DFLoss_delta': 0.06379802231720144,
+    #     'beta1': 0.9,
+    #     'beta2': 0.943630021404608,
+    #     'dim_1': 116,
+    #     'dim_2': 106,
+    #     'dim_3': 84, 
+    #     'input_size': 240, 
+    #     'kernel_1': 3,
+    #     'kernel_2': 5,
+    #     'kernel_3': 13,
+    #     'learning_rate': 0.0001,
+    #     'num_blocks_1': 4,
+    #     'num_blocks_2': 1,
+    #     'out_channels': int(num_classes*1.396007582340178),
+    #     'batch_size': args.batch_size
+    # }
     
     model = toolbox.build_model(arch=args.arch, num_classes=None, config=config).to(device)
 
@@ -140,65 +192,67 @@ def train():
         model.load_state_dict(PhyloNetWeights, strict=False)
         print('\nLoaded weights from: ', args.custom_pretrained_weights)
 
-    image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
-    dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
-    
     criterion = nn.CrossEntropyLoss()
     
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'],config['beta2']))
+        
+
+   
     input_size = torch.Size([3, config['input_size'], config['input_size']])
-    # inputs = torch.randn(1, *input_size).to(device)
-    # with torch.no_grad():
-    #     model(inputs)
     
     GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
     wandb.log({'GFLOPs': GFLOPs, 'n_params': n_params})  # Log the GFLOPs and n_params of the model
-    del model
+  
     print()
     print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
 
     if GFLOPs < 6 and n_params < 5000000:
-        model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
+        for major_epoch, data_set in enumerate([dest_dir_difficult, dest_dir_unsure]):
+            minor_epoch = 0
+            n_relabled = 1
+            # n_to_relable = 0
+            # for _, _, files in os.walk(os.path.join(data_set, "val")):
+            #     n_to_relable += len(files)
+            # n_to_relable = 5 #4 is the minimum value does to the 4 dumby images added to each class directory
+            while n_relabled > 0:# and n_to_relable > 4:
+                print("\nMajor epoch: ", major_epoch, ":", minor_epoch)
+                minor_epoch += 1
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=0.001,
-                                        weight_decay=args.weight_decay, eps=args.eps, betas=(0.9,0.9))
-        
-        dif_dir = "/local/scratch/jrs596/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Difficult"
-        dif_datasets = toolbox.build_datasets(data_dir=dif_dir, input_size=config['input_size'])
-        dif_dataloader = torch.utils.data.DataLoader(dif_datasets['val'], batch_size=1, shuffle=False, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False)
-        n_dif = len(dif_datasets['val'])
-        classes = dif_datasets['val'].classes  
-        n_to_relable = n_dif
-        major_epoch = 0
-        
-        while n_to_relable < n_dif and major_epoch < 10:
-            major_epoch += 1
-           
-            trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, 
-                                                                                              model=model, 
-                                                                                              optimizer=optimizer, 
-                                                                                              device=device, 
-                                                                                              dataloaders_dict=dataloaders_dict, 
-                                                                                              criterion=criterion, 
-                                                                                              patience=args.patience, 
-                                                                                              batch_size=args.batch_size,
-                                                                                              num_classes=num_classes)
-            
-            trained_model.eval()
-            
-            for idx, (image, label) in enumerate(dif_dataloader):
-                _, _, pred = model(image.to(device))
-                pred = torch.argmax(pred, dim=1)
+                image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+                dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
+                model_out, best_f1, best_f1_loss, best_train_f1, best_train_metrics, best_val_metrics = train_model(args=args, 
+                                                                                                  model=model, 
+                                                                                                  optimizer=optimizer, 
+                                                                                                  device=device, 
+                                                                                                  dataloaders_dict=dataloaders_dict, 
+                                                                                                  criterion=criterion, 
+                                                                                                  patience=args.patience, 
+                                                                                                  batch_size=args.batch_size,
+                                                                                                  num_classes=num_classes)
+                print("\nRelabeling images")
+                model_out.eval()
+                dif_datasets = toolbox.build_datasets(data_dir=data_set, input_size=config['input_size'])
+                dif_dataloader = torch.utils.data.DataLoader(dif_datasets['val'], batch_size=1, shuffle=False, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False)
 
-                if pred.item() == label.to(device).item():
-                    image_path = dif_datasets['val'].imgs[idx][0]
-                    dest = os.path.join("/local/scratch/jrs596/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Working_Dir/train", classes[label.item()], os.path.basename(image_path))
-                    shutil.copy(image_path, dest)
-                    n_to_relable -= 1
-                    
-            print("\nRelabeled: ", n_dif - n_to_relable, " images")
-            
-        config['Run_name'] = run_name
+                n_relabled = 0
+                for idx, (image, label) in enumerate(dif_dataloader):
+                    _, _, pred = model_out(image.to(device))
+                    pred = torch.argmax(pred, dim=1)
+                    if pred.item() == label.to(device).item():
+                        image_path = dif_datasets['val'].imgs[idx][0]
+                        dest = os.path.join(working_dir, "Easy/train", classes[label.item()], os.path.basename(image_path))
+                        if os.path.exists(dest) == False:
+                            shutil.copy(image_path, dest)
+                            n_relabled += 1
+
+                # n_to_relable = 0
+                # for _, _, files in os.walk(os.path.join(data_set, "val")):
+                #     n_to_relable += len(files)
+
+                print("\nRelabeled: ", n_relabled, " images")
+                # print("\nTo relabel: ", n_to_relable-n_relabled, " images")
         
     else: 
         print()
@@ -207,12 +261,13 @@ def train():
         run.log({'Status': 'aborted'})  # Log the status as 'aborted'
         run.finish()  # Finish the run
 
-        trained_model, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
+        model_out, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
+    
+    wandb.finish()
+    shutil.rmtree(working_dir)
+    return model_out, best_f1, best_f1_loss, best_train_f1, config
 
-
-    return trained_model, best_f1, best_f1_loss, best_train_f1, config
-
-os.environ["WANDB__SERVICE_WAIT"] = "300"
+os.environ["wandb__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:
     with open(args.sweep_config) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)

@@ -25,7 +25,13 @@ from Bio import Phylo
 from collections import defaultdict
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, distances):      
-
+   
+    
+    # Save or append the DataFrame to a CSV file
+    UMAP_csv_filename = os.path.join(args.root, args.model_name + '_umap_data.csv')
+    if os.path.exists(UMAP_csv_filename):
+    # Delete the file
+        os.remove(UMAP_csv_filename)
         
     # Check environmental variable WANDB_MODE
     run_name = None
@@ -60,6 +66,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     #sample images for visualisation
     len_ = len(dataloaders_dict['val'].dataset)
     selected_indices = [0, len_//10, len_//9, len_//8, len_//7, len_//6, len_//5, len_//4, len_//3]
+    selected_indices = [i for i in range(args.batch_size)]
     sampler = toolbox.NineImageSampler(selected_indices)
     sample_data_loader = DataLoader(dataloaders_dict['val'].dataset, batch_size=9, sampler=sampler)
     sample_images, _ = next(iter(sample_data_loader))
@@ -103,7 +110,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             all_encoded = []
             all_labels = []
             total_loss = 0.00
-            with Bar('Learning...', max=n/batch_size+1) as bar:
+            with Bar('Learning...', max=n/batch_size) as bar:
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
 
@@ -120,18 +127,20 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     
                     with torch.set_grad_enabled(phase == 'train'):
                         #Forward pass   
-                        encoded, decoded, predicted_distances = model(inputs)
-                        
-                        euclid_distances = torch.cdist(encoded, encoded, p=2)
+                        encoded, SRdecoded, predicted_distances, poly_euclid_distances = model(inputs)
+
+                        # euclid_distances = torch.cdist(encoded, encoded, p=2)
 
                         #Calculate losses and gradients then normalise the gradients
                         # contrastive_loss = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)/100    # weight to put on sensible scale
-                        SR_loss = criterion(decoded, SRinputs)/100000                                                      # weight to put on sensible scale    
-                        genetic_loss = criterion(predicted_distances, label_relationship_matrix) / 10000
-                        # euclid_loss = criterion(euclid_distances, label_relationship_matrix) / 10000
-                        euclid_loss, _ = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)
-                        euclid_loss = euclid_loss/1000    # weight to put on sensible scale
-     
+                        SR_loss = criterion(SRdecoded, SRinputs)/100000                                                      # weight to put on sensible scale    
+                        genetic_loss = criterion(predicted_distances, torch.log(label_relationship_matrix+1e-6)) / 10000
+                        euclid_loss = criterion(poly_euclid_distances, torch.log(label_relationship_matrix+1e-6)) / 10000
+                        
+                        # euclid_loss = criterion(poly_euclid_distances, label_relationship_matrix) / 10000
+                        # euclid_loss, _ = toolbox.contrastive_loss_with_dynamic_margin(encoded, distances, labels)
+                        # euclid_loss = euclid_loss / 100
+                        
                         l1_norm = torch.tensor(sum(p.abs().sum() for p in model.parameters() if p.dim() > 1).item(), requires_grad=True)
                         total_loss += (genetic_loss + SR_loss + euclid_loss).detach()
                                                
@@ -147,9 +156,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             all_encoded.append(encoded.cpu().detach().numpy())
                             all_labels.append(labels.cpu().detach().numpy())
                             if idx == 0:                                
-                                _, sample_decoded, _ = model(sample_images)
+                                _, SRdecoded, _, _ = model(sample_images)
                             
-                                grid = vutils.make_grid(sample_decoded, nrow=3, padding=0, normalize=False)
+                                grid = vutils.make_grid(SRdecoded, nrow=3, padding=0, normalize=False)
                                 PATH = os.path.join(args.root, "reconstructions_" + args.model_name)
                                 os.makedirs(PATH, exist_ok=True)
                                 vutils.save_image(grid, os.path.join(PATH, "epoch_" + str(epoch) + ".png"))     
@@ -241,21 +250,18 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 all_labels_np = np.concatenate(all_labels, axis=0)
      
                 data_umap = reducer.fit_transform(all_encoded_np)
-      
-                UMAP_table = wandb.Table(columns=["UMAP_X", "UMAP_Y", "Label", "Epoch"])
+           
+                UMAP_table = wandb.Table(columns=["UMAP_X", "UMAP_Y", "UMAP_Z", "Label", "Epoch"])
                 csv_data = []  # List to hold data for CSV
 
                 for i in range(data_umap.shape[0]):
-                    UMAP_table.add_data(data_umap[i, 0], data_umap[i, 1], all_labels_np[i], epoch)
-                    csv_data.append([data_umap[i, 0], data_umap[i, 1], all_labels_np[i], epoch])
-
+                    UMAP_table.add_data(data_umap[i, 0], data_umap[i, 1], data_umap[i, 2], all_labels_np[i], epoch)
+                    csv_data.append([data_umap[i, 0], data_umap[i, 1], data_umap[i, 2], all_labels_np[i], epoch])
+            
                 # Convert the list of data to a pandas DataFrame
-                df = pd.DataFrame(csv_data, columns=["UMAP_X", "UMAP_Y", "Label", "Epoch"])
+                df = pd.DataFrame(csv_data, columns=["UMAP_X", "UMAP_Y", "UMAP_Z", "Label", "Epoch"])
 
-                # Save or append the DataFrame to a CSV file
-                csv_filename = os.path.join(args.root, args.model_name + '_umap_data.csv')
-                
-                with open(csv_filename, 'a') as f:
+                with open(UMAP_csv_filename, 'a') as f:
                     # If the file does not exist, write the header, otherwise append without the header
                     df.to_csv(f, header=f.tell()==0, index=False)
 

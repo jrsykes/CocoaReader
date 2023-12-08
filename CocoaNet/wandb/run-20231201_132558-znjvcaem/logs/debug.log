@@ -1,0 +1,15 @@
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_setup.py:_flush():76] Current SDK version is 0.16.0
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_setup.py:_flush():76] Configure stats pid to 1885031
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_setup.py:_flush():76] Loading settings from /users/jrs596/.config/wandb/settings
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_setup.py:_flush():76] Loading settings from /users/jrs596/scripts/CocoaReader/CocoaNet/wandb/settings
+2023-12-01 13:25:58,285 WARNING MainThread:1885031 [wandb_setup.py:_flush():76] Unknown environment variable: WANDB_CACHE_DIR
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'_service_wait': '300'}
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py', 'program_abspath': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py', 'program': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhyloNet_SR/Torch_Custom_CNNs2.2.1.py'}
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_init.py:_log_setup():524] Logging user logs to /users/jrs596/scripts/CocoaReader/CocoaNet/wandb/run-20231201_132558-znjvcaem/logs/debug.log
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_init.py:_log_setup():525] Logging internal logs to /users/jrs596/scripts/CocoaReader/CocoaNet/wandb/run-20231201_132558-znjvcaem/logs/debug-internal.log
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_init.py:init():564] calling init triggers
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_init.py:init():571] wandb.init called with sweep_config: {}
+config: {}
+2023-12-01 13:25:58,285 INFO    MainThread:1885031 [wandb_init.py:init():609] wandb.init() called when a run is still active
+2023-12-01 13:32:20,155 WARNING MsgRouterThr:1885031 [router.py:message_loop():77] message_loop has been closed

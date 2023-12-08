@@ -17,32 +17,28 @@ import toolbox
 from toolbox import DynamicFocalLoss
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes):      
-    # @torch.compile
-    # def run_model(x):
-    #     return model(x)
-        
-    #Check environmental variable WANDB_MODE
-    if args.WANDB_MODE == 'offline':   
-        if args.sweep_config == None:
-            if args.run_name is None:
-                run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
-                wandb.init(project=args.project_name, name=run_name, mode="offline")
-            else:
-                wandb.init(project=args.project_name, name=args.run_name, mode="offline")
-                run_name = args.run_name
-        else:
-            run_name = wandb.run.name
-    else:
-        if args.sweep_config == None:
-            if args.run_name is None:
-                run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
-                wandb.init(project=args.project_name, name=run_name)
-            else:
-                wandb.init(project=args.project_name, name=args.run_name)
-                run_name = args.run_name
-        else:
-            run_name = wandb.run.name
-    
+    # Check environmental variable WANDB_MODE
+    # if args.wandb_MODE == 'offline':   
+    #     if args.sweep_config == None:
+    #         if args.run_name is None:
+    #             run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
+    #             wandb.init(project=args.project_name, name=run_name, mode="offline")
+    #         else:
+    #             wandb.init(project=args.project_name, name=args.run_name, mode="offline")
+    #             run_name = args.run_name
+    #     else:
+    #         run_name = wandb.run.name
+    # else:
+        # if args.sweep_config == None:
+        #     if args.run_name is None:
+        #         # run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
+        #         wandb.init(project=args.project_name, name=run_name)
+        #     else:
+        #         wandb.init(project=args.project_name, name=args.run_name)
+        #         run_name = args.run_name
+        # else:
+        #     run_name = wandb.run.name
+
     my_metrics = toolbox.Metrics(metric_names='All', num_classes=num_classes)
 
     since = time.time()
@@ -70,7 +66,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             elif val_loss_history[-1] == np.nan:
                 patience -= 1
             else:
-               #If validation loss improves by at least 0.5%, reset patient to initial value
+               #If validation loss improves, reset patient to initial value
                patience = args.patience
         print('Patience: ' + str(patience) + '/' + str(args.patience))
    
@@ -78,7 +74,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()  # Set model to training mode
- 
+            else:
                 model.eval()   # Set model to evaluate mode
 
            #Get size of whole dataset split
@@ -101,18 +97,16 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # Get model outputs and calculate loss
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
-                        
 
+                        # _, _, outputs = model(inputs)
                         outputs = model(inputs)
-                        # if isinstance(criterion[phase], DynamicFocalLoss):
-                        #     loss, step = criterion[phase](outputs, labels, step)
-                        # else:
-                        #     loss = criterion[phase](outputs, labels)
+
+
                         loss = criterion(outputs, labels)
 
-                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1)
+                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
                         
-                        loss += args.l1_lambda * l1_norm                     
+                        loss += l1_norm                     
                         
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
@@ -125,7 +119,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             optimizer.step()  
                            
                         #Update metrics
-                        my_metrics.update(loss, preds, labels, stats_out)
+                        my_metrics.update(loss=loss, preds=preds, labels=labels, stats_out=stats_out)
 
                     bar.next()  
 
@@ -166,27 +160,13 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     
                 PATH = os.path.join(args.root, 'models', args.model_name)
                 os.makedirs(os.path.join(args.root, 'models'), exist_ok=True)
-                if args.save == 'model':
-                    print('Saving model to: ' + PATH + '.pth')
+
+                if args.save:
+                    print('Saving model weights to: ' + PATH + '.pth')
                     try:
-                        torch.save(model_out.module, PATH + '.pth')
+                        torch.save(model.module.state_dict(), PATH + '.pth')
                     except:
-                         torch.save(model_out, PATH + '.pth')
-                elif args.save == 'weights':
-                    print('Saving model weights to: ' + PATH + '_weights.pth')
-                    try:
-                        torch.save(model_out.module.state_dict(), PATH + '.pth')
-                    except:
-                        torch.save(model_out.state_dict(), PATH + '.pth')
-                elif args.save == 'both':
-                    if args.arch != 'parallel':
-                        print('Saving model and weights to: ' + PATH + '.pth and ' + PATH + '_weights.pth')
-                        try:
-                            torch.save(model_out.module, PATH + '.pth') 
-                            torch.save(model_out.module.state_dict(), PATH + '_weights.pth')
-                        except:
-                            torch.save(model_out, PATH + '.pth')
-                            torch.save(model_out.state_dict(), PATH + '_weights.pth')
+                        torch.save(model.state_dict(), PATH + '.pth')
                     
   
             if phase == 'val':
@@ -204,10 +184,10 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         bar.finish()
         epoch += 1
     
-    wandb.finish()
+    # wandb.finish()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss, best_train_f1, run_name, best_train_metrics, best_val_metrics
+    return model_out, best_f1, best_f1_loss, best_train_f1, best_train_metrics, best_val_metrics
