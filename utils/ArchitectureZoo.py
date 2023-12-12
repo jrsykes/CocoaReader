@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
-from diffusers import UNet2DModel
+import torchvision.models as models
 
 sys.path.append('~/scripts/CocoaReader/utils')
 
@@ -139,27 +139,7 @@ class TransformerDecoderBlock(nn.Module):
         x = self.norm2(x)
         return x
 
-class PolynomialLayer2D(nn.Module):
-    def __init__(self, degree):
-        super(PolynomialLayer2D, self).__init__()
-        # Initialize coefficients for the polynomial of the given degree
-        self.coefficients = nn.Parameter(torch.randn(degree + 1))
-
-    def forward(self, x):
-        # Ensure input x is a 2D tensor
-        if x.ndim != 2:
-            raise ValueError("Input must be a 2D tensor")
-
-        # Create a tensor of powers of x
-        # [x^0, x^1, x^2, ..., x^n]
-        powers = torch.stack([x ** i for i in range(len(self.coefficients))], dim=-1)
-        
-        # Apply the polynomial transformation
-        # This multiplies each coefficient with the corresponding power of x
-        # and sums across the last dimension to get the final output
-        y = torch.sum(self.coefficients * powers, dim=-1)
-        return y
-    
+   
 class TransformerDecoder(nn.Module):
     def __init__(self, feature_dim, num_heads, num_layers, batch_size, reduced_dim=20):
         super(TransformerDecoder, self).__init__()
@@ -180,9 +160,9 @@ class TransformerDecoder(nn.Module):
         self.self_attn = nn.MultiheadAttention(embed_dim=1680, num_heads=self.batch_size)
 
         # Upsampling layers
-        self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
-        self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=4, padding=1, output_padding=1)
+        self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=4, padding=1, output_padding=1)
+        self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
         
         self.final_conv = nn.Conv2d(feature_dim, 3, kernel_size=1)  # Assuming the output has 3 channels
 
@@ -196,35 +176,36 @@ class TransformerDecoder(nn.Module):
         for decoder_block in self.decoder_blocks:
             x = decoder_block(x, x)  # Pass through each transformer block
         
-        # y = x.view(batch_size, self.feature_dim, -1)                    # [batch_size, feature_dim, feature_length]
-        # y = self.downsample1(y)                                         # Project y down to a smaller space. [batch_size, 2025, reduced_dim]
-        # y = y.view(batch_size, -1)                                      # [batch_size, 2025 * reduced_dim]
-        # y, _ = self.self_attn(y, y, y)                                  # Self-attention
-        # y = self.norm(y) 
-        # distance_matrix = self.downsample2(y)                              # project to [batch_size, batch_size]
-        
-        # y = x.view(batch_size, self.feature_dim, -1)                    # [batch_size, feature_dim, feature_length]
-        
-        
         # Upsampling steps
         x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
         x = self.upsample2(x)
         x = self.upsample3(x)
         x = self.final_conv(x)
       
-        return x#, G_out
+        return x
 
 
     
 ##################################################
+class ModifiedResNet18(nn.Module):
+    def __init__(self, original_resnet18):
+        super(ModifiedResNet18, self).__init__()
+        # Copy layers from ResNet18 up to the last convolutional layer
+        self.features = nn.Sequential(
+            *list(original_resnet18.children())[:-2]
+        )
 
-
+    def forward(self, x):
+        x = self.features(x)
+        return x
+ 
 class PhytNet_SRAutoencoder(nn.Module):
     def __init__(self, config):
         super(PhytNet_SRAutoencoder, self).__init__()
         
-        # Initialize the encoder (assuming DisNetV1_2 is defined elsewhere)
-        self.encoder = PhytNetV0(config)
+        # Load the pretrained ResNet-18 model
+        resnet18 = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        self.encoder = ModifiedResNet18(resnet18)
         
         # Extract necessary parameters from config or define them manually
         feature_dim = config['dim_3']
@@ -235,17 +216,13 @@ class PhytNet_SRAutoencoder(nn.Module):
         # Initialize the transformer decoder (assuming TransformerDecoder is defined elsewhere)
         self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, batch_size)   
 
-        self.poly_layer = PolynomialLayer2D(1)
+        self.avgpool = torch.nn.AdaptiveAvgPool2d(output_size=(1, 1))
  
     def forward(self, x):
-        
-        encoded, encode_pooled, _  = self.encoder.forward(x)  # Get feature map before the fc layer
-
-        # euclid_distances = torch.cdist(encode_pooled, encode_pooled, p=2)
-        
-        # poly_euclid_distances = self.poly_layer(euclid_distances)
+        encoded = self.encoder(x)
+        encoded_pooled = self.avgpool(encoded)
+        encoded_pooled = encoded_pooled.permute(2, 3, 0, 1).squeeze().squeeze()
 
         SRdecoded = self.decoder(encoded)
         
-        return encode_pooled, SRdecoded
-    
+        return encoded_pooled, SRdecoded

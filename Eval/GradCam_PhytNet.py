@@ -110,44 +110,30 @@ def get_grad_cam(net, img):
 
 
 
-# config = {
-#     'beta1': 0.9650025364732508,  
-#     'beta2': 0.981605256508036,  
-#     'dim_1': 79,  
-#     'dim_2': 107,  
-#     'dim_3': 93,  
-#     'input_size': 415,
-#     'kernel_1': 5,  
-#     'kernel_2': 1,  
-#     'kernel_3': 7,  
-#     'learning_rate': 0.0002975957026209971,  
-#     'num_blocks_1': 2,  
-#     'num_blocks_2': 1,  
-#     'out_channels': 6,  
-#     'num_heads': 3,  
-#     'batch_size': 6,
-#     'num_decoder_layers': 4,
-# }
-
 config = {
-'beta1': 0.980860437576859,  
-'beta2': 0.9946268823966372,  
-'dim_1': 106,  
-'dim_2': 42,  
-'dim_3': 93,  
-'input_size': 442,
-'kernel_1': 3,  
-'kernel_2': 3,  
-'kernel_3': 9,  
-'learning_rate': 0.0002240107655233594,  
-'num_blocks_1': 3,  
-'num_blocks_2': 1,  
-'out_channels': 9
+    'beta1': 0.9650025364732508,  
+    'beta2': 0.981605256508036,  
+    'dim_1': 79,  
+    'dim_2': 107,  
+    'dim_3': 93,  
+    'input_size': 415,
+    'kernel_1': 5,  
+    'kernel_2': 1,  
+    'kernel_3': 7,  
+    'learning_rate': 0.0002975957026209971,  
+    'num_blocks_1': 2,  
+    'num_blocks_2': 1,  
+    'out_channels': 6,  
+    'num_heads': 3,  
+    'batch_size': 6,
+    'num_decoder_layers': 4,
 }
+
+
 
 PhytNetV0 = PhytNetV0(config=config).to(device)
 # # Load weights
-weights_path = "/users/jrs596/scratch/models/PhytNet2-Cocoa-NPT.pth"
+weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SR-PT.pth"
 weights = torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(0))
 
 PhytNetV0.load_state_dict(weights, strict=False)
@@ -190,26 +176,26 @@ for i in range(n_imgs):
     out = (out - out.min()) / (out.max() - out.min())
     imgs[i][1] = out.permute(2,0,1).cpu().mul(255).byte()
 
-    # # ###############################
-    # #convert to PIL image
-    # im1 = img.squeeze().permute(1,2,0).cpu().numpy()
-    # im1 = Image.fromarray((im1 * 255).astype(np.uint8))
+    # ###############################
+    #convert to PIL image
+    im1 = img.squeeze().permute(1,2,0).cpu().numpy()
+    im1 = Image.fromarray((im1 * 255).astype(np.uint8))
     
-    # im2 = out.permute(2,0,1).cpu().mul(255).byte()
-    # im2 = ToPILImage()(im2)
+    im2 = out.permute(2,0,1).cpu().mul(255).byte()
+    im2 = ToPILImage()(im2)
 
-    # combined_width = im1.width + im2.width
-    # combined_height = max(im1.height, im2.height)
+    combined_width = im1.width + im2.width
+    combined_height = max(im1.height, im2.height)
 
-    # # Create a new blank image with the combined dimensions
-    # new_img = Image.new('RGB', (combined_width, combined_height))
+    # Create a new blank image with the combined dimensions
+    new_img = Image.new('RGB', (combined_width, combined_height))
 
-    # # Paste the images side by side
-    # new_img.paste(im1, (0, 0))
-    # new_img.paste(im2, (img_size, 0))
+    # Paste the images side by side
+    new_img.paste(im1, (0, 0))
+    new_img.paste(im2, (img_size, 0))
 
-    # # Save the image
-    # new_img.save("/users/jrs596/scratch/dat/Ecuador/GradCAM_PhytNetCocoa_SR-PT/" + str(i) + ".png")
+    # Save the image
+    new_img.save("/users/jrs596/scratch/dat/Ecuador/GradCAM_PhytNet-Cocoa-N-PT1/" + str(i) + ".png")
     
 
 
@@ -280,7 +266,7 @@ for i in range(n_imgs):
         grid_img.paste(img_pil, (j * img_size, i * img_size))
 
 # Save the grid image
-grid_img.save("/users/jrs596/scratch/dat/Ecuador/GradCAM_PhytNet2_N-PT.png")
+grid_img.save("/users/jrs596/scratch/dat/Ecuador/GradCAM_PhytNet-Cocoa-N-PT1.png")
 
 
 

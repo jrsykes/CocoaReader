@@ -17,33 +17,30 @@ data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClea
 device = torch.device("cuda:0")
 
 config = {
-'beta1': 0.980860437576859,  
-'beta2': 0.9946268823966372,  
-'dim_1': 106,  
-'dim_2': 42,  
-'dim_3': 93,  
-'input_size': 442,
-'kernel_1': 3,  
-'kernel_2': 3,  
-'kernel_3': 9,  
-'learning_rate': 0.0002240107655233594,  
-'num_blocks_1': 3,  
-'num_blocks_2': 1,  
-'out_channels': 9,
-'num_heads': 3,  
-'batch_size': 1,  
-'num_decoder_layers': 4,
-} 
+        'beta1': 0.9650025364732508,
+        'beta2': 0.981605256508036,
+        'dim_1': 79,
+        'dim_2': 107,
+        'dim_3': 93,
+        'input_size': 415,
+        'kernel_1': 5,
+        'kernel_2': 1,
+        'kernel_3': 7,
+        'learning_rate': 0.0002975957026209971,
+        'num_blocks_1': 2,
+        'num_blocks_2': 1,
+        'out_channels': 6
+    }
 	
 model = toolbox.build_model(num_classes=None, arch='PhytNetV0', config=config)
 
-weights_path = "/users/jrs596/scratch/models/PhytNet2-Cocoa-SR-PT.pth"
+weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SR-PT.pth"
 
 PhyloNetWeights = torch.load(weights_path, map_location=device)
 
 
 model.load_state_dict(PhyloNetWeights, strict=True)
-input_size = 442
+input_size = 415
 print('\nLoaded weights from: ', weights_path)
 
 # resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-IN-PT.pth"
@@ -57,9 +54,6 @@ print('\nLoaded weights from: ', weights_path)
 
 model.eval()   # Set model to evaluate mode
 model = model.to(device)
-
-
-
 
 batch_size = 1
 criterion = nn.CrossEntropyLoss()
@@ -78,21 +72,20 @@ for phase in ['train', 'val']:
 		
 		_, _, outputs = model(inputs)
 
-	# 	loss = criterion(outputs, labels)
+		loss = criterion(outputs, labels)
 
-	# 	_, preds = torch.max(outputs, 1)    
-	# 	stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
-	# 	stats_out = stats['weighted avg']
+		_, preds = torch.max(outputs, 1)    
+		stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
+		stats_out = stats['weighted avg']
 					   
-	# 	my_metrics.update(loss=loss, preds=preds, labels=labels, stats_out=stats_out)
+		my_metrics.update(loss=loss, preds=preds, labels=labels, stats_out=stats_out)
 
-	# epoch_metrics = my_metrics.calculate()
+	epoch_metrics = my_metrics.calculate()
 	
-	# print()
-	# print(phase)
-	# print(epoch_metrics)
-	# my_metrics.reset()
+	print()
+	print(phase)
+	print(epoch_metrics)
+	my_metrics.reset()
 
-# print("Time in FPS: ", (time.time() - start)/(len(dataloaders_dict['val']) + len(dataloaders_dict['train'])))
 
 print("Frames per second: ", N /(time.time() - start))

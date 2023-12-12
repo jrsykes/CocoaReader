@@ -2,7 +2,7 @@
 
 #SBATCH --account=biol-cocoa-2023
 #SBATCH --job-name=PhytNet-cocoa
-#SBATCH --partition=gpuplus
+#SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --time=72:00:00
 #SBATCH --mem=100G
@@ -18,7 +18,6 @@ python /users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch
         --project_name 'PhytNet-Cocoa' \
         --root '/users/jrs596/scratch' \
         --data_dir 'dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500_2/Working_Dir' \
-        --input_size 375 \
         --min_epochs 15 \
         --max_epochs 100 \
         --batch_size 42 \
@@ -26,5 +25,6 @@ python /users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch
         --arch 'resnet18' \
         --GPU 0 \
         --use_wandb \
-        --save
+        --save \
+        # --custom_pretrained_weights '/users/jrs596/scratch/models/PhytNet_SR_FAIGB1.pth'
 

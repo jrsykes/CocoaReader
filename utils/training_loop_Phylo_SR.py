@@ -71,7 +71,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     sampler = toolbox.NineImageSampler(selected_indices)
     sample_data_loader = DataLoader(dataloaders_dict['val'].dataset, batch_size=9, sampler=sampler)
     sample_images, _ = next(iter(sample_data_loader))
-    sample_images = F.interpolate(sample_images, size=(442, 442), mode='bilinear', align_corners=True).to(device)
+    sample_images = F.interpolate(sample_images, size=(375, 375), mode='bilinear', align_corners=True).to(device)
 
     since = time.time()
     val_loss_history = []
@@ -102,6 +102,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
+                torch.no_grad()
                 model.eval()   # Set model to evaluate mode
 
            #Get size of whole dataset split
@@ -117,7 +118,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
                     #Load images and lables from current batch onto GPU(s)
                     SRinputs = inputs.to(device)
-                    inputs = F.interpolate(inputs, size=(442, 442), mode='bilinear', align_corners=True)
+                    inputs = F.interpolate(inputs, size=(375, 375), mode='bilinear', align_corners=True)
                     
                     inputs = inputs.to(device)
                     labels = labels.to(device)
@@ -133,8 +134,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
                         ESS = RobinsonFoulds.ESS(trees["input_tree"], trees["output_tree"]) * 10
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
-                        epoch_loss += SR_loss + l1_norm * args.l1_lambda
-                        loss = SR_loss + l1_norm * args.l1_lambda                 
+                        epoch_loss += ESS + l1_norm * args.l1_lambda
+                        loss = ESS + l1_norm * args.l1_lambda                 
 
                         if phase == 'train':
                             optimizer.zero_grad()

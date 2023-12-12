@@ -16,7 +16,7 @@ import toolbox
 #sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 from toolbox import DynamicFocalLoss
 
-def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes):      
+def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, best_f1):      
     # Check environmental variable WANDB_MODE
     # if args.wandb_MODE == 'offline':   
     #     if args.sweep_config == None:
@@ -42,11 +42,12 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     my_metrics = toolbox.Metrics(metric_names='All', num_classes=num_classes)
 
     since = time.time()
-    val_loss_history = []
-    best_f1 = 0.0
+    # val_loss_history = []
+    val_F1_history = []
+    # best_f1 = 0.0
     best_f1_acc = 0.0
     best_train_f1 = 0.0
-    
+    model_out = model
     #Save current weights as 'best_model_wts' variable. 
     #This will be reviewed each epoch and updated with each improvment in validation recall
     # best_model_wts = copy.deepcopy(model.state_dict())
@@ -59,11 +60,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         print('-' * 10) 
         step  = 0
         #Ensure minimum number of epochs is met before patience is allow to reduce
-        if len(val_loss_history) > args.min_epochs:
+        if len(val_F1_history) > args.min_epochs:
            #If the current loss is not at least 0.5% less than the lowest loss recorded, reduce patiece by one epoch
-            if val_loss_history[-1] > min(val_loss_history)*args.beta:
+            if val_F1_history[-1] > min(val_F1_history)*args.beta:
                 patience -= 1
-            elif val_loss_history[-1] == np.nan:
+            elif val_F1_history[-1] == np.nan:
                 patience -= 1
             else:
                #If validation loss improves, reset patient to initial value
@@ -128,13 +129,13 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
        
             if phase == 'train':
                 train_f1 = epoch_metrics['f1'] 
-                train_metrics = {'loss': epoch_metrics['loss'], 
-                       'f1': epoch_metrics['f1'], 
-                       'acc': epoch_metrics['acc'].item(), 
-                       'precision': epoch_metrics['precision'], 
-                       'recall': epoch_metrics['recall'], 
-                       'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
-                        }
+                # train_metrics = {'loss': epoch_metrics['loss'], 
+                #        'f1': epoch_metrics['f1'], 
+                #        'acc': epoch_metrics['acc'].item(), 
+                #        'precision': epoch_metrics['precision'], 
+                #        'recall': epoch_metrics['recall'], 
+                #        'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
+                #         }
             
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_metrics['loss'], epoch_metrics['acc']))
@@ -144,19 +145,19 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             if phase == 'val' and epoch_metrics['f1'] > best_f1:
                 best_f1 = epoch_metrics['f1']
                 best_f1_acc = epoch_metrics['acc']
-                best_f1_loss = epoch_metrics['loss']
+                # best_f1_loss = epoch_metrics['loss']
                 best_train_f1 = train_f1
                 # best_model_wts = copy.deepcopy(model.state_dict())  
                 model_out = model
 
-                best_train_metrics = train_metrics
-                best_val_metrics = {'loss': epoch_metrics['loss'], 
-                                    'f1': epoch_metrics['f1'], 
-                                    'acc': epoch_metrics['acc'].item(), 
-                                    'precision': epoch_metrics['precision'], 
-                                    'recall': epoch_metrics['recall'], 
-                                    'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
-                                    }
+                # best_train_metrics = train_metrics
+                # best_val_metrics = {'loss': epoch_metrics['loss'], 
+                #                     'f1': epoch_metrics['f1'], 
+                #                     'acc': epoch_metrics['acc'].item(), 
+                #                     'precision': epoch_metrics['precision'], 
+                #                     'recall': epoch_metrics['recall'], 
+                #                     'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
+                #                     }
     
                 PATH = os.path.join(args.root, 'models', args.model_name)
                 os.makedirs(os.path.join(args.root, 'models'), exist_ok=True)
@@ -170,7 +171,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     
   
             if phase == 'val':
-                val_loss_history.append(epoch_metrics['loss'])
+                val_F1_history.append(epoch_metrics['f1'])
             
             if phase == 'train':
                 wandb.log({"Train_loss": epoch_metrics['loss'], "Train_acc": epoch_metrics['acc'], "Train_F1": epoch_metrics['f1'], "Best_train_f1": best_train_f1})  
@@ -184,10 +185,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         bar.finish()
         epoch += 1
     
-    # wandb.finish()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, best_f1_loss, best_train_f1, best_train_metrics, best_val_metrics
+    return model_out, best_f1

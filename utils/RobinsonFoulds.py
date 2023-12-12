@@ -60,7 +60,7 @@ def trees(taxonomy, labels, pooled_features):
     batch_taxonomy = taxonomy.loc[labels]
 
     input_ete_tree = generate_newick(batch_taxonomy)
-
+ 
     # Compute squared distance matrix using broadcasting
     pooled_features = pooled_features.detach().cpu().numpy()
     square = np.sum(pooled_features**2, axis=1, keepdims=True)
