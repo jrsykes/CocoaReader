@@ -133,7 +133,7 @@ config = {
 
 PhytNetV0 = PhytNetV0(config=config).to(device)
 # # Load weights
-weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SR-PT.pth"
+weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-N-PT.pth"
 weights = torch.load(weights_path, map_location=lambda storage, loc: storage.cuda(0))
 
 PhytNetV0.load_state_dict(weights, strict=False)
@@ -256,7 +256,7 @@ for i in range(n_imgs):
             model.to(device)
             model.eval()
 
-            _, _, pred = model(img__.to(device))
+            pred = model(img__.to(device))
             pred = pred.argmax(dim=1)
             draw.text((0, 0), class_labels[pred], fill="white", font=font)
         

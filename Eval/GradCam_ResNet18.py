@@ -16,6 +16,7 @@ from torchvision.transforms import ToPILImage
 
 
 device = torch.device("cuda:0")
+# device = torch.device("cpu")
 
 #%%
    
@@ -93,19 +94,30 @@ def get_grad_cam(net, img):
     return superimpose_heatmap(heatmap, img)
 
 
+out_labels = ["BPR", "FPR", "Healthy", "WBD"]  
 
-resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-IN-PT.pth"
-ResNet18Weights = torch.load(resnet18_cococa_weights, map_location=device)
-
-ResNet18 = models.resnet18(weights=None)
-in_feat = ResNet18.fc.in_features
-ResNet18.fc = nn.Linear(in_feat, 4)
-ResNet18.load_state_dict(ResNet18Weights, strict=True)
-ResNet18.to(device)
-
-dat_dir = '/users/jrs596/scratch/dat/Ecuador/GradCAM_TestImgs/'
+font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 80)  # Replace with the path to a .ttf file on your system
 
 
+FullSup_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa_FullSup-IN-PT.pth"
+SemiSup_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-IN-PT.pth"
+
+models_ = ["Input", FullSup_weights, SemiSup_weights]
+
+def load_model(weights_pth):
+    ResNet18Weights = torch.load(weights_pth, map_location=device)
+    ResNet18 = models.resnet18(weights=None)
+    in_feat = ResNet18.fc.in_features
+    ResNet18.fc = nn.Linear(in_feat, 4)
+    ResNet18.load_state_dict(ResNet18Weights, strict=True)
+    ResNet18.eval()
+    ResNet18.to(device)
+    
+    return ResNet18
+
+dat_dir = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy/val/'
+class_labels = os.listdir(dat_dir)
+class_labels.sort()
 
 def load_data(dat_dir, img_size):
     data_transforms = transforms.Compose([
@@ -114,131 +126,142 @@ def load_data(dat_dir, img_size):
     ])
 
     valset = datasets.ImageFolder(os.path.join(dat_dir), data_transforms)
-    valloader = torch.utils.data.DataLoader(valset, batch_size=1, shuffle=False, num_workers=1)
+    valloader = torch.utils.data.DataLoader(valset, batch_size=1, shuffle=True, num_workers=1)
+
     return valloader
 
-
+#%%
 
 img_size = 375
+n_imgs = 40
+n_models = 2
+
 plot_img_size = img_size
 valloader = load_data(dat_dir, img_size)
-it = iter(valloader)
 
-n_imgs = len(valloader)
-n_models = 2
+
 imgs = torch.Tensor(n_imgs, n_models, 3, plot_img_size, plot_img_size)  # Adjusted the tensor dimensions
-
-for i in range(n_imgs):
-    img, _ = next(it)
-
-    imgs[i][0] = img
-    
-    model_cam_net = ResNet_CAM(ResNet18)
-    
-    out = get_grad_cam(model_cam_net, img)  
-    #Normalise GradCAM output
-    out = (out - out.min()) / (out.max() - out.min())
-    imgs[i][1] = out.permute(2,0,1).cpu().mul(255).byte()
-
-    # ###############################
-    #convert to PIL image
-    im1 = img.squeeze().permute(1,2,0).cpu().numpy()
-    im1 = Image.fromarray((im1 * 255).astype(np.uint8))
-    
-    im2 = out.permute(2,0,1).cpu().mul(255).byte()
-    im2 = ToPILImage()(im2)
-
-    combined_width = im1.width + im2.width
-    combined_height = max(im1.height, im2.height)
-
-    # Create a new blank image with the combined dimensions
-    new_img = Image.new('RGB', (combined_width, combined_height))
-
-    # Paste the images side by side
-    new_img.paste(im1, (0, 0))
-    new_img.paste(im2, (img_size, 0))
-
-    # Save the image
-    new_img.save("/users/jrs596/scratch/dat/Ecuador/GradCAM_ResNet18_IN-PT/" + str(i) + ".png")
-    
-
-
-# Convert tensor to numpy array
 imgs_np = imgs.numpy()
-
-#%%
-print("\nMapping complete, getting predictions.\n")
-# Create a figure and axes
-fig, axs = plt.subplots(n_imgs, n_models, figsize=(100, 100))
-#set plot width
-fig.set_figwidth(40)
-
-# Remove space between subplots
-plt.subplots_adjust(wspace=0, hspace=0)
-
-class_labels = ["BPR", "FPR", "Healthy", "WBD"]  # Replace with your actual class labels
-
-font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 80)  # Replace with the path to a .ttf file on your system
-
-# Create a new blank image
-grid_img = Image.new('RGB', (n_models * img_size, n_imgs * img_size))
-# Prepare a list to store the ground truth labels
 ground_truth_labels = []
 
-valloader = load_data(dat_dir, 1000)
+fig, axs = plt.subplots(n_imgs, n_models, figsize=(100, 100))
+fig.set_figwidth(40)
+plt.subplots_adjust(wspace=0, hspace=0)
+# Create a new blank image
+grid_img = Image.new('RGB', (n_models * img_size, n_imgs * img_size))
 
-# Create a new PIL Image for each model and image
-it = iter(valloader)
-for i in range(n_imgs):
-    img_, label = next(it)
-    ground_truth_labels.append(label)  # Store the ground truth label
-    for j in range(n_models):
-        
-        # Get the image
-        img = imgs_np[i, j]
-        
-        # Convert image from PyTorch format (C, H, W) to matplotlib format (H, W, C)
-        img = np.transpose(img, (1, 2, 0))
-        
-        # Normalize image to [0, 1] range
-        img = (img - img.min()) / (img.max() - img.min())
-        
-        # Convert to PIL Image
-        img_pil = Image.fromarray((img * 255).astype(np.uint8))
-        
-        # Create a draw object
-        draw = ImageDraw.Draw(img_pil)
-        
-        # Add class or class prediction to each image
-        if j == 0:  # For the first column, use the ground truth label
-            label = ground_truth_labels[i]
+
+    
+#%%    
+
+
+for i, (img, label) in enumerate(valloader):
+    if i >= n_imgs:
+        break
+
+
+    
+    for idx, model in enumerate(models_):
+        if idx == 0:  # For the first column, use the ground truth label
+            pil_img = Image.fromarray((img.squeeze().permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
+            draw = ImageDraw.Draw(pil_img)
             draw.text((0, 0), class_labels[label], fill="white", font=font)
-        else:  # For all other columns, use the predicted class
-            # resize img_ tensor to 3 x 224 x 224
-            img__ = torch.nn.functional.interpolate(img_, size=img_size, mode='bilinear', align_corners=False)
-            model = ResNet18
-            model.to(device)
-            model.eval()
+            grid_img.paste(pil_img, (idx * img_size, i * img_size))
+        elif idx == 1:  # For the second column, use the Grad-CAM output with predicted class
+            model = load_model(model)
+            model_cam_net = ResNet_CAM(model)
 
-            pred = model(img__.to(device))
+            out = get_grad_cam(model_cam_net, img)  
+            #Normalise GradCAM output
+            out = (out - out.min()) / (out.max() - out.min())
+            out = out.permute(2,0,1).cpu().mul(255).byte()
+
+            pred = model(img.to(device))
             pred = pred.argmax(dim=1)
-            draw.text((0, 0), class_labels[pred], fill="white", font=font)
-        
-        # out = img_pil, (j * img_size, i * img_size)
 
-        # Paste the image onto the grid image
-        grid_img.paste(img_pil, (j * img_size, i * img_size))
+            # Convert out to PIL image and draw the predicted class
+            out_pil_1 = ToPILImage()(out)
+            draw = ImageDraw.Draw(out_pil_1)
+            draw.text((0, 0), out_labels[pred], fill="white", font=font)
 
-# Save the grid image
-grid_img.save("/users/jrs596/scratch/dat/Ecuador/GradCAM_ResNet18_IN-PT.png")
+            grid_img.paste(out_pil_1, (idx * img_size, i * img_size))
+        elif idx == 2:  # For the second column, use the Grad-CAM output with predicted class
+            model = load_model(model)
+            model_cam_net = ResNet_CAM(model)
 
+            out = get_grad_cam(model_cam_net, img)  
+            #Normalise GradCAM output
+            out = (out - out.min()) / (out.max() - out.min())
+            out = out.permute(2,0,1).cpu().mul(255).byte()
 
+            pred = model(img.to(device))
+            pred = pred.argmax(dim=1)
+
+            # Convert out to PIL image and draw the predicted class
+            out_pil_2 = ToPILImage()(out)
+            draw = ImageDraw.Draw(out_pil_2)
+            draw.text((0, 0), out_labels[pred], fill="white", font=font)
+
+            grid_img.paste(out_pil_2, (idx * img_size, i * img_size))
+            
+    # Create a new blank image with the combined dimensions
+    new_img = Image.new('RGB', (img_size*len(models_), img_size))
+    # Paste the images side by side
+    new_img.paste(pil_img, (0, 0))
+    new_img.paste(out_pil_1, (img_size, 0))
+    new_img.paste(out_pil_2, (img_size*2, 0))
+
+    # Save the image
+    dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_IN-PT_Full-SemiSup"
+    os.makedirs(dir_, exist_ok=True)
+    new_img.save(os.path.join(dir_, str(i) + ".png"))
+
+grid_img.save("/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_IN-PT_Full-SemiSup.png")
 
 print("Done!")
 
+# for i, (img, label) in enumerate(valloader):
+#     if i >= n_imgs:
+#         break
+
+#     out = get_grad_cam(model_cam_net, img)  
+#     #Normalise GradCAM output
+#     out = (out - out.min()) / (out.max() - out.min())
+#     out = out.permute(2,0,1).cpu().mul(255).byte()
+    
+#     for j in range(n_models):
+#         if j == 0:  # For the first column, use the ground truth label
+#             pil_img = Image.fromarray((img.squeeze().permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
+#             draw = ImageDraw.Draw(pil_img)
+#             draw.text((0, 0), class_labels[label], fill="white", font=font)
+#             grid_img.paste(pil_img, (j * img_size, i * img_size))
+#         elif j == 1:  # For the second column, use the Grad-CAM output with predicted class
+#             model = ResNet18
+#             model.to(device)
+#             model.eval()
+
+#             pred = model(img.to(device))
+#             pred = pred.argmax(dim=1)
+
+#             # Convert out to PIL image and draw the predicted class
+#             out_pil = ToPILImage()(out)
+#             draw = ImageDraw.Draw(out_pil)
+#             draw.text((0, 0), out_labels[pred], fill="white", font=font)
+
+#             grid_img.paste(out_pil, (j * img_size, i * img_size))
+            
+#     # Create a new blank image with the combined dimensions
+#     new_img = Image.new('RGB', (img_size*2, img_size))
+#     # Paste the images side by side
+#     new_img.paste(pil_img, (0, 0))
+#     new_img.paste(out_pil, (img_size, 0))
+#     # Save the image
+#     dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_IN-PT_FullSup"
+#     os.makedirs(dir_, exist_ok=True)
+#     new_img.save(os.path.join(dir_, str(i) + ".png"))
+
+# grid_img.save("/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_IN-PT_FullSup.png")
+
+# print("Done!")
 
 
-
-
-
-# %%

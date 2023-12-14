@@ -103,48 +103,53 @@ def train():
 
     #Set seeds for reproducability
     toolbox.SetSeeds(42)       
-    
     # Ensure the working directory is empty
     if os.path.exists(working_dir):
         shutil.rmtree(working_dir)
     os.makedirs(working_dir, exist_ok=True)
 
     # Define source directories
-    src_dir_easy = os.path.join(args.root, "dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Easy")
+    src_dir_easy = os.path.join(args.root, "dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy")
 
     # Define new subdirectories in the working directory
     dest_dir_easy = os.path.join(working_dir, "Easy")
-    dest_dir_difficult = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Difficult"
-    dest_dir_unsure = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500/Unsure"
+    dest_dir_difficult = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult"
+    dest_dir_unsure = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Unsure"
 
     # Copy the contents of the source directories to the new subdirectories
     shutil.copytree(src_dir_easy, dest_dir_easy)
 
-    classes = sorted(os.listdir(os.path.join(working_dir, "Easy/val")))
+    classes = sorted(os.listdir("/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy/val"))
 
-    num_classes = len(os.listdir(dest_dir_easy + "/train"))
-    # data_dir, num_classes, _ = toolbox.setup(args)
+        
     device = torch.device("cuda:" + args.GPU)
 
-    
-    config = {
-        'beta1': 0.9650025364732508,
-        'beta2': 0.981605256508036,
-        'dim_1': 79,
-        'dim_2': 107,
-        'dim_3': 93,
-        'input_size': 415,
-        'kernel_1': 5,
-        'kernel_2': 1,
-        'kernel_3': 7,
-        'learning_rate': 0.0002975957026209971,
-        'num_blocks_1': 2,
-        'num_blocks_2': 1,
-        'out_channels': 6
-    }
+    if args.arch == 'PhytNetV0':
+        config = {
+            'beta1': 0.9650025364732508,
+            'beta2': 0.981605256508036,
+            'dim_1': 79,
+            'dim_2': 107,
+            'dim_3': 93,
+            'input_size': 415,
+            'kernel_1': 5,
+            'kernel_2': 1,
+            'kernel_3': 7,
+            'learning_rate': 0.0002975957026209971,
+            'num_blocks_1': 2,
+            'num_blocks_2': 1,
+            'out_channels': 6
+            }
+    elif args.arch == 'resnet18':
+        config = {
+            'learning_rate': 5.140551979453639e-05,
+            'input_size': 375,
+            'beta1': 0.9841235203771193,
+            'beta2': 0.9895409209654844,
+            'out_channels': 4,
+            }
 
-
-    model = toolbox.build_model(arch=args.arch, num_classes=num_classes, config=config).to(device)
+    model = toolbox.build_model(arch=args.arch, num_classes=config['out_channels'], config=config).to(device)
 
 
     if args.custom_pretrained_weights != None:
@@ -169,36 +174,44 @@ def train():
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
                                         weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
         
-    # patience = args.patience
     best_f1 = 0.0
+    copied_images = set()
+
+    # Loop through two different datasets: dest_dir_difficult and dest_dir_unsure
     for major_epoch, data_set in enumerate([dest_dir_difficult, dest_dir_unsure]):
         minor_epoch = 0
         n_relabeled = 1
         while n_relabeled > 0:
             print("\nMajor epoch: ", major_epoch, ":", minor_epoch)
             minor_epoch += 1
-            image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
+            
+            # Build datasets and dataloaders for the easy dataset
+            image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size'])
             dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
             
-            model_out, best_f1 = train_model(args=args, 
-                                                    model=model, 
-                                                    optimizer=optimizer, 
-                                                    device=device, 
-                                                    dataloaders_dict=dataloaders_dict, 
-                                                    criterion=criterion, 
-                                                    patience=args.patience, 
-                                                    batch_size=args.batch_size,
-                                                    num_classes=num_classes,
-                                                    best_f1=best_f1)
-            # patience = 4
+            # Train the model using the train_model function
+            model, best_f1 = train_model(args=args, 
+                                             model=model, 
+                                             optimizer=optimizer, 
+                                             device=device, 
+                                             dataloaders_dict=dataloaders_dict, 
+                                             criterion=criterion, 
+                                             patience=args.patience, 
+                                             batch_size=args.batch_size,
+                                             num_classes=config['out_channels'],
+                                             best_f1=best_f1)
+            
             print("\nRelabeling images")
-            model_out.eval()
+            model.eval()
+            
+            # Build datasets and dataloader for the current data_set (dest_dir_difficult or dest_dir_unsure)
             dif_datasets = toolbox.build_datasets(data_dir=data_set, input_size=config['input_size'])
             dif_dataloader = torch.utils.data.DataLoader(dif_datasets['val'], batch_size=200, shuffle=False, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False)
             n_relabeled = 0
-
+            
+            # Iterate over the images in the dataloader and relabel them if the model's prediction matches the ground truth label
             for idx, (images, labels) in enumerate(dif_dataloader):
-                _, _, preds = model_out(images.to(device))
+                preds = model(images.to(device))
                 preds = torch.argmax(preds, dim=1)
 
                 for i in range(images.size(0)):  # Loop through each item in the batch
@@ -206,19 +219,19 @@ def train():
                         image_path = dif_datasets['val'].imgs[idx * dif_dataloader.batch_size + i][0]
                         label = labels[i].item()
                         dest = os.path.join(working_dir, "Easy/train", classes[label], os.path.basename(image_path))
-                        if not os.path.exists(dest):
+                        
+                        # Copy the image to the destination directory if it hasn't been copied before
+                        if image_path not in copied_images and not os.path.exists(dest):
                             shutil.copy(image_path, dest)
+                            copied_images.add(image_path)
                             n_relabeled += 1
 
             print("\nRelabeled: ", n_relabeled, " images")
         
 
-        run.finish()  # Finish the run
-        # model_out, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
-    
+
     wandb.finish()
     shutil.rmtree(working_dir)
-    # return model_out, best_f1, best_f1_loss, best_train_f1, config
 
 os.environ["wandb__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:

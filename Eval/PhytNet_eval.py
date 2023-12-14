@@ -12,45 +12,46 @@ import toolbox
 
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 
-data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500_2/Easy"
+# data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_SplitCompress500_2/Easy"
+data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500_split"
 
 device = torch.device("cuda:0")
 
-config = {
-        'beta1': 0.9650025364732508,
-        'beta2': 0.981605256508036,
-        'dim_1': 79,
-        'dim_2': 107,
-        'dim_3': 93,
-        'input_size': 415,
-        'kernel_1': 5,
-        'kernel_2': 1,
-        'kernel_3': 7,
-        'learning_rate': 0.0002975957026209971,
-        'num_blocks_1': 2,
-        'num_blocks_2': 1,
-        'out_channels': 6
-    }
+# config = {
+#         'beta1': 0.9650025364732508,
+#         'beta2': 0.981605256508036,
+#         'dim_1': 79,
+#         'dim_2': 107,
+#         'dim_3': 93,
+#         'input_size': 415,
+#         'kernel_1': 5,
+#         'kernel_2': 1,
+#         'kernel_3': 7,
+#         'learning_rate': 0.0002975957026209971,
+#         'num_blocks_1': 2,
+#         'num_blocks_2': 1,
+#         'out_channels': 6
+#     }
 	
-model = toolbox.build_model(num_classes=None, arch='PhytNetV0', config=config)
+# model = toolbox.build_model(num_classes=None, arch='PhytNetV0', config=config)
 
-weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SR-PT.pth"
+# weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-N-PT.pth"
 
-PhyloNetWeights = torch.load(weights_path, map_location=device)
+# PhyloNetWeights = torch.load(weights_path, map_location=device)
 
 
-model.load_state_dict(PhyloNetWeights, strict=True)
-input_size = 415
-print('\nLoaded weights from: ', weights_path)
+# model.load_state_dict(PhyloNetWeights, strict=True)
+# input_size = 415
+# print('\nLoaded weights from: ', weights_path)
 
-# resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-IN-PT.pth"
-# ResNet18Weights = torch.load(resnet18_cococa_weights, map_location=device)
+resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa_FullSup-IN-PT.pth"
+ResNet18Weights = torch.load(resnet18_cococa_weights, map_location=device)
 
-# model = models.resnet18(weights=None)
-# in_feat = model.fc.in_features
-# model.fc = nn.Linear(in_feat, 4)
-# model.load_state_dict(ResNet18Weights, strict=True)
-# input_size = 375
+model = models.resnet18(weights=None)
+in_feat = model.fc.in_features
+model.fc = nn.Linear(in_feat, 4)
+model.load_state_dict(ResNet18Weights, strict=True)
+input_size = 375
 
 model.eval()   # Set model to evaluate mode
 model = model.to(device)
@@ -70,7 +71,7 @@ for phase in ['train', 'val']:
 		inputs = inputs.to(device)
 		labels = labels.to(device)
 		
-		_, _, outputs = model(inputs)
+		outputs = model(inputs)
 
 		loss = criterion(outputs, labels)
 

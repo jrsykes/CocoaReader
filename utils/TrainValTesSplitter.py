@@ -104,39 +104,70 @@ def CopyNotPlant(destination, img_path, n_not_plant):
 
 def Randomise_Split(root, destination):
 	for class_ in os.listdir(root):
-		images = os.listdir(os.path.join(root, class_))
-		random.shuffle(images)
-		#images = images[:800]
-
-		if len(images) > 100: 
-			dat_dict = {'train': images[:int(len(images)*0.9)], 
-				'val': images[int(len(images)*0.9):]}
-		elif len(images) > 10:
-			dat_dict = {'train': images[:int(len(images)*0.8)],
-               'val': images[int(len(images)*0.8):]}
-		else:
-			dat_dict = {'train': images[:int(len(images)*0.5)],
-               'val': images[int(len(images)*0.5):]}
 		
-		for split, im_list in dat_dict.items():
-			#os.makedirs(os.path.join(root, split, class_), exist_ok = True)
-			
-			for image in im_list:
-				source = os.path.join(root, class_, image)
-				dest = os.path.join(destination, split, class_)
-				os.makedirs(dest, exist_ok = True)
-				#open image and compress to 330x330 pixels
-				# im = Image.open(os.path.join(source))
-				# im1 = im.resize((494,494))
-				# im1.save(os.path.join(dest, image))
+		if class_ != 'ReadMe.md':
+			print("\nProcessing class: ", class_)
+			images = os.listdir(os.path.join(root, class_))
+			random.shuffle(images)
+			#images = images[:800]
+			print("Number of images: ", len(images))
+			if len(images) > 100: 
+				print("90:10 split")
+				dat_dict = {'train': images[:int(len(images)*0.9)], 
+					'val': images[int(len(images)*0.9):]}
+			elif len(images) > 10:
+				print("80:20 split")
+				dat_dict = {'train': images[:int(len(images)*0.8)],
+        	       'val': images[int(len(images)*0.8):]}
+			else:
+				print("50:50 split")
+				dat_dict = {'train': images[:int(len(images)*0.5)],
+        	       'val': images[int(len(images)*0.5):]}
 
-				#shutil.copy(source, dest)
-				os.symlink(source, os.path.join(dest, image))
+			for split, im_list in dat_dict.items():
+				print("Processing split: ", split)
+				#os.makedirs(os.path.join(root, split, class_), exist_ok = True)
 
-root = '/local/scratch/jrs596/dat/FAIGB/FAIGB_700_30-10-23'
-destination = '/local/scratch/jrs596/dat/FAIGB/FAIGB_700_30-10-23_split'
+				for image in im_list:
+					source = os.path.join(root, class_, image)
+					dest = os.path.join(destination, split, class_)
+					os.makedirs(dest, exist_ok = True)
+					#open image and compress to 330x330 pixels
+					# im = Image.open(os.path.join(source))
+					# im1 = im.resize((494,494))
+					# im1.save(os.path.join(dest, image))
 
-Randomise_Split(root, destination)
+					shutil.copy(source, dest)
+					# os.symlink(source, os.path.join(dest, image))
+
+root = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500'
+destination = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500_split'
+
+# Randomise_Split(root, destination)
+
+def NonEasyDif_Spliter(root, destination):
+	for class_ in os.listdir(root):
+		
+		if class_ != 'ReadMe.md':
+			print("\nProcessing class: ", class_)
+			images = os.listdir(os.path.join(root, class_))
+			random.shuffle(images)
+
+			val_images = os.listdir(os.path.join(destination, 'val', class_))
+
+			for img in images:
+				if img not in val_images:
+
+					source = os.path.join(root, class_, img)
+					dest = os.path.join(destination, 'train', class_)
+					os.makedirs(dest, exist_ok = True)
+					shutil.copy(source, dest)
+
+
+root = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500'
+destination = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500_split'
+
+NonEasyDif_Spliter(root, destination)
 
 def compress_copy(root, destination):
 	for class_ in os.listdir(root):
