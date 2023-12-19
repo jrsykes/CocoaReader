@@ -88,6 +88,37 @@ sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
 from training_loop import train_model
 
+def Relabel(model, device, data_dir, working_dir, copied_images, classes, config):
+    print("\nRelabeling images from:\n ", data_dir, "\n")
+    model.eval()
+    
+    # Build datasets and dataloader for the current data_set (dest_dir_difficult or dest_dir_unsure)
+    dif_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size'])
+    dif_dataloader = torch.utils.data.DataLoader(dif_datasets['val'], batch_size=200, shuffle=False, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False)
+    n_relabeled = 0
+    
+    # Iterate over the images in the dataloader and relabel them if the model's prediction matches the ground truth label
+    for idx, (images, labels) in enumerate(dif_dataloader):
+        preds = model(images.to(device))
+        preds = torch.argmax(preds, dim=1)
+        for i in range(images.size(0)):  # Loop through each item in the batch
+            #Healthy = 2, NotCocoa = 3
+            #There are not difficult or unsure Healthy of NotCocoa images, just dumby images
+            included_labels = [0, 1, 4]
+            if labels[i].item() in included_labels:
+                if preds[i].item() == labels[i].to(device).item():
+                    image_path = dif_datasets['val'].imgs[idx * dif_dataloader.batch_size + i][0]
+                    label = labels[i].item()
+                    dest = os.path.join(working_dir, "Easy/train", classes[label], os.path.basename(image_path))
+
+                    # Copy the image to the destination directory if it hasn't been copied before
+                    if image_path not in copied_images and not os.path.exists(dest):
+                        shutil.copy(image_path, dest)
+                        copied_images.add(image_path)
+                        n_relabeled += 1
+    print("\nRelabeled: ", n_relabeled, " images")
+    
+
 
 def train():
 
@@ -96,9 +127,9 @@ def train():
         script_path = os.path.abspath(__file__)
         script_dir = os.path.dirname(script_path)
         wandb.save(os.path.join(script_dir, '*'), base_path=script_dir) 
-        working_dir = os.path.join(args.root, args.data_dir, wandb.run.name)    
+        working_dir = os.path.join(args.root, args.data_dir, "Working_Dir", wandb.run.name)    
     else:
-        working_dir = os.path.join(args.root, args.data_dir, args.run_name)
+        working_dir = os.path.join(args.root, args.data_dir, "Working_Dir", args.run_name)
 
 
     #Set seeds for reproducability
@@ -109,17 +140,17 @@ def train():
     os.makedirs(working_dir, exist_ok=True)
 
     # Define source directories
-    src_dir_easy = os.path.join(args.root, "dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy")
+    src_dir_easy = os.path.join(args.root, args.data_dir, "Easy")
 
     # Define new subdirectories in the working directory
     dest_dir_easy = os.path.join(working_dir, "Easy")
-    dest_dir_difficult = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult"
-    dest_dir_unsure = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Unsure"
+    dest_dir_difficult = os.path.join(args.root, args.data_dir, "Difficult")
+    dest_dir_unsure = os.path.join(args.root, args.data_dir, "Unsure")
 
     # Copy the contents of the source directories to the new subdirectories
     shutil.copytree(src_dir_easy, dest_dir_easy)
 
-    classes = sorted(os.listdir("/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy/val"))
+    classes = sorted(os.listdir(os.path.join(working_dir, "Easy", "val")))
 
         
     device = torch.device("cuda:" + args.GPU)
@@ -146,7 +177,7 @@ def train():
             'input_size': 375,
             'beta1': 0.9841235203771193,
             'beta2': 0.9895409209654844,
-            'out_channels': 4,
+            'out_channels': 5,
             }
 
     model = toolbox.build_model(arch=args.arch, num_classes=config['out_channels'], config=config).to(device)
@@ -171,64 +202,55 @@ def train():
 
     criterion = nn.CrossEntropyLoss()
     
+    
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
                                         weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
         
-    best_f1 = 0.0
+    prev_best_f1 = 0.0
     copied_images = set()
 
     # Loop through two different datasets: dest_dir_difficult and dest_dir_unsure
-    for major_epoch, data_set in enumerate([dest_dir_difficult, dest_dir_unsure]):
+    for major_epoch, data_dir in enumerate([dest_dir_difficult, dest_dir_unsure]):
         minor_epoch = 0
         n_relabeled = 1
+    # for i in range(1):
+    #     for j in range(1):
+        
+        if major_epoch == 1:
+            Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
+
         while n_relabeled > 0:
             print("\nMajor epoch: ", major_epoch, ":", minor_epoch)
             minor_epoch += 1
             
             # Build datasets and dataloaders for the easy dataset
+            # dest_dir_easy = args.data_dir
+            
             image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size'])
             dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
+            # criterion = toolbox.DynamicFocalLoss(delta=1, dataloader=dataloaders_dict['train'])
             
+ 
             # Train the model using the train_model function
             model, best_f1 = train_model(args=args, 
-                                             model=model, 
-                                             optimizer=optimizer, 
-                                             device=device, 
-                                             dataloaders_dict=dataloaders_dict, 
-                                             criterion=criterion, 
-                                             patience=args.patience, 
-                                             batch_size=args.batch_size,
-                                             num_classes=config['out_channels'],
-                                             best_f1=best_f1)
+                                         model=model, 
+                                         optimizer=optimizer, 
+                                         device=device, 
+                                         dataloaders_dict=dataloaders_dict, 
+                                         criterion=criterion, 
+                                         patience=args.patience, 
+                                         batch_size=args.batch_size,
+                                         num_classes=config['out_channels'],
+                                         best_f1=prev_best_f1)         
             
-            print("\nRelabeling images")
-            model.eval()
+            if best_f1 <= prev_best_f1:
+                break
+            else:
+                prev_best_f1 = best_f1  
             
-            # Build datasets and dataloader for the current data_set (dest_dir_difficult or dest_dir_unsure)
-            dif_datasets = toolbox.build_datasets(data_dir=data_set, input_size=config['input_size'])
-            dif_dataloader = torch.utils.data.DataLoader(dif_datasets['val'], batch_size=200, shuffle=False, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False)
-            n_relabeled = 0
-            
-            # Iterate over the images in the dataloader and relabel them if the model's prediction matches the ground truth label
-            for idx, (images, labels) in enumerate(dif_dataloader):
-                preds = model(images.to(device))
-                preds = torch.argmax(preds, dim=1)
+                Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
 
-                for i in range(images.size(0)):  # Loop through each item in the batch
-                    if preds[i].item() == labels[i].to(device).item():
-                        image_path = dif_datasets['val'].imgs[idx * dif_dataloader.batch_size + i][0]
-                        label = labels[i].item()
-                        dest = os.path.join(working_dir, "Easy/train", classes[label], os.path.basename(image_path))
-                        
-                        # Copy the image to the destination directory if it hasn't been copied before
-                        if image_path not in copied_images and not os.path.exists(dest):
-                            shutil.copy(image_path, dest)
-                            copied_images.add(image_path)
-                            n_relabeled += 1
-
-            print("\nRelabeled: ", n_relabeled, " images")
-        
-
+           
 
     wandb.finish()
     shutil.rmtree(working_dir)

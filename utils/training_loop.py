@@ -3,6 +3,7 @@ from __future__ import division
 
 
 import torch
+import torch.nn as nn
 import numpy as np
 import time
 import copy
@@ -103,6 +104,10 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
 
                         loss = criterion(outputs, labels)
+                        # if phase == 'train':
+                        #     loss, step = criterion(outputs, labels, step=step)
+                        # else:
+                        #     loss = nn.CrossEntropyLoss()(outputs, labels)
 
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
                         

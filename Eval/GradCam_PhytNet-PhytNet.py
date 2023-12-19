@@ -135,20 +135,20 @@ def get_grad_cam(net, img):
 	return superimpose_heatmap(heatmap, img)
 
 
-out_labels = ["BPR", "FPR", "Healthy", "Not Cocoa", "WBD"]  
+out_labels = ["BPR", "FPR", "Healthy", "WBD"]  
 
 font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 80)  # Replace with the path to a .ttf file on your system
 
 
-ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss.pth"
+# ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-IN-PT.pth"
 
-ResNet18Weights = torch.load(ResNet18_weights, map_location=device)
-ResNet18 = models.resnet18(weights=None)
-in_feat = ResNet18.fc.in_features
-ResNet18.fc = nn.Linear(in_feat, 5)
-ResNet18.load_state_dict(ResNet18Weights, strict=True)
-ResNet18.eval()
-ResNet18.to(device)
+# ResNet18Weights = torch.load(ResNet18_weights, map_location=device)
+# ResNet18 = models.resnet18(weights=None)
+# in_feat = ResNet18.fc.in_features
+# ResNet18.fc = nn.Linear(in_feat, 4)
+# ResNet18.load_state_dict(ResNet18Weights, strict=True)
+# ResNet18.eval()
+# ResNet18.to(device)
 	
 
 config = {
@@ -172,16 +172,27 @@ config = {
 
 
 
-PhytNet= PhytNetV0(config=config).to(device)
+PhytNet_Cocoa_1= PhytNetV0(config=config).to(device)
 # # Load weights
-PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_NotCocoa_SR.pth"
+PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-N-PT.pth"
 weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
 
-PhytNet.load_state_dict(weights, strict=False)
-PhytNet.eval()
-PhytNet.to(device)
+PhytNet_Cocoa_1.load_state_dict(weights, strict=False)
+PhytNet_Cocoa_1.eval()
+PhytNet_Cocoa_1.to(device)
 
-models_ = ["Input", PhytNet, ResNet18]
+PhytNet_Cocoa_2= PhytNetV0(config=config).to(device)
+# # Load weights
+PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-N-PT_DFloss1.pth"
+weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
+
+PhytNet_Cocoa_2.load_state_dict(weights, strict=False)
+PhytNet_Cocoa_2.eval()
+PhytNet_Cocoa_2.to(device)
+
+
+
+models_ = ["Input", PhytNet_Cocoa_1, PhytNet_Cocoa_2]
 
 
 dat_dir = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult/val/'
@@ -201,7 +212,7 @@ def load_data(dat_dir):
 
 #%%
 
-img_size = 375
+img_size = 415
 n_imgs = 40
 n_models = 2
 
@@ -232,7 +243,7 @@ for i, (img, label) in enumerate(valloader):
 	
 	for idx, model in enumerate(models_):
 		if idx == 0:  # For the first column, use the ground truth label
-			img_size = 375
+			img_size = 415
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
 			
 			pil_img = Image.fromarray((img_resized.squeeze().permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
@@ -256,7 +267,7 @@ for i, (img, label) in enumerate(valloader):
 
 			# Convert out to PIL image and draw the predicted class
 			out_pil_1 = ToPILImage()(out)
-			out_pil_1 = out_pil_1.resize((375, 375))
+			# out_pil_1 = out_pil_1.resize((375, 375))
 
 			draw = ImageDraw.Draw(out_pil_1)
 			draw.text((0, 0), out_labels[pred], fill="white", font=font)
@@ -265,7 +276,7 @@ for i, (img, label) in enumerate(valloader):
 		elif idx == 2:  # For the second column, use the Grad-CAM output with predicted class
 			# model = ResNet18
 			model_cam_net = ResNet_CAM(model)
-			img_size = 375
+			img_size = 415
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
 	
 			out = get_grad_cam(model_cam_net, img_resized)  
@@ -291,10 +302,10 @@ for i, (img, label) in enumerate(valloader):
 	new_img.paste(out_pil_2, (img_size*2, 0))
 
 	# Save the image
-	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_PhytNet_Difficult"
+	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_PhytNet_PhytNetDFloss_Difficult"
 	os.makedirs(dir_, exist_ok=True)
 	new_img.save(os.path.join(dir_, str(i) + ".png"))
 
-# grid_img.save("/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_PhytNet_Difficult.png")
+# grid_img.save("/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_PhytNet.png")
 
 print("Done!")

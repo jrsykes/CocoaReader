@@ -118,11 +118,11 @@ def Randomise_Split(root, destination):
 			elif len(images) > 10:
 				print("80:20 split")
 				dat_dict = {'train': images[:int(len(images)*0.8)],
-        	       'val': images[int(len(images)*0.8):]}
+				   'val': images[int(len(images)*0.8):]}
 			else:
 				print("50:50 split")
 				dat_dict = {'train': images[:int(len(images)*0.5)],
-        	       'val': images[int(len(images)*0.5):]}
+				   'val': images[int(len(images)*0.5):]}
 
 			for split, im_list in dat_dict.items():
 				print("Processing split: ", split)
@@ -145,29 +145,55 @@ destination = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Com
 
 # Randomise_Split(root, destination)
 
-def NonEasyDif_Spliter(root, destination):
-	for class_ in os.listdir(root):
+# def NonEasyDif_Spliter(root, destination):
+# 	for class_ in os.listdir(root):
 		
-		if class_ != 'ReadMe.md':
-			print("\nProcessing class: ", class_)
-			images = os.listdir(os.path.join(root, class_))
-			random.shuffle(images)
+# 		if class_ != 'ReadMe.md':
+# 			print("\nProcessing class: ", class_)
+# 			images = os.listdir(os.path.join(root, class_))
+# 			random.shuffle(images)
 
-			val_images = os.listdir(os.path.join(destination, 'val', class_))
+# 			val_images = os.listdir(os.path.join(destination, 'val', class_))
 
-			for img in images:
-				if img not in val_images:
+# 			for img in images:
+# 				if img not in val_images:
 
-					source = os.path.join(root, class_, img)
-					dest = os.path.join(destination, 'train', class_)
-					os.makedirs(dest, exist_ok = True)
-					shutil.copy(source, dest)
+# 					source = os.path.join(root, class_, img)
+# 					dest = os.path.join(destination, 'train', class_)
+# 					os.makedirs(dest, exist_ok = True)
+# 					shutil.copy(source, dest)
 
 
-root = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500'
-destination = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500_split'
+# root = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500'
+# destination = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500_split'
 
-NonEasyDif_Spliter(root, destination)
+# NonEasyDif_Spliter(root, destination)
+
+import os
+import random
+
+def FAIGB_Spliter(root, destination):
+	TrainValimages = []
+	for split in os.listdir(root):
+		for class_ in os.listdir(os.path.join(root, split)):
+			images = os.listdir(os.path.join(root, split, class_))
+			full_paths = [os.path.join(root, split, class_, image) for image in images]
+			TrainValimages.extend(full_paths)  
+
+	random.shuffle(TrainValimages)
+	   
+	images_dict = {'train': TrainValimages[:1800], 'val': TrainValimages[len(TrainValimages)-200:]}
+ 
+	for split, im_list in images_dict.items():
+		dest = os.path.join(destination, split)
+		os.makedirs(dest, exist_ok = True)
+		for image in im_list:
+			shutil.copy(image, os.path.join(dest, os.path.basename(image)))
+
+root = '/users/jrs596/scratch/dat/FAIGB/FAIGB_700_30-10-23_split'
+destination = '/users/jrs596/scratch/dat/Ecuador/NotCocoa'
+
+FAIGB_Spliter(root, destination)
 
 def compress_copy(root, destination):
 	for class_ in os.listdir(root):
@@ -313,24 +339,24 @@ def cocoa_image_complier(dat, destination):
 
 
 def resize_and_save_image(image_path, output_path):
-    try:
-        with Image.open(image_path) as img:
-            img = img.resize((700, 700))
-            img.save(output_path)
-            print(f"Image {image_path} resized and saved to {output_path}")
-    except Exception as e:
-        print(f"Error processing {image_path}: {e}")
+	try:
+		with Image.open(image_path) as img:
+			img = img.resize((700, 700))
+			img.save(output_path)
+			print(f"Image {image_path} resized and saved to {output_path}")
+	except Exception as e:
+		print(f"Error processing {image_path}: {e}")
 
 def process_directory(input_directory, output_directory):
-    for root, dirs, files in os.walk(input_directory):
-        for file in files:
-            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                input_image_path = os.path.join(root, file)
-                relative_subdir = os.path.relpath(root, input_directory)
-                output_subdir = os.path.join(output_directory, relative_subdir)
-                os.makedirs(output_subdir, exist_ok=True)
-                output_image_path = os.path.join(output_subdir, file)
-                resize_and_save_image(input_image_path, output_image_path)
+	for root, dirs, files in os.walk(input_directory):
+		for file in files:
+			if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+				input_image_path = os.path.join(root, file)
+				relative_subdir = os.path.relpath(root, input_directory)
+				output_subdir = os.path.join(output_directory, relative_subdir)
+				os.makedirs(output_subdir, exist_ok=True)
+				output_image_path = os.path.join(output_subdir, file)
+				resize_and_save_image(input_image_path, output_image_path)
 
 input_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit'
 output_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit_700'
