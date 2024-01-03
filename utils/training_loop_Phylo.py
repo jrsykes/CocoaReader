@@ -57,21 +57,13 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     
-    my_metrics = toolbox.Metrics(metric_names= ['ESS', 'SR_loss', 'L1'], num_classes=num_classes)
+    my_metrics = toolbox.Metrics(metric_names= ['ESS', 'L1'], num_classes=num_classes)
 
-    constructor = DistanceTreeConstructor()
+    # constructor = DistanceTreeConstructor()
     reducer = umap.UMAP(n_components=3)
     if os.path.exists(os.path.join(args.root, 'umap_data.csv')):
         os.remove(os.path.join(args.root, 'umap_data.csv'))
     
-    #sample images for visualisation
-    len_ = len(dataloaders_dict['val'].dataset)
-    selected_indices = [0, len_//10, len_//9, len_//8, len_//7, len_//6, len_//5, len_//4, len_//3]
-    selected_indices = [i for i in range(args.batch_size)]
-    sampler = toolbox.NineImageSampler(selected_indices)
-    sample_data_loader = DataLoader(dataloaders_dict['val'].dataset, batch_size=9, sampler=sampler)
-    sample_images, _ = next(iter(sample_data_loader))
-    sample_images = F.interpolate(sample_images, size=(375, 375), mode='bilinear', align_corners=True).to(device)
 
     since = time.time()
     val_loss_history = []
@@ -116,26 +108,20 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
 
-                    #Load images and lables from current batch onto GPU(s)
-                    SRinputs = inputs.to(device)
-                    inputs = F.interpolate(inputs, size=(375, 375), mode='bilinear', align_corners=True)
-                    
                     inputs = inputs.to(device)
                     labels = labels.to(device)
                     
                     with torch.set_grad_enabled(phase == 'train'):
                         #Forward pass   
-                        encoded_pooled, SRdecoded = model(inputs)
-
-                        #Calculate losses and gradients then normalise the gradients
-                        SR_loss = criterion(SRdecoded, SRinputs)/100000                                                      # weight to put on sensible scale    
-
+                        encoded_pooled, _ = model(inputs)
+      
                         trees = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
 
                         ESS = RobinsonFoulds.ESS(trees["input_tree"], trees["output_tree"]) * 10
-                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
-                        epoch_loss += ESS + l1_norm * args.l1_lambda
-                        loss = ESS + l1_norm * args.l1_lambda                 
+                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) 
+                        loss = ESS + l1_norm * args.l1_lambda   
+                                      
+                        epoch_loss += loss
 
                         if phase == 'train':
                             optimizer.zero_grad()
@@ -147,14 +133,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             all_encoded.append(encoded_pooled.cpu().detach().numpy())
                             all_labels.append(labels.cpu().detach().numpy())
                             if idx == 0:                                
-                                _, SRdecoded = model(sample_images)
-                            
-                                grid = vutils.make_grid(SRdecoded, nrow=3, padding=0, normalize=False)
-                                PATH = os.path.join(args.root, "reconstructions_" + args.model_name)
-                                os.makedirs(PATH, exist_ok=True)
-                                vutils.save_image(grid, os.path.join(PATH, "epoch_" + str(epoch) + ".png"))     
-                                ################################################################################################
-                             
+
                                 encoded_pooled, _ = model(inputs)
                                 trees = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
 
@@ -164,7 +143,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                                 trees["input_tree"].write(format=1, outfile=os.path.join(PATH, str(epoch) + "tree_input.newick"))                
                            
                         #Update metrics
-                        my_metrics.update(ESS=ESS, SR_loss=SR_loss, L1=l1_norm, labels=labels)
+                        my_metrics.update(ESS=ESS, L1=l1_norm, labels=labels)
                     
                     bar.next()  
 
@@ -173,9 +152,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             
 
             if phase == 'train':
-                train_metrics = {'SR_loss': results['SR_loss'], 'ESS': results['ESS'], 'L1': results['L1']}                              
+                train_metrics = {'ESS': results['ESS'], 'L1': results['L1']}                              
                                     
-            print('{} SR_loss: {:.4f} ESS: {:.4f} L1_norm: {:.4f}'.format(phase, results['SR_loss'], results['ESS'], results['L1']))                
+            print('{} ESS: {:.4f} L1_norm: {:.4f}'.format(phase, results['ESS'], results['L1']))                
 
            # Save model and update best weights only if recall has improved
             if phase == 'val' and epoch_loss < best_loss:
@@ -183,7 +162,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 val_loss_history.append(epoch_loss)
 
                 best_train_metrics = train_metrics
-                best_val_metrics = {'SR_loss': results['SR_loss'], 'ESS': results['ESS'], 'L1': results['L1']}  
+                best_val_metrics = {'ESS': results['ESS'], 'L1': results['L1']}  
     
                 PATH = os.path.join(args.root, 'models', args.model_name)
   
@@ -198,9 +177,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                      
             
             if phase == 'train':
-                wandb.log({"Train_SR_loss": results['SR_loss'], "Train_ESS": results['ESS'], "Train_L1_norm": results['L1']})
+                wandb.log({"Train_ESS": results['ESS'], "Train_L1_norm": results['L1']})
             else:
-                wandb.log({"Val_SR_loss": results['SR_loss'], "Val_ESS": results['ESS'], "Val_L1_norm": results['L1']})
+                wandb.log({"Val_ESS": results['ESS'], "Val_L1_norm": results['L1']})
                                                 
                 all_encoded_np = np.concatenate(all_encoded, axis=0)
                 all_labels_np = np.concatenate(all_labels, axis=0)

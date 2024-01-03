@@ -52,7 +52,7 @@ parser.add_argument('--beta', type=float, default=1.00,
                         help='minimum required per cent improvment in validation loss')
 parser.add_argument('--learning_rate', type=float, default=1e-3,
                         help='Learning rate, Default:1e-5')
-parser.add_argument('--l1_lambda', type=float, default=1e-5,
+parser.add_argument('--l1_lambda', type=float, default=1e-10,
                         help='l1_lambda for regularization, Default:1e-5')
 parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help='Learning rate, Default:1e-5')
@@ -85,7 +85,8 @@ print(args)
 
 # sys.path.append('~/scripts/CocoaReader/utils')
 import toolbox
-from training_loop_Phylo_SR import train_model
+# from training_loop_SR import train_model
+from training_loop_Phylo import train_model
 
 def train():
 
@@ -104,7 +105,7 @@ def train():
         'beta2': 0.981605256508036,  
         'dim_1': 79,  
         'dim_2': 107,  
-        'dim_3': 512, #93 For PhytNetV0, 512 for ResNet18
+        'dim_3': 93, #93 For PhytNetV0, 512 for ResNet18
         'input_size': args.input_size,  
         'kernel_1': 5,  
         'kernel_2': 1,  
@@ -113,7 +114,7 @@ def train():
         'num_blocks_1': 2,  
         'num_blocks_2': 1,  
         'out_channels': 6,  
-        'num_heads': 4, #3 for PhytNetV0, 4 for ResNet18  
+        'num_heads': 3, #3 for PhytNetV0, 4 for ResNet18  
         'batch_size': args.batch_size,  
         'num_decoder_layers': 4,
     }
@@ -123,6 +124,8 @@ def train():
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=args.input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=10, pin_memory=True, worker_init_fn=toolbox.worker_init_fn, drop_last=True) for x in ['train', 'val']}
+    
+
     
     criterion = nn.MSELoss(reduction='sum')
     
@@ -137,7 +140,9 @@ def train():
     torch.set_float32_matmul_precision('high')
     model = torch.compile(model)
     
-    optimizer = torch.optim.AdamW(model.parameters(), lr=5.140551979453639e-05, weight_decay=args.weight_decay, eps=args.eps, betas=(0.9841235203771193, 0.9895409209654844))
+    
+    
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
 
     taxonomy = pd.read_csv(os.path.join(args.root, 'dat/FAIGB/taxonomy_sorted_GNN.csv'), header=0)
     

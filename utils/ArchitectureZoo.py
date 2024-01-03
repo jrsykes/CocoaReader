@@ -90,7 +90,7 @@ class PhytNetV0(nn.Module):
         w = torch.flatten(w, 1)      
         y = self.fc(w)
         
-        return y
+        return x, w, y
 
 
 
@@ -130,7 +130,7 @@ class TransformerDecoderBlock(nn.Module):
             nn.Linear(d_model, d_model)
         )
 
-    def forward(self, x, memory):
+    def forward(self, x):
         attn_output, _ = self.self_attn(x, x, x)  # Self attention
         x = x + self.dropout(attn_output)
         x = self.norm1(x)
@@ -149,32 +149,20 @@ class TransformerDecoder(nn.Module):
         self.positional_encoding = PositionalEncoding2D(feature_dim)
         self.decoder_blocks = nn.ModuleList([TransformerDecoderBlock(feature_dim, num_heads) for _ in range(num_layers)])
         
-        # Dimensionality reduction for y before self-attention
-        self.downsample1 = nn.Sequential(
-            nn.Linear(2025, reduced_dim),
-            nn.ReLU(inplace=True),
-        )
-        self.downsample2 = nn.Linear(1680, self.batch_size)
-        
-        # Self-attention for y
-        self.self_attn = nn.MultiheadAttention(embed_dim=1680, num_heads=self.batch_size)
-
         # Upsampling layers
-        self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=4, padding=1, output_padding=1)
-        self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=4, padding=1, output_padding=1)
-        self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
+        self.upsample1 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=3, padding=1, output_padding=1)
+        self.upsample2 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.upsample3 = nn.ConvTranspose2d(feature_dim, feature_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
         
         self.final_conv = nn.Conv2d(feature_dim, 3, kernel_size=1)  # Assuming the output has 3 channels
-
-        self.norm = nn.LayerNorm(1680)
-        
+       
     def forward(self, x):
         # x is the encoded feature map: [batch_size, feature_dim, height, width]
         batch_size, _, height, width = x.size()
         x = self.positional_encoding(x)
         
         for decoder_block in self.decoder_blocks:
-            x = decoder_block(x, x)  # Pass through each transformer block
+            x = decoder_block(x)  # Pass through each transformer block
         
         # Upsampling steps
         x = self.upsample1(x.permute(1, 2, 0).view(batch_size, self.feature_dim, height, width))
@@ -202,10 +190,10 @@ class ModifiedResNet18(nn.Module):
 class PhytNet_SRAutoencoder(nn.Module):
     def __init__(self, config):
         super(PhytNet_SRAutoencoder, self).__init__()
+
         
-        # Load the pretrained ResNet-18 model
-        resnet18 = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-        self.encoder = ModifiedResNet18(resnet18)
+        # Initialize the encoder (assuming DisNetV1_2 is defined elsewhere)
+        self.encoder = PhytNetV0(config)
         
         # Extract necessary parameters from config or define them manually
         feature_dim = config['dim_3']
@@ -216,13 +204,11 @@ class PhytNet_SRAutoencoder(nn.Module):
         # Initialize the transformer decoder (assuming TransformerDecoder is defined elsewhere)
         self.decoder = TransformerDecoder(feature_dim, num_heads, num_layers, batch_size)   
 
-        self.avgpool = torch.nn.AdaptiveAvgPool2d(output_size=(1, 1))
  
     def forward(self, x):
-        encoded = self.encoder(x)
-        encoded_pooled = self.avgpool(encoded)
-        encoded_pooled = encoded_pooled.permute(2, 3, 0, 1).squeeze().squeeze()
+        encoded, encoded_pooled, _ = self.encoder(x)
 
-        SRdecoded = self.decoder(encoded)
+        # SRdecoded = self.decoder(encoded)
+        SRdecoded = None
         
         return encoded_pooled, SRdecoded
