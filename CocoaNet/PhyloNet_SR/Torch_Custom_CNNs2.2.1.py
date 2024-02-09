@@ -137,8 +137,8 @@ def train():
         
     model = model.to(device)
     #For max performance on H100 GPUs
-    torch.set_float32_matmul_precision('high')
-    model = torch.compile(model)
+    # torch.set_float32_matmul_precision('high')
+    # model = torch.compile(model)
     
     
     

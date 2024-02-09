@@ -28,7 +28,7 @@ source activate torch5
 #         --save 
 
 python /users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py \
-        --model_name 'PhytNet-Cocoa-SemiSupervised_NotCocoa_SR' \
+        --model_name 'PhytNet-Cocoa-SemiSupervised_NotCocoa_DFloss_3' \
         --project_name 'PhytNet-Cocoa-Final' \
         --root '/users/jrs596/scratch' \
         --data_dir 'dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca' \
@@ -40,5 +40,5 @@ python /users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch
         --GPU 0 \
         --use_wandb \
         --save \
-        --custom_pretrained_weights '/users/jrs596/scratch/models/PhytNet_SR_FAIGB1.pth'
+        # --custom_pretrained_weights '/users/jrs596/scratch/models/PhytNet_SR_FAIGB1.pth'
 

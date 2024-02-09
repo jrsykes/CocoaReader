@@ -100,14 +100,15 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
 
-                        outputs = model(inputs)
+                        _, _, outputs = model(inputs)
+                        # outputs = model(inputs)
 
 
-                        loss = criterion(outputs, labels)
-                        # if phase == 'train':
-                        #     loss, step = criterion(outputs, labels, step=step)
-                        # else:
-                        #     loss = nn.CrossEntropyLoss()(outputs, labels)
+                        # loss = criterion(outputs, labels)
+                        if phase == 'train':
+                            loss, step = criterion(outputs, labels, step=step)
+                        else:
+                            loss = nn.CrossEntropyLoss()(outputs, labels)
 
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
                         
@@ -124,7 +125,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             optimizer.step()  
                            
                         #Update metrics
-                        my_metrics.update(loss=loss, preds=preds, labels=labels, stats_out=stats_out)
+                        my_metrics.update(loss=loss, L1=l1_norm, preds=preds, labels=labels, stats_out=stats_out)
 
                     bar.next()  
 
@@ -178,9 +179,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 val_F1_history.append(epoch_metrics['f1'])
             
             if phase == 'train':
-                wandb.log({"Train_loss": epoch_metrics['loss'], "Train_acc": epoch_metrics['acc'], "Train_F1": epoch_metrics['f1'], "Best_train_f1": best_train_f1})  
+                wandb.log({"Train_loss": epoch_metrics['loss'], "Train_acc": epoch_metrics['acc'], "Train_F1": epoch_metrics['f1'], "Best_train_f1": best_train_f1, "L1": epoch_metrics['L1']})  
             else:
-                wandb.log({"Val_loss": epoch_metrics['loss'], "Val_acc": epoch_metrics['acc'], "Val_F1": epoch_metrics['f1'], "Best_F1": best_f1, "Best_F1_acc": best_f1_acc})
+                wandb.log({"Val_loss": epoch_metrics['loss'], "Val_acc": epoch_metrics['acc'], "Val_F1": epoch_metrics['f1'], "Best_F1": best_f1, "Best_F1_acc": best_f1_acc, "L1": epoch_metrics['L1']})
         
             # Reset metrics for the next epoch
             my_metrics.reset()

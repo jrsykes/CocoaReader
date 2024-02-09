@@ -169,7 +169,7 @@ class TransformerDecoder(nn.Module):
         x = self.upsample2(x)
         x = self.upsample3(x)
         x = self.final_conv(x)
-      
+ 
         return x
 
 

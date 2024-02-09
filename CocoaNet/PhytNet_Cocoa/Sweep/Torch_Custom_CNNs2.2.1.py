@@ -99,7 +99,11 @@ def Relabel(model, device, data_dir, working_dir, copied_images, classes, config
     
     # Iterate over the images in the dataloader and relabel them if the model's prediction matches the ground truth label
     for idx, (images, labels) in enumerate(dif_dataloader):
-        _, _, preds = model(images.to(device))
+        if args.arch == 'PhytNetV0':
+            _, _, preds = model(images.to(device))
+        else:
+            preds = model(images.to(device))
+            
         preds = torch.argmax(preds, dim=1)
         for i in range(images.size(0)):  # Loop through each item in the batch
             #Healthy = 2, NotCocoa = 3
@@ -156,7 +160,7 @@ def train():
     device = torch.device("cuda:" + args.GPU)
 
     if args.arch == 'PhytNetV0':
-        #76k - effortless-sweep-30
+        #67k - effortless-sweep-30
         # config = {
         #     'beta1': 0.9650025364732508,
         #     'beta2': 0.981605256508036,
@@ -173,37 +177,37 @@ def train():
         #     'out_channels': 6
         #     }
         #332k - smart-sweep-47
-        # config = {
-        #     'beta1': 0.9657828624377116,
-        #     'beta2': 0.9908102731106424,
-        #     'dim_1': 104,
-        #     'dim_2': 109,
-        #     'dim_3': 110,
-        #     'input_size': 350,
-        #     'kernel_1': 5,
-        #     'kernel_2': 7,
-        #     'kernel_3': 13,
-        #     'learning_rate': 0.00013365304940966892,
-        #     'num_blocks_1': 1,
-        #     'num_blocks_2': 2,
-        #     'out_channels': 9
-        # }
-        #183k - cool-sweep-42
         config = {
-            'beta1': 0.9671538235629524,
-            'beta2': 0.9574398373980104,
-            'dim_1': 126,
-            'dim_2': 91,
-            'dim_3': 89,
-            'input_size': 371,
+            'beta1': 0.9657828624377116,
+            'beta2': 0.9908102731106424,
+            'dim_1': 104,
+            'dim_2': 109,
+            'dim_3': 110,
+            'input_size': 350,
             'kernel_1': 5,
-            'kernel_2': 1,
-            'kernel_3': 17,
-            'learning_rate': 9.66816458944127e-05,
-            'num_blocks_1': 2,
-            'num_blocks_2': 1,
-            'out_channels': 7
+            'kernel_2': 7,
+            'kernel_3': 13,
+            'learning_rate': 0.00013365304940966892,
+            'num_blocks_1': 1,
+            'num_blocks_2': 2,
+            'out_channels': 9
         }
+        # 183k - cool-sweep-42
+        # config = {
+        #     'beta1': 0.9671538235629524,
+        #     'beta2': 0.9574398373980104,
+        #     'dim_1': 126,
+        #     'dim_2': 91,
+        #     'dim_3': 89,
+        #     'input_size': 371,
+        #     'kernel_1': 5,
+        #     'kernel_2': 1,
+        #     'kernel_3': 17,
+        #     'learning_rate': 9.66816458944127e-05,
+        #     'num_blocks_1': 2,
+        #     'num_blocks_2': 1,
+        #     'out_channels': 7
+        # }
 
 
     elif args.arch == 'resnet18':
@@ -239,7 +243,7 @@ def train():
         print('\nNo weights loaded')
 
     # criterion = nn.CrossEntropyLoss()
-    
+    # criterion = toolbox.Soft_max_focal_loss(gamma=2.8851223710517737)
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
                                         weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
@@ -266,9 +270,9 @@ def train():
             
             image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size'])
             dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
-            criterion = toolbox.DynamicFocalLoss(delta=1, dataloader=dataloaders_dict['train'])
+            criterion = toolbox.DynamicFocalLoss(delta=3.8061809238330073, dataloader=dataloaders_dict['train'])
             
- 
+    
             # Train the model using the train_model function
             model, best_f1 = train_model(args=args, 
                                          model=model, 
@@ -288,10 +292,11 @@ def train():
             
                 Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
 
-           
+        
 
     wandb.finish()
     shutil.rmtree(working_dir)
+    return best_f1
 
 os.environ["wandb__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:

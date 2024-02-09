@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import division
 
 import os
+from typing import Any
 import torch
 import torch.nn as nn
 import numpy as np
@@ -110,11 +111,12 @@ class DynamicFocalLoss(nn.Module):
         self.weights_dict = {}
 
     def forward(self, inputs, targets, step):
-        loss = nn.CrossEntropyLoss()(inputs, targets)
-        if step > len(self.dataloader): #wait until after first epoch to start updating weights_dict
+        if step > len(self.dataloader) * inputs.size(0): #wait until after first epoch to start updating weights_dict
+            ce_loss = torch.nn.functional.cross_entropy(inputs, targets, reduction='none') # important to add reduction='none' to keep per-batch-item loss
+
             # Update weights_dict based on targets and predictions
             preds = torch.argmax(inputs, dim=1)
-            batch_weight = 0
+            gamma = 0
             for i in range(inputs.size(0)):
                 #get filename from dataset
                 filename = self.dataloader.dataset.samples[step + i][0].split("/")[-1]
@@ -125,12 +127,38 @@ class DynamicFocalLoss(nn.Module):
 
                 weight = self.weights_dict[filename]
                 if weight > 1:
-                    batch_weight += weight
+                    gamma += weight
 
-            loss *= batch_weight
+            #probability of a sample being correctly classified
+            pt = torch.exp(-ce_loss)
+            #probability of a sample being incorrectly classified multiplied by the weight gamma
+            pt_weighted = ((1-pt)**gamma)
+            #tensore of 1s and 0s, 1 if the sample is incorrectly classified
+            true_incorrects = 1-(torch.argmax(inputs, dim=1) == targets).int()
+            
+            DFLoss = ((1 + pt_weighted * true_incorrects) * ce_loss).mean()
+
+        else:
+            DFLoss = nn.CrossEntropyLoss()(inputs, targets)
+            
         step += inputs.size(0)
+        return DFLoss, step
+    
+class Soft_max_focal_loss(nn.Module):
+    def __init__(self, alpha=1, gamma=2):
+        super(Soft_max_focal_loss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+    
+    def forward(self, outputs, targets):
+    
+        ce_loss = torch.nn.functional.cross_entropy(outputs, targets, reduction='none') # important to add reduction='none' to keep per-batch-item loss
         
-        return loss, step
+        pt = torch.exp(-ce_loss)
+
+        focal_loss = (self.alpha * (1-pt)**self.gamma * ce_loss).mean() # mean over the batch
+        return focal_loss
+    
     
 def Remove_module_from_layers(unpickled_model_wts):
     new_keys = []
@@ -211,7 +239,7 @@ def SetSeeds(seed=42):
 class Metrics:
     def __init__(self, metric_names, num_classes):
         if metric_names == "All":
-            metric_names = ['loss', 'corrects', 'precision', 'recall', 'f1']
+            metric_names = ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
         self.metric_names = metric_names
         print("\nMetrics to be calculated: ", self.metric_names)
         self.num_classes = num_classes

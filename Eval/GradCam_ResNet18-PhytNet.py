@@ -137,7 +137,7 @@ def get_grad_cam(net, img):
 
 out_labels = ["BPR", "FPR", "Healthy", "Not Cocoa", "WBD"]  
 
-font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 80)  # Replace with the path to a .ttf file on your system
+font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 70)  # Replace with the path to a .ttf file on your system
 
 
 ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss.pth"
@@ -151,30 +151,28 @@ ResNet18.eval()
 ResNet18.to(device)
 	
 
-config = {
-	'beta1': 0.9650025364732508,  
-	'beta2': 0.981605256508036,  
-	'dim_1': 79,  
-	'dim_2': 107,  
-	'dim_3': 93,  
-	'input_size': 415,
-	'kernel_1': 5,  
-	'kernel_2': 1,  
-	'kernel_3': 7,  
-	'learning_rate': 0.0002975957026209971,  
-	'num_blocks_1': 2,  
-	'num_blocks_2': 1,  
-	'out_channels': 6,  
-	'num_heads': 3,  
-	'batch_size': 6,
-	'num_decoder_layers': 4,
-}
 
+#cool-sweep-42
+config = {
+    'beta1': 0.9671538235629524,
+    'beta2': 0.9574398373980104,
+    'dim_1': 126,
+    'dim_2': 91,
+    'dim_3': 89,
+    'input_size': 371,
+    'kernel_1': 5,
+    'kernel_2': 1,
+    'kernel_3': 17,
+    'learning_rate': 9.66816458944127e-05,
+    'num_blocks_1': 2,
+    'num_blocks_2': 1,
+    'out_channels': 7
+}
 
 
 PhytNet= PhytNetV0(config=config).to(device)
 # # Load weights
-PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_NotCocoa_SR.pth"
+PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_NotCocoa_183.pth"
 weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
 
 PhytNet.load_state_dict(weights, strict=False)
@@ -184,7 +182,7 @@ PhytNet.to(device)
 models_ = ["Input", PhytNet, ResNet18]
 
 
-dat_dir = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult/val/'
+dat_dir = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Easy/val'
 class_labels = os.listdir(dat_dir)
 class_labels.sort()
 
@@ -232,7 +230,7 @@ for i, (img, label) in enumerate(valloader):
 	
 	for idx, model in enumerate(models_):
 		if idx == 0:  # For the first column, use the ground truth label
-			img_size = 375
+			img_size = 371
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
 			
 			pil_img = Image.fromarray((img_resized.squeeze().permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
@@ -242,7 +240,7 @@ for i, (img, label) in enumerate(valloader):
 		elif idx == 1:  # For the second column, use the Grad-CAM output with predicted class
 			# model = PhytNet
 			model_cam_net = PhytNet_CAM(model)
-			img_size = 415  
+			img_size = config['input_size']  
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
  
 	  
@@ -251,7 +249,7 @@ for i, (img, label) in enumerate(valloader):
 			out = (out - out.min()) / (out.max() - out.min())
 			out = out.permute(2,0,1).cpu().mul(255).byte()
 
-			pred = model(img_resized.to(device))
+			_, _, pred = model(img_resized.to(device))
 			pred = pred.argmax(dim=1)
 
 			# Convert out to PIL image and draw the predicted class
@@ -291,7 +289,7 @@ for i, (img, label) in enumerate(valloader):
 	new_img.paste(out_pil_2, (img_size*2, 0))
 
 	# Save the image
-	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_PhytNet_Difficult"
+	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_PhytNet138K_Easy"
 	os.makedirs(dir_, exist_ok=True)
 	new_img.save(os.path.join(dir_, str(i) + ".png"))
 

@@ -5,25 +5,27 @@ from __future__ import division
 import torch
 import numpy as np
 import time
-# import copy
 import wandb
-# from sklearn import metrics
 from progress.bar import Bar
 import os
-#import sys
 from random_word import RandomWords
 import toolbox
-#sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
-# from toolbox import DynamicFocalLoss
-import torch.nn.functional as F
 import umap
-import torchvision.utils as vutils
-from torch.utils.data import DataLoader
 import pandas as pd
-from Bio.Phylo.TreeConstruction import DistanceTreeConstructor, _DistanceMatrix
-from Bio import Phylo
-from collections import defaultdict
 import RobinsonFoulds
+
+import networkx as nx
+from ete3 import Tree
+
+def ete3_to_networkx(ete3_tree):
+    G = nx.Graph()
+    for node in ete3_tree.traverse("levelorder"):
+        if node.is_root():
+            G.add_node(node.name)
+        else:
+            G.add_node(node.name)
+            G.add_edge(node.up.name, node.name)
+    return G
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, taxonomy):      
    
@@ -115,7 +117,32 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         #Forward pass   
                         encoded_pooled, _ = model(inputs)
       
+                        print()
+                        # print(encoded_pooled[:,0:20])
+                        print("Min:", encoded_pooled.min())
+                        print("Max:", encoded_pooled.max())
+                        print()
                         trees = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
+
+                                                             
+                        # Convert ete3 trees to networkx graphs
+                        # graph1 = ete3_to_networkx(trees['input_tree'])
+                        # graph2 = ete3_to_networkx(trees['output_tree'])
+
+                        # start = time.time()
+                        # # Calculate the graph edit distance
+                        # distance = nx.graph_edit_distance(graph1, graph2)
+                        # print("Distance:", distance)
+                        
+                        # for v in nx.optimize_graph_edit_distance(graph1, graph2):
+                        #     minv = v
+                        # print(minv)
+                        
+                        # paths, cost = nx.optimal_edit_paths(graph1, graph2)
+                        # print("Cost:", cost)
+                        # print("Paths:", len(paths))
+                        
+                        # print("Time taken:", time.time() - start)
 
                         ESS = RobinsonFoulds.ESS(trees["input_tree"], trees["output_tree"]) * 10
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) 

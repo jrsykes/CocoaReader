@@ -141,40 +141,40 @@ font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 70)  # Repla
 
 	
 
-# 67k - effortless-sweep-30
-# config = {
-#     'beta1': 0.9650025364732508,
-#     'beta2': 0.981605256508036,
-#     'dim_1': 79,
-#     'dim_2': 107,
-#     'dim_3': 93,
-#     'input_size': 415,
-#     'kernel_1': 5,
-#     'kernel_2': 1,
-#     'kernel_3': 7,
-#     'learning_rate': 0.0002975957026209971,
-#     'num_blocks_1': 2,
-#     'num_blocks_2': 1,
-#     'out_channels': 6
-#     }
+# 76k - effortless-sweep-30
+config_76 = {
+	'beta1': 0.9650025364732508,
+	'beta2': 0.981605256508036,
+	'dim_1': 79,
+	'dim_2': 107,
+	'dim_3': 93,
+	'input_size': 415,
+	'kernel_1': 5,
+	'kernel_2': 1,
+	'kernel_3': 7,
+	'learning_rate': 0.0002975957026209971,
+	'num_blocks_1': 2,
+	'num_blocks_2': 1,
+	'out_channels': 6
+	}
 #332k - smart-sweep-47
-# config = {
-#     'beta1': 0.9657828624377116,
-#     'beta2': 0.9908102731106424,
-#     'dim_1': 104,
-#     'dim_2': 109,
-#     'dim_3': 110,
-#     'input_size': 350,
-#     'kernel_1': 5,
-#     'kernel_2': 7,
-#     'kernel_3': 13,
-#     'learning_rate': 0.00013365304940966892,
-#     'num_blocks_1': 1,
-#     'num_blocks_2': 2,
-#     'out_channels': 9
-# }
+config_332 = {
+    'beta1': 0.9657828624377116,
+    'beta2': 0.9908102731106424,
+    'dim_1': 104,
+    'dim_2': 109,
+    'dim_3': 110,
+    'input_size': 350,
+    'kernel_1': 5,
+    'kernel_2': 7,
+    'kernel_3': 13,
+    'learning_rate': 0.00013365304940966892,
+    'num_blocks_1': 1,
+    'num_blocks_2': 2,
+    'out_channels': 9
+}
 #183k - cool-sweep-42
-config = {
+config_183 = {
     'beta1': 0.9671538235629524,
     'beta2': 0.9574398373980104,
     'dim_1': 126,
@@ -190,28 +190,45 @@ config = {
     'out_channels': 7
 }
 
-
-PhytNet_Cocoa_1= PhytNetV0(config=config).to(device)
+PhytNet_Cocoa_0= PhytNetV0(config=config_183).to(device)
 # # Load weights
-PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_NotCocoa_183.pth"
+weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
+
+PhytNet_Cocoa_0.load_state_dict(weights, strict=False)
+PhytNet_Cocoa_0.eval()
+PhytNet_Cocoa_0.to(device)
+
+PhytNet_Cocoa_1= PhytNetV0(config=config_183).to(device)
+# # Load weights
+PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_NotCocoa_DFloss_183.pth"
 weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
 
 PhytNet_Cocoa_1.load_state_dict(weights, strict=False)
 PhytNet_Cocoa_1.eval()
 PhytNet_Cocoa_1.to(device)
 
-PhytNet_Cocoa_2= PhytNetV0(config=config).to(device)
+PhytNet_Cocoa_2= PhytNetV0(config=config_332).to(device)
 # # Load weights
-PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_NotCocoa_332.pth"
 weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
 
 PhytNet_Cocoa_2.load_state_dict(weights, strict=False)
 PhytNet_Cocoa_2.eval()
 PhytNet_Cocoa_2.to(device)
 
+PhytNet_Cocoa_3= PhytNetV0(config=config_332).to(device)
+# # Load weights
+PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_NotCocoa_DFloss_332.pth"
+weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
+
+PhytNet_Cocoa_3.load_state_dict(weights, strict=False)
+PhytNet_Cocoa_3.eval()
+PhytNet_Cocoa_3.to(device)
 
 
-models_ = ["Input", PhytNet_Cocoa_1, PhytNet_Cocoa_2]
+
+models_ = ["Input", PhytNet_Cocoa_0, PhytNet_Cocoa_1, PhytNet_Cocoa_2, PhytNet_Cocoa_3]
 
 
 dat_dir = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Difficult/val'
@@ -231,9 +248,9 @@ def load_data(dat_dir):
 
 #%%
 
-img_size = config['input_size']
+img_size = 371
 n_imgs = 40
-n_models = 2
+n_models = 4
 
 plot_img_size = img_size
 valloader = load_data(dat_dir)
@@ -262,7 +279,7 @@ for i, (img, label) in enumerate(valloader):
 	
 	for idx, model in enumerate(models_):
 		if idx == 0:  # For the first column, use the ground truth label
-			img_size = 415
+			# img_size = 415
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
 			
 			pil_img = Image.fromarray((img_resized.squeeze().permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
@@ -272,7 +289,7 @@ for i, (img, label) in enumerate(valloader):
 		elif idx == 1:  # For the second column, use the Grad-CAM output with predicted class
 			# model = PhytNet
 			model_cam_net = PhytNet_CAM(model)
-			img_size = 415  
+			img_size = config_183['input_size']  
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
  
 	  
@@ -293,9 +310,8 @@ for i, (img, label) in enumerate(valloader):
 
 			grid_img.paste(out_pil_1, (idx * img_size, i * img_size))
 		elif idx == 2:  # For the second column, use the Grad-CAM output with predicted class
-			# model = ResNet18
 			model_cam_net = ResNet_CAM(model)
-			img_size = 415
+			img_size = config_183['input_size']
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
 	
 			out = get_grad_cam(model_cam_net, img_resized)  
@@ -312,6 +328,46 @@ for i, (img, label) in enumerate(valloader):
 			draw.text((0, 0), out_labels[pred], fill="white", font=font)
 
 			grid_img.paste(out_pil_2, (idx * img_size, i * img_size))
+		elif idx == 3:  # For the second column, use the Grad-CAM output with predicted class
+			model_cam_net = ResNet_CAM(model)
+			img_size = config_332['input_size']
+			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
+	
+			out = get_grad_cam(model_cam_net, img_resized)  
+			#Normalise GradCAM output
+			out = (out - out.min()) / (out.max() - out.min())
+			out = out.permute(2,0,1).cpu().mul(255).byte()
+
+			_, _, pred = model(img_resized.to(device))
+			pred = pred.argmax(dim=1)
+
+			# Convert out to PIL image and draw the predicted class
+			out_pil_3 = ToPILImage()(out)
+			draw = ImageDraw.Draw(out_pil_3)
+			draw.text((0, 0), out_labels[pred], fill="white", font=font)
+
+			grid_img.paste(out_pil_3, (idx * img_size, i * img_size))
+		elif idx == 4:  # For the second column, use the Grad-CAM output with predicted class
+			model_cam_net = ResNet_CAM(model)
+			img_size = config_332['input_size']
+			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
+	
+			out = get_grad_cam(model_cam_net, img_resized)  
+			#Normalise GradCAM output
+			out = (out - out.min()) / (out.max() - out.min())
+			out = out.permute(2,0,1).cpu().mul(255).byte()
+
+			_, _, pred = model(img_resized.to(device))
+			pred = pred.argmax(dim=1)
+
+			# Convert out to PIL image and draw the predicted class
+			out_pil_4 = ToPILImage()(out)
+			draw = ImageDraw.Draw(out_pil_4)
+			draw.text((0, 0), out_labels[pred], fill="white", font=font)
+
+			grid_img.paste(out_pil_4, (idx * img_size, i * img_size))
+		
+		
 			
 	# Create a new blank image with the combined dimensions
 	new_img = Image.new('RGB', (img_size*len(models_), img_size))
@@ -319,12 +375,13 @@ for i, (img, label) in enumerate(valloader):
 	new_img.paste(pil_img, (0, 0))
 	new_img.paste(out_pil_1, (img_size, 0))
 	new_img.paste(out_pil_2, (img_size*2, 0))
+	new_img.paste(out_pil_3, (img_size*3, 0))
+	new_img.paste(out_pil_4, (img_size*4, 0))
 
 	# Save the image
-	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_PhytNet183k_Difficult_FocalLoss-DFLoss2"
+	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_PhytNet_PhytNet-Difficult_183-332"
 	os.makedirs(dir_, exist_ok=True)
 	new_img.save(os.path.join(dir_, str(i) + ".png"))
 
-# grid_img.save("/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_PhytNet.png")
 
 print("Done!")

@@ -139,79 +139,48 @@ out_labels = ["BPR", "FPR", "Healthy", "Not Cocoa", "WBD"]
 
 font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 70)  # Replace with the path to a .ttf file on your system
 
-	
+ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_FocalLoss.pth"
 
-# 67k - effortless-sweep-30
-# config = {
-#     'beta1': 0.9650025364732508,
-#     'beta2': 0.981605256508036,
-#     'dim_1': 79,
-#     'dim_2': 107,
-#     'dim_3': 93,
-#     'input_size': 415,
-#     'kernel_1': 5,
-#     'kernel_2': 1,
-#     'kernel_3': 7,
-#     'learning_rate': 0.0002975957026209971,
-#     'num_blocks_1': 2,
-#     'num_blocks_2': 1,
-#     'out_channels': 6
-#     }
-#332k - smart-sweep-47
-# config = {
-#     'beta1': 0.9657828624377116,
-#     'beta2': 0.9908102731106424,
-#     'dim_1': 104,
-#     'dim_2': 109,
-#     'dim_3': 110,
-#     'input_size': 350,
-#     'kernel_1': 5,
-#     'kernel_2': 7,
-#     'kernel_3': 13,
-#     'learning_rate': 0.00013365304940966892,
-#     'num_blocks_1': 1,
-#     'num_blocks_2': 2,
-#     'out_channels': 9
-# }
-#183k - cool-sweep-42
-config = {
-    'beta1': 0.9671538235629524,
-    'beta2': 0.9574398373980104,
-    'dim_1': 126,
-    'dim_2': 91,
-    'dim_3': 89,
-    'input_size': 371,
-    'kernel_1': 5,
-    'kernel_2': 1,
-    'kernel_3': 17,
-    'learning_rate': 9.66816458944127e-05,
-    'num_blocks_1': 2,
-    'num_blocks_2': 1,
-    'out_channels': 7
-}
+ResNet18Weights = torch.load(ResNet18_weights, map_location=device)
+ResNet18_0 = models.resnet18(weights=None)
+in_feat = ResNet18_0.fc.in_features
+ResNet18_0.fc = nn.Linear(in_feat, 5)
+ResNet18_0.load_state_dict(ResNet18Weights, strict=True)
+ResNet18_0.eval()
+ResNet18_0.to(device)
+
+ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+
+ResNet18Weights = torch.load(ResNet18_weights, map_location=device)
+ResNet18_1 = models.resnet18(weights=None)
+in_feat = ResNet18_0.fc.in_features
+ResNet18_1.fc = nn.Linear(in_feat, 5)
+ResNet18_1.load_state_dict(ResNet18Weights, strict=True)
+ResNet18_1.eval()
+ResNet18_1.to(device)
+
+# ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa.pth"
+
+# ResNet18Weights = torch.load(ResNet18_weights, map_location=device)
+# ResNet18_2 = models.resnet18(weights=None)
+# in_feat = ResNet18_0.fc.in_features
+# ResNet18_2.fc = nn.Linear(in_feat, 5)
+# ResNet18_2.load_state_dict(ResNet18Weights, strict=True)
+# ResNet18_2.eval()
+# ResNet18_2.to(device)
+
+# ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss.pth"
+
+# ResNet18Weights = torch.load(ResNet18_weights, map_location=device)
+# ResNet18_3 = models.resnet18(weights=None)
+# in_feat = ResNet18_0.fc.in_features
+# ResNet18_3.fc = nn.Linear(in_feat, 5)
+# ResNet18_3.load_state_dict(ResNet18Weights, strict=True)
+# ResNet18_3.eval()
+# ResNet18_3.to(device)
 
 
-PhytNet_Cocoa_1= PhytNetV0(config=config).to(device)
-# # Load weights
-PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
-weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
-
-PhytNet_Cocoa_1.load_state_dict(weights, strict=False)
-PhytNet_Cocoa_1.eval()
-PhytNet_Cocoa_1.to(device)
-
-PhytNet_Cocoa_2= PhytNetV0(config=config).to(device)
-# # Load weights
-PhytNet_weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
-weights = torch.load(PhytNet_weights_path, map_location=lambda storage, loc: storage.cuda(0))
-
-PhytNet_Cocoa_2.load_state_dict(weights, strict=False)
-PhytNet_Cocoa_2.eval()
-PhytNet_Cocoa_2.to(device)
-
-
-
-models_ = ["Input", PhytNet_Cocoa_1, PhytNet_Cocoa_2]
+models_ = ["Input", ResNet18_0, ResNet18_1]#, ResNet18_2, ResNet18_3]
 
 
 dat_dir = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Difficult/val'
@@ -231,7 +200,7 @@ def load_data(dat_dir):
 
 #%%
 
-img_size = config['input_size']
+img_size = 375
 n_imgs = 40
 n_models = 2
 
@@ -262,7 +231,6 @@ for i, (img, label) in enumerate(valloader):
 	
 	for idx, model in enumerate(models_):
 		if idx == 0:  # For the first column, use the ground truth label
-			img_size = 415
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
 			
 			pil_img = Image.fromarray((img_resized.squeeze().permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8))
@@ -270,9 +238,7 @@ for i, (img, label) in enumerate(valloader):
 			draw.text((0, 0), class_labels[label], fill="white", font=font)
 			grid_img.paste(pil_img, (idx * img_size, i * img_size))
 		elif idx == 1:  # For the second column, use the Grad-CAM output with predicted class
-			# model = PhytNet
-			model_cam_net = PhytNet_CAM(model)
-			img_size = 415  
+			model_cam_net = ResNet_CAM(model)
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
  
 	  
@@ -281,7 +247,7 @@ for i, (img, label) in enumerate(valloader):
 			out = (out - out.min()) / (out.max() - out.min())
 			out = out.permute(2,0,1).cpu().mul(255).byte()
 
-			_, _, pred = model(img_resized.to(device))
+			pred = model(img_resized.to(device))
 			pred = pred.argmax(dim=1)
 
 			# Convert out to PIL image and draw the predicted class
@@ -293,9 +259,7 @@ for i, (img, label) in enumerate(valloader):
 
 			grid_img.paste(out_pil_1, (idx * img_size, i * img_size))
 		elif idx == 2:  # For the second column, use the Grad-CAM output with predicted class
-			# model = ResNet18
 			model_cam_net = ResNet_CAM(model)
-			img_size = 415
 			img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
 	
 			out = get_grad_cam(model_cam_net, img_resized)  
@@ -303,7 +267,7 @@ for i, (img, label) in enumerate(valloader):
 			out = (out - out.min()) / (out.max() - out.min())
 			out = out.permute(2,0,1).cpu().mul(255).byte()
 
-			_, _, pred = model(img_resized.to(device))
+			pred = model(img_resized.to(device))
 			pred = pred.argmax(dim=1)
 
 			# Convert out to PIL image and draw the predicted class
@@ -312,6 +276,44 @@ for i, (img, label) in enumerate(valloader):
 			draw.text((0, 0), out_labels[pred], fill="white", font=font)
 
 			grid_img.paste(out_pil_2, (idx * img_size, i * img_size))
+		# elif idx == 3:  # For the second column, use the Grad-CAM output with predicted class
+		# 	model_cam_net = ResNet_CAM(model)
+		# 	img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
+	
+		# 	out = get_grad_cam(model_cam_net, img_resized)  
+		# 	#Normalise GradCAM output
+		# 	out = (out - out.min()) / (out.max() - out.min())
+		# 	out = out.permute(2,0,1).cpu().mul(255).byte()
+
+		# 	pred = model(img_resized.to(device))
+		# 	pred = pred.argmax(dim=1)
+
+		# 	# Convert out to PIL image and draw the predicted class
+		# 	out_pil_3 = ToPILImage()(out)
+		# 	draw = ImageDraw.Draw(out_pil_3)
+		# 	draw.text((0, 0), out_labels[pred], fill="white", font=font)
+
+		# 	grid_img.paste(out_pil_3, (idx * img_size, i * img_size))
+		# elif idx == 4:  # For the second column, use the Grad-CAM output with predicted class
+		# 	model_cam_net = ResNet_CAM(model)
+		# 	img_resized = F.interpolate(img, size=(img_size, img_size), mode='bilinear', align_corners=False)
+	
+		# 	out = get_grad_cam(model_cam_net, img_resized)  
+		# 	#Normalise GradCAM output
+		# 	out = (out - out.min()) / (out.max() - out.min())
+		# 	out = out.permute(2,0,1).cpu().mul(255).byte()
+
+		# 	pred = model(img_resized.to(device))
+		# 	pred = pred.argmax(dim=1)
+
+		# 	# Convert out to PIL image and draw the predicted class
+		# 	out_pil_4 = ToPILImage()(out)
+		# 	draw = ImageDraw.Draw(out_pil_4)
+		# 	draw.text((0, 0), out_labels[pred], fill="white", font=font)
+
+		# 	grid_img.paste(out_pil_4, (idx * img_size, i * img_size))
+		
+		
 			
 	# Create a new blank image with the combined dimensions
 	new_img = Image.new('RGB', (img_size*len(models_), img_size))
@@ -319,12 +321,13 @@ for i, (img, label) in enumerate(valloader):
 	new_img.paste(pil_img, (0, 0))
 	new_img.paste(out_pil_1, (img_size, 0))
 	new_img.paste(out_pil_2, (img_size*2, 0))
+	# new_img.paste(out_pil_3, (img_size*3, 0))
+	# new_img.paste(out_pil_4, (img_size*4, 0))
 
 	# Save the image
-	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_PhytNet183k_Difficult_FocalLoss-DFLoss2"
+	dir_ = "/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_RestNet18-Difficult_DFLoss2-FocalLoss"
 	os.makedirs(dir_, exist_ok=True)
 	new_img.save(os.path.join(dir_, str(i) + ".png"))
 
-# grid_img.save("/users/jrs596/GradCAM_imgs/GradCAM_ResNet18_PhytNet.png")
 
 print("Done!")
