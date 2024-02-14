@@ -140,7 +140,7 @@ out_labels = ["BPR", "FPR", "Healthy", "Not Cocoa", "WBD"]
 font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 70)  # Replace with the path to a .ttf file on your system
 
 
-ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss.pth"
+ResNet18_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
 
 ResNet18Weights = torch.load(ResNet18_weights, map_location=device)
 ResNet18 = models.resnet18(weights=None)

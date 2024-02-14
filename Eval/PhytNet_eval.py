@@ -18,9 +18,11 @@ sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Unsure"
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult"
 
-data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Easy"
+# data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Easy"
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy"
 
+
+data_dir = "/users/jrs596/scratch/dat/IR_split"
 num_classes = len(os.listdir(os.path.join(data_dir, 'val'))) 
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -60,26 +62,44 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 # }
 
 # cool-sweep-42
-config = {
-    'beta1': 0.9671538235629524,
-    'beta2': 0.9574398373980104,
-    'dim_1': 126,
-    'dim_2': 91,
-    'dim_3': 89,
-    'input_size': 371,
-    'kernel_1': 5,
-    'kernel_2': 1,
-    'kernel_3': 17,
-    'learning_rate': 9.66816458944127e-05,
-    'num_blocks_1': 2,
-    'num_blocks_2': 1,
-    'out_channels': 7
-}
+# config = {
+#     'beta1': 0.9671538235629524,
+#     'beta2': 0.9574398373980104,
+#     'dim_1': 126,
+#     'dim_2': 91,
+#     'dim_3': 89,
+#     'input_size': 371,
+#     'kernel_1': 5,
+#     'kernel_2': 1,
+#     'kernel_3': 17,
+#     'learning_rate': 9.66816458944127e-05,
+#     'num_blocks_1': 2,
+#     'num_blocks_2': 1,
+#     'out_channels': 7
+# }
 	
-model = toolbox.build_model(num_classes=None, arch='PhytNetV0', config=config)
+config = {
+        "beta1": 0.9051880132274126,
+        "beta2": 0.9630258300974864,
+        "dim_1": 49,
+        "dim_2": 97,
+        "dim_3": 68,
+        "kernel_1": 11,
+        "kernel_2": 9,
+        "kernel_3": 13,
+        "learning_rate": 0.0005921981578304907,
+        "num_blocks_1": 2,
+        "num_blocks_2": 4,
+        "out_channels": 7,
+        "input_size": 285,
+    }
+ 
+model = toolbox.build_model(num_classes=config['out_channels'], arch='PhytNetV0_ablation', config=config)
 
-weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+# weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
 # weights_path = "/users/jrs596/scratch/models/PhytNet67k-Cocoa-SemiSupervised_NotCocoa_OptDFLoss.pth"
+
+weights_path = '/users/jrs596/scratch/models/PhytNet-Cocoa-ablation.pth'
 
 PhyloNetWeights = torch.load(weights_path, map_location=device)
 
@@ -103,7 +123,7 @@ print('\nLoaded weights from: ', weights_path)
 model.eval()   # Set model to evaluate mode
 model = model.to(device)
 
-batch_size = 100
+batch_size = 42
 criterion = nn.CrossEntropyLoss()
 
 image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size

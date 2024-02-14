@@ -18,27 +18,7 @@ import toolbox
 from toolbox import DynamicFocalLoss
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, best_f1):      
-    # Check environmental variable WANDB_MODE
-    # if args.wandb_MODE == 'offline':   
-    #     if args.sweep_config == None:
-    #         if args.run_name is None:
-    #             run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
-    #             wandb.init(project=args.project_name, name=run_name, mode="offline")
-    #         else:
-    #             wandb.init(project=args.project_name, name=args.run_name, mode="offline")
-    #             run_name = args.run_name
-    #     else:
-    #         run_name = wandb.run.name
-    # else:
-        # if args.sweep_config == None:
-        #     if args.run_name is None:
-        #         # run_name = RandomWords().get_random_word() + '_' + str(time.time())[-2:]
-        #         wandb.init(project=args.project_name, name=run_name)
-        #     else:
-        #         wandb.init(project=args.project_name, name=args.run_name)
-        #         run_name = args.run_name
-        # else:
-        #     run_name = wandb.run.name
+
 
     my_metrics = toolbox.Metrics(metric_names='All', num_classes=num_classes)
 
@@ -104,11 +84,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         # outputs = model(inputs)
 
 
-                        # loss = criterion(outputs, labels)
-                        if phase == 'train':
-                            loss, step = criterion(outputs, labels, step=step)
-                        else:
-                            loss = nn.CrossEntropyLoss()(outputs, labels)
+                        loss = criterion(outputs, labels)
+                        # if phase == 'train':
+                        #     loss, step = criterion(outputs, labels, step=step)
+                        # else:
+                        #     loss = nn.CrossEntropyLoss()(outputs, labels)
 
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
                         

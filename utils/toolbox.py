@@ -7,11 +7,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import PhytNetV0, PhytNet_SRAutoencoder
+from ArchitectureZoo import PhytNetV0, PhytNetV0_ablation, PhytNet_SRAutoencoder
 import timm
 from thop import profile
 from sklearn.metrics import f1_score
-from itertools import combinations
+# from itertools import combinations
 import torch.nn.functional as F
 from torch.utils.data import Sampler
 import networkx as nx
@@ -38,6 +38,8 @@ def build_model(num_classes, arch, config):
         model_ft = PhytNet_SRAutoencoder(config=config)
     elif arch == 'PhytNetV0':
         model_ft = PhytNetV0(config=config)
+    elif arch == 'PhytNetV0_ablation':
+        model_ft = PhytNetV0_ablation(config=config)
     elif arch == 'efficientnetv2_s':
         model_ft = timm.create_model('tf_efficientnetv2_s', pretrained=False)
         num_ftrs = model_ft.classifier.in_features

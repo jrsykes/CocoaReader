@@ -32,7 +32,7 @@ parser.add_argument('--root', type=str, default='/local/scratch/jrs596/dat/',
                         help='location of all data')
 parser.add_argument('--data_dir', type=str, default='test',
                         help='location of all data')
-parser.add_argument('--save', type=str, default=None,
+parser.add_argument('--save', action='store_true', default=False,
                         help='save "model", "weights" or "both" ?')
 parser.add_argument('--custom_pretrained', action='store_true', default=False,
                         help='Train useing specified pre-trained weights?')
@@ -98,27 +98,62 @@ def train():
     #Set seeds for reproducability
     toolbox.SetSeeds(42)
 
-    data_dir, num_classes, initial_bias, _ = toolbox.setup(args)
-    device = torch.device("cuda:" + args.GPU)
+    data_dir, _, device = toolbox.setup(args)
+    # device = torch.device("cuda:" + args.GPU)
 
     #define config dictionary with wandb
+ 
+    # config = {
+    #     'input_size': wandb.config.input_size,
+    #     'dim_1': wandb.config.dim_1, 
+    #     'dim_2': wandb.config.dim_2, 
+    #     'dim_3': wandb.config.dim_3,
+    #     'kernel_1': wandb.config.kernel_1, 
+    #     'kernel_2': wandb.config.kernel_2,
+    #     'kernel_3': wandb.config.kernel_3,
+    #     'num_blocks_1': wandb.config.num_blocks_1,
+    #     'num_blocks_2': wandb.config.num_blocks_2,
+    #     'out_channels': wandb.config.out_channels,    
+    #     'batch_size': args.batch_size,
+    #     'beta1': wandb.config.beta1,
+    #     'beta2': wandb.config.beta2,  
+    #     'learning_rate': wandb.config.learning_rate,
+    # }
+    
+    # config = {
+    #     'input_size': 455,
+    #     'dim_1': 65, 
+    #     'dim_2': 34, 
+    #     'dim_3': 24,
+    #     'kernel_1': 1, 
+    #     'kernel_2': 1,
+    #     'kernel_3': 17,
+    #     'num_blocks_1': 6,
+    #     'num_blocks_2': 10,
+    #     'out_channels': 9,    
+    #     'batch_size': 42,
+    #     'beta1': 0.9101095382523464,
+    #     'beta2': 0.9783140796978422,  
+    #     'learning_rate': 0.0003472804733326055
+    # }
     config = {
-        'input_size': args.input_size,
-        'dim_1': wandb.config.dim_1, 
-        'dim_2': wandb.config.dim_2, 
-        'dim_3': wandb.config.dim_3,
-        'kernel_1': wandb.config.kernel_1, 
-        'kernel_2': wandb.config.kernel_2,
-        'kernel_3': wandb.config.kernel_3,
-        'num_blocks_1': wandb.config.num_blocks_1,
-        'num_blocks_2': wandb.config.num_blocks_2,
-        'out_channels': wandb.config.out_channels,        
+        "beta1": 0.9051880132274126,
+        "beta2": 0.9630258300974864,
+        "dim_1": 49,
+        "dim_2": 97,
+        "dim_3": 68,
+        "kernel_1": 11,
+        "kernel_2": 9,
+        "kernel_3": 13,
+        "learning_rate": 0.0005921981578304907,
+        "num_blocks_1": 2,
+        "num_blocks_2": 4,
+        "out_channels": 7,
+        "input_size": 285,
     }
-    
-    
         
-    model = toolbox.build_model(arch=args.arch, num_classes=None, config=config).to(device)
-  
+    model = toolbox.build_model(arch=args.arch, num_classes=config['out_channels'], config=config).to(device)
+    
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
     dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
@@ -139,11 +174,21 @@ def train():
     if GFLOPs < 6 and n_params < 50000000:
         model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=wandb.config.learning_rate,
-                                        weight_decay=args.weight_decay, eps=args.eps, betas=(wandb.config.beta1, wandb.config.beta2))
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
         
-        trained_model, best_f1, best_f1_loss, best_train_f1, run_name, _, _ = train_model(args=args, model=model, optimizer=optimizer, device=device, dataloaders_dict=dataloaders_dict, criterion=criterion, patience=args.patience, initial_bias=initial_bias, batch_size=args.batch_size)
-        config['Run_name'] = run_name
+        train_model(args=args, 
+                    model=model, 
+                    optimizer=optimizer, 
+                    device=device, 
+                    dataloaders_dict=dataloaders_dict, 
+                    criterion=criterion, 
+                    patience=args.patience, 
+                    batch_size=args.batch_size,
+                    num_classes=config['out_channels'],
+                    best_f1=0
+                    )
+        # config['Run_name'] = run_name
         
     else: 
         print()
@@ -152,10 +197,10 @@ def train():
         run.log({'Status': 'aborted'})  # Log the status as 'aborted'
         run.finish()  # Finish the run
 
-        trained_model, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
+        # trained_model, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
 
 
-    return trained_model, best_f1, best_f1_loss, best_train_f1, config
+    # return trained_model, best_f1, best_f1_loss, best_train_f1, config
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:
