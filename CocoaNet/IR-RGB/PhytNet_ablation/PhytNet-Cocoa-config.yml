@@ -24,11 +24,11 @@ parameters:
         max: 128
     beta1:
         distribution: uniform
-        min: 0.88
-        max: 0.99
+        min: 0.8
+        max: 0.999
     beta2:
         distribution: uniform
-        min: 0.93
+        min: 0.8
         max: 0.999
     learning_rate:
         distribution: uniform
@@ -49,7 +49,7 @@ parameters:
     input_size:
         distribution: int_uniform
         min: 200
-        max: 500 
+        max: 600 
 
 
 

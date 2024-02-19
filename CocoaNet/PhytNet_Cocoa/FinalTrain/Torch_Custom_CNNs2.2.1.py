@@ -266,7 +266,7 @@ def train():
             
             image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size'])
             dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
-            criterion = toolbox.DynamicFocalLoss(delta=1, dataloader=dataloaders_dict['train'])
+            criterion = toolbox.DynamicFocalLoss(delta=0.2, dataloader=dataloaders_dict['train'])
             
  
             # Train the model using the train_model function

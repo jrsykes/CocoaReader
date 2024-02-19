@@ -4,7 +4,9 @@ import os
 import random
 from PIL import Image
 import time
-
+from sklearn.model_selection import StratifiedKFold
+import glob
+import numpy as np
 
 #%%
 # src = '/local/scratch/jrs596/dat/ElodeaProject/FasterRCNN_output/Rudders'
@@ -102,6 +104,7 @@ def CopyNotPlant(destination, img_path, n_not_plant):
 
 
 
+
 def Randomise_Split(root, destination):
 	for class_ in os.listdir(root):
 		
@@ -109,7 +112,6 @@ def Randomise_Split(root, destination):
 			print("\nProcessing class: ", class_)
 			images = os.listdir(os.path.join(root, class_))
 			random.shuffle(images)
-			#images = images[:800]
 			print("Number of images: ", len(images))
 			if len(images) > 100: 
 				print("90:10 split")
@@ -126,22 +128,44 @@ def Randomise_Split(root, destination):
 
 			for split, im_list in dat_dict.items():
 				print("Processing split: ", split)
-				#os.makedirs(os.path.join(root, split, class_), exist_ok = True)
 
 				for image in im_list:
 					source = os.path.join(root, class_, image)
 					dest = os.path.join(destination, split, class_)
 					os.makedirs(dest, exist_ok = True)
-					#open image and compress to 330x330 pixels
-					# im = Image.open(os.path.join(source))
-					# im1 = im.resize((494,494))
-					# im1.save(os.path.join(dest, image))
+					
+					try:
+						im = Image.open(source)
+						# Apply EXIF orientation
+						im = apply_exif_orientation(im)
+						im1 = im.resize((600,600))
+						im1.save(os.path.join(dest, image))
+					except Exception as e:
+						print("Bad image or error processing image:", e)
+						print(source)
+						# Consider logging error and continuing instead of exiting
+						# exit()
 
-					shutil.copy(source, dest)
-					# os.symlink(source, os.path.join(dest, image))
+def apply_exif_orientation(image):
+	try:
+		exif = image._getexif()
+		orientation_key = 274  # cf. EXIF 2.2 specification
+		if exif and orientation_key in exif:
+			orientation = exif[orientation_key]
+			rotations = {
+				3: Image.ROTATE_180,
+				6: Image.ROTATE_270,
+				8: Image.ROTATE_90
+			}
+			if orientation in rotations:
+				return image.transpose(rotations[orientation])
+	except AttributeError:
+		pass  # No EXIF data or couldn't find orientation data
+	return image
 
-root = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500'
-destination = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Compress500_split'
+
+root = '/users/jrs596/Jun_Cocoa_Project/Cocoa_leaf_data'
+destination = '/users/jrs596/Jun_Cocoa_Project/Cocoa_leaf_data_split'
 
 # Randomise_Split(root, destination)
 
@@ -169,8 +193,6 @@ destination = '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_FinalClean_Com
 
 # NonEasyDif_Spliter(root, destination)
 
-import os
-import random
 
 def FAIGB_Spliter(root, destination):
 	TrainValimages = []
@@ -193,7 +215,7 @@ def FAIGB_Spliter(root, destination):
 root = '/users/jrs596/scratch/dat/FAIGB/FAIGB_700_30-10-23_split'
 destination = '/users/jrs596/scratch/dat/Ecuador/NotCocoa'
 
-FAIGB_Spliter(root, destination)
+# FAIGB_Spliter(root, destination)
 
 def compress_copy(root, destination):
 	for class_ in os.listdir(root):
@@ -358,7 +380,79 @@ def process_directory(input_directory, output_directory):
 				output_image_path = os.path.join(output_subdir, file)
 				resize_and_save_image(input_image_path, output_image_path)
 
-input_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit'
-output_directory = '/local/scratch/jrs596/dat/FAIGB/FAIGB_FinalSplit_700'
 
 # process_directory(input_directory, output_directory)
+
+def cross_validation_split(dataset_dir, output_dir):
+	# Creating the output directory if it doesn't exist
+	if not os.path.exists(output_dir):
+		os.makedirs(output_dir)
+	
+	# Collect all image paths and their corresponding class labels
+	image_paths = []
+	labels = []
+	
+	# List of possible JPEG extensions
+	jpeg_extensions = ['*.jpg', '*.JPG', '*.jpeg', '*.JPEG']
+	
+	for class_dir in os.listdir(dataset_dir):
+		if os.path.isdir(os.path.join(dataset_dir, class_dir)):
+			# Initialize an empty list for the class to hold paths from all extensions
+			class_paths = []
+			# Search for each extension and combine the results
+			for extension in jpeg_extensions:
+				pattern = os.path.join(dataset_dir, class_dir, extension)
+				class_paths.extend(glob.glob(pattern))
+	
+			# Extend the image_paths and labels lists with the results
+			image_paths.extend(class_paths)
+			labels.extend([class_dir] * len(class_paths))
+
+	# Convert labels to a numerical format for stratified splitting
+	unique_labels = np.unique(labels)
+	label_to_index = {label: index for index, label in enumerate(unique_labels)}
+	numerical_labels = [label_to_index[label] for label in labels]
+
+	# Stratified K-Fold instantiation for ten-fold cross-validation
+	skf = StratifiedKFold(n_splits=10)
+
+	# Splitting the dataset
+	for fold, (train_idx, val_idx) in enumerate(skf.split(image_paths, numerical_labels)):
+		print(f'Preparing fold {fold}')
+		fold_dir = os.path.join(output_dir, f'fold_{fold}')
+		train_dir = os.path.join(fold_dir, 'train')
+		val_dir = os.path.join(fold_dir, 'val')
+
+		# Creating directories for the current fold
+		for path in [train_dir, val_dir]:
+			if not os.path.exists(path):
+				os.makedirs(path)
+
+		# Function to copy and resize files to the respective directories
+		def copy_and_resize_images(indices, target_dir):
+			for i in indices:
+				image_path = image_paths[i]
+				class_label = labels[i]
+				target_class_dir = os.path.join(target_dir, class_label)
+				if not os.path.exists(target_class_dir):
+					os.makedirs(target_class_dir)
+				# Open and resize the image
+				with Image.open(image_path) as img:
+					img_resized = img.resize((600,600))
+					# Construct the target path and save the resized image
+					target_path = os.path.join(target_class_dir, os.path.basename(image_path))
+					img_resized.save(target_path)
+
+		# Copy training and validation images to their respective directories
+		copy_and_resize_images(train_idx, train_dir)
+		copy_and_resize_images(val_idx, val_dir)
+
+	print("Dataset splitting complete.")
+
+# The root directory where the dataset is located
+dataset_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/compiled_IR/'
+
+# The directory where the split dataset will be saved
+output_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/IR_CrossVal_600'
+
+cross_validation_split(dataset_dir, output_dir)

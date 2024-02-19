@@ -103,22 +103,22 @@ def train():
 
     #define config dictionary with wandb
  
-    # config = {
-    #     'input_size': wandb.config.input_size,
-    #     'dim_1': wandb.config.dim_1, 
-    #     'dim_2': wandb.config.dim_2, 
-    #     'dim_3': wandb.config.dim_3,
-    #     'kernel_1': wandb.config.kernel_1, 
-    #     'kernel_2': wandb.config.kernel_2,
-    #     'kernel_3': wandb.config.kernel_3,
-    #     'num_blocks_1': wandb.config.num_blocks_1,
-    #     'num_blocks_2': wandb.config.num_blocks_2,
-    #     'out_channels': wandb.config.out_channels,    
-    #     'batch_size': args.batch_size,
-    #     'beta1': wandb.config.beta1,
-    #     'beta2': wandb.config.beta2,  
-    #     'learning_rate': wandb.config.learning_rate,
-    # }
+    config = {
+        'input_size': wandb.config.input_size,
+        'dim_1': wandb.config.dim_1, 
+        'dim_2': wandb.config.dim_2, 
+        'dim_3': wandb.config.dim_3,
+        'kernel_1': wandb.config.kernel_1, 
+        'kernel_2': wandb.config.kernel_2,
+        'kernel_3': wandb.config.kernel_3,
+        'num_blocks_1': wandb.config.num_blocks_1,
+        'num_blocks_2': wandb.config.num_blocks_2,
+        'out_channels': wandb.config.out_channels,    
+        'batch_size': args.batch_size,
+        'beta1': wandb.config.beta1,
+        'beta2': wandb.config.beta2,  
+        'learning_rate': wandb.config.learning_rate,
+    }
     
     # config = {
     #     'input_size': 455,
@@ -136,21 +136,21 @@ def train():
     #     'beta2': 0.9783140796978422,  
     #     'learning_rate': 0.0003472804733326055
     # }
-    config = {
-        "beta1": 0.9051880132274126,
-        "beta2": 0.9630258300974864,
-        "dim_1": 49,
-        "dim_2": 97,
-        "dim_3": 68,
-        "kernel_1": 11,
-        "kernel_2": 9,
-        "kernel_3": 13,
-        "learning_rate": 0.0005921981578304907,
-        "num_blocks_1": 2,
-        "num_blocks_2": 4,
-        "out_channels": 7,
-        "input_size": 285,
-    }
+    # config = {
+    #     "beta1": 0.9051880132274126,
+    #     "beta2": 0.9630258300974864,
+    #     "dim_1": 49,
+    #     "dim_2": 97,
+    #     "dim_3": 68,
+    #     "kernel_1": 11,
+    #     "kernel_2": 9,
+    #     "kernel_3": 13,
+    #     "learning_rate": 0.0005921981578304907,
+    #     "num_blocks_1": 2,
+    #     "num_blocks_2": 4,
+    #     "out_channels": 7,
+    #     "input_size": 285,
+    # }
         
     model = toolbox.build_model(arch=args.arch, num_classes=config['out_channels'], config=config).to(device)
     
@@ -171,7 +171,7 @@ def train():
     print()
     print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
 
-    if GFLOPs < 6 and n_params < 50000000:
+    if GFLOPs < 10 and n_params < 50000000:
         model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
 
         optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
@@ -186,7 +186,6 @@ def train():
                     patience=args.patience, 
                     batch_size=args.batch_size,
                     num_classes=config['out_channels'],
-                    best_f1=0
                     )
         # config['Run_name'] = run_name
         

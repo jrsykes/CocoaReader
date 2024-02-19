@@ -90,7 +90,7 @@ print(args)
 sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
 from training_loop import train_model
-
+# from training_loop_19_09_23 import train_model
 
 def train():
     data_dir, _, _ = toolbox.setup(args)
@@ -109,28 +109,47 @@ def train():
         script_path = os.path.abspath(__file__)
         script_dir = os.path.dirname(script_path)
         wandb.save(os.path.join(script_dir, '*')) 
+        wandb.save(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils', '*'))
         
         #define config dictionary with wandb
         # config = {
-        #     "beta1": 0.9051880132274126,
-        #     "beta2": 0.9630258300974864,
-        #     "dim_1": 49,
-        #     "dim_2": 97,
-        #     "dim_3": 68,
-        #     "kernel_1": 11,
-        #     "kernel_2": 9,
-        #     "kernel_3": 13,
-        #     "learning_rate": 0.0005921981578304907,
-        #     "num_blocks_1": 2,
-        #     "num_blocks_2": 4,      
-        #     "out_channels": 7
+        #     'input_size': 455,
+        #     'dim_1': 65, 
+        #     'dim_2': 34, 
+        #     'dim_3': 24,
+        #     'kernel_1': 1, 
+        #     'kernel_2': 1,
+        #     'kernel_3': 17,
+        #     'num_blocks_1': 6,
+        #     'num_blocks_2': 10,
+        #     'out_channels': 9,    
+        #     'batch_size': 42,
+        #     'beta1': 0.9101095382523464,
+        #     'beta2': 0.9783140796978422,  
+        #     'learning_rate': 0.0003472804733326055
         # }
+        
+        config = {
+        "beta1": 0.9051880132274126,
+        "beta2": 0.9630258300974864,
+        "dim_1": 49,
+        "dim_2": 97,
+        "dim_3": 68,
+        "kernel_1": 11,
+        "kernel_2": 9,
+        "kernel_3": 13,
+        "learning_rate": 0.0005921981578304907,
+        "num_blocks_1": 2,
+        "num_blocks_2": 4,
+        "out_channels": 7,
+        "input_size": 285,
+        }
 
         toolbox.SetSeeds(42)
 
-        model = toolbox.build_model(arch=args.arch, config=None, num_classes=4).to(device)
+        model = toolbox.build_model(arch=args.arch, config=config, num_classes=config['out_channels']).to(device)
         # Create training and validation datasets using the current fold
-        image_datasets = toolbox.build_datasets(input_size=args.input_size, data_dir=os.path.join(data_dir, f'fold_{fold}'))
+        image_datasets = toolbox.build_datasets(input_size=config['input_size'], data_dir=os.path.join(data_dir, f'fold_{fold}'))
     
         # Create dataloaders for the training and validation datasets
         dataloaders_dict = {
@@ -151,10 +170,10 @@ def train():
 
         # model = toolbox.build_model(arch=args.arch, config=None, num_classes=None).to(device)
         # print('\ntwo')
-        optimizer = torch.optim.AdamW(model.parameters(), lr=0.00004604292127630006,
-                                        weight_decay=args.weight_decay, eps=args.eps, betas=(0.8978106335663742, 0.8882203479500345))
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
+                                        weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
         # Train the model and store the results
-        _, _, _, _, run_name, best_train_metrics, best_val_metrics = train_model(
+        _, _, run_name, best_train_metrics, best_val_metrics = train_model(
             model=model,
             args=args,
             optimizer=optimizer,
@@ -162,8 +181,10 @@ def train():
             dataloaders_dict=dataloaders_dict,
             criterion=criterion,
             patience=args.patience,
+            # initial_bias=None,
             batch_size=args.batch_size,
-            num_classes=4
+            num_classes=config['out_channels'],
+            
         )
       
         wandb.finish()
