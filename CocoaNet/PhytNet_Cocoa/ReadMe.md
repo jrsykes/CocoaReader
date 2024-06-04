@@ -1,7 +1,3 @@
-Here's a proposed `README.md` for the repository:
-
----
-
 # PhytNet_Cocoa
 
 This repo provides code to train Convolutional Neural Networks (CNN) such as PhytNet or ResNet for the classification of cocoa diseases using semi-supervised learning. 
