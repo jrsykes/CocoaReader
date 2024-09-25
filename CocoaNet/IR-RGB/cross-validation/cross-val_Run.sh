@@ -24,6 +24,6 @@ python /users/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/cross-validation/Torch_
         --min_epochs 15 \
         --max_epochs 200 \
         --batch_size 21 \
-        --patience 20 \
-        --arch 'PhytNetV0_ablation' \
+        --patience 10 \
+        --arch 'PhytNetV0' \
         --GPU 0

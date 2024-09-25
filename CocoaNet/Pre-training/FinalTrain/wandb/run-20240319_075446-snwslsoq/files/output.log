@@ -1,0 +1,40 @@
+Building model...
+PhytNetV0 loaded
+##################################################
+Loaded weights from:  /users/jrs596/scratch/models/PhytNet-DFLoss-FAIGB.pth
+Major epoch:  0 : 0
+Image input size:  356
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+train
+
+
+
+
+Learning... |###########################     | 133/154
+train Loss: 1.5706 Acc: 0.4667
+Learning... |############################### | 154/154
+[?25h
+val
+val Loss: 1.1233 Acc: 0.5752
+val Precision: 0.5337 Recall: 0.5752 F1: 0.5305
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_DFLoss-pre-trained.pth
+Epoch 1
+----------
+Patience: 10/10
+
+Learning... |############################### | 18/18
+[?25h
+Learning... |#########                       | 45/154
+[?25hTraceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/./Torch_Custom_CNNs2.2.1.py", line 271, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/./Torch_Custom_CNNs2.2.1.py", line 226, in train
+    model, best_f1 = train_model(args=args,
+  File "/users/jrs596/scripts/CocoaReader/utils/training_loop.py", line 100, in train_model
+    stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
+KeyboardInterrupt

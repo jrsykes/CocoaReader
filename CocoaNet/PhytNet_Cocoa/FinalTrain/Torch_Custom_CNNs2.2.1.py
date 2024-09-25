@@ -156,22 +156,22 @@ def train():
     device = torch.device("cuda:" + args.GPU)
 
     if args.arch == 'PhytNetV0':
-        #76k - effortless-sweep-30
-        # config = {
-        #     'beta1': 0.9650025364732508,
-        #     'beta2': 0.981605256508036,
-        #     'dim_1': 79,
-        #     'dim_2': 107,
-        #     'dim_3': 93,
-        #     'input_size': 415,
-        #     'kernel_1': 5,
-        #     'kernel_2': 1,
-        #     'kernel_3': 7,
-        #     'learning_rate': 0.0002975957026209971,
-        #     'num_blocks_1': 2,
-        #     'num_blocks_2': 1,
-        #     'out_channels': 6
-        #     }
+        # 67k - effortless-sweep-30
+        config = {
+            'beta1': 0.9650025364732508,
+            'beta2': 0.981605256508036,
+            'dim_1': 79,
+            'dim_2': 107,
+            'dim_3': 93,
+            'input_size': 415,
+            'kernel_1': 5,
+            'kernel_2': 1,
+            'kernel_3': 7,
+            'learning_rate': 0.0002975957026209971,
+            'num_blocks_1': 2,
+            'num_blocks_2': 1,
+            'out_channels': 6
+            }
         #332k - smart-sweep-47
         # config = {
         #     'beta1': 0.9657828624377116,
@@ -189,22 +189,21 @@ def train():
         #     'out_channels': 9
         # }
         #183k - cool-sweep-42
-        config = {
-            'beta1': 0.9671538235629524,
-            'beta2': 0.9574398373980104,
-            'dim_1': 126,
-            'dim_2': 91,
-            'dim_3': 89,
-            'input_size': 371,
-            'kernel_1': 5,
-            'kernel_2': 1,
-            'kernel_3': 17,
-            'learning_rate': 9.66816458944127e-05,
-            'num_blocks_1': 2,
-            'num_blocks_2': 1,
-            'out_channels': 7
-        }
-
+        # config = {
+        #     'beta1': 0.9671538235629524,
+        #     'beta2': 0.9574398373980104,
+        #     'dim_1': 126,
+        #     'dim_2': 91,
+        #     'dim_3': 89,
+        #     'input_size': 371,
+        #     'kernel_1': 5,
+        #     'kernel_2': 1,
+        #     'kernel_3': 17,
+        #     'learning_rate': 9.66816458944127e-05,
+        #     'num_blocks_1': 2,
+        #     'num_blocks_2': 1,
+        #     'out_channels': 7
+        # }
 
     elif args.arch == 'resnet18':
         config = {
@@ -217,7 +216,7 @@ def train():
 
     model = toolbox.build_model(arch=args.arch, num_classes=config['out_channels'], config=config).to(device)
     
-    #For max performance on H100 GPUs
+    # #For max performance on H100 GPUs
     # torch.set_float32_matmul_precision('high')
     # model = torch.compile(model)
     
@@ -248,25 +247,25 @@ def train():
     copied_images = set()
 
     # Loop through two different datasets: dest_dir_difficult and dest_dir_unsure
-    for major_epoch, data_dir in enumerate([dest_dir_difficult, dest_dir_unsure]):
-        minor_epoch = 0
-        n_relabeled = 1
-    # for i in range(1):
-    #     for j in range(1):
+    # for major_epoch, data_dir in enumerate([dest_dir_difficult, dest_dir_unsure]):
+    #     minor_epoch = 0
+    #     n_relabeled = 1
+    for i in range(1):
+        for j in range(1):
         
-        if major_epoch == 1:
-            Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
+        # if major_epoch == 1:
+        #     Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
 
-        while n_relabeled > 0:
-            print("\nMajor epoch: ", major_epoch, ":", minor_epoch)
-            minor_epoch += 1
+        # while n_relabeled > 0:
+        #     print("\nMajor epoch: ", major_epoch, ":", minor_epoch)
+        #     minor_epoch += 1
             
             # Build datasets and dataloaders for the easy dataset
             # dest_dir_easy = args.data_dir
             
             image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size'])
             dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
-            criterion = toolbox.DynamicFocalLoss(delta=0.2, dataloader=dataloaders_dict['train'])
+            criterion = toolbox.DynamicFocalLoss(delta=4.4, dataloader=dataloaders_dict['train'])
             
  
             # Train the model using the train_model function
@@ -281,12 +280,12 @@ def train():
                                          num_classes=config['out_channels'],
                                          best_f1=prev_best_f1)         
             
-            if best_f1 <= prev_best_f1:
-                break
-            else:
-                prev_best_f1 = best_f1  
+            # if best_f1 <= prev_best_f1:
+            #     break
+            # else:
+            #     prev_best_f1 = best_f1  
             
-                Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
+                # Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
 
            
 

@@ -1,0 +1,46 @@
+Building model...
+PhytNetV0 loaded
+##################################################
+Loaded weights from:  /users/jrs596/scratch/models/PhytNet-DFLoss-FAIGB.pth
+Major epoch:  0 : 0
+Image input size:  None
+No image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+train
+Learning... |                                | 0/154
+[?25hTraceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/./Torch_Custom_CNNs2.2.1.py", line 271, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/./Torch_Custom_CNNs2.2.1.py", line 226, in train
+    model, best_f1 = train_model(args=args,
+  File "/users/jrs596/scripts/CocoaReader/utils/training_loop.py", line 69, in train_model
+    for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1345, in _next_data
+    return self._process_data(data)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1371, in _process_data
+    data.reraise()
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/_utils.py", line 694, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 54, in fetch
+    return self.collate_fn(data)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 265, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 142, in collate
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 142, in <listcomp>
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 119, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 162, in collate_tensor_fn
+    return torch.stack(batch, 0, out=out)
+RuntimeError: stack expects each tensor to be equal size, but got [3, 500, 500] at entry 0 and [3, 700, 700] at entry 8

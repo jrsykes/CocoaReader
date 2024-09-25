@@ -85,17 +85,17 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                         # outputs = model(inputs)
 
 
-                        loss = criterion(outputs, labels)
-                        # if phase == 'train':
-                        #     loss, step = criterion(outputs, labels, step=step)
-                        # else:
-                        #     loss = nn.CrossEntropyLoss()(outputs, labels)
+                        # loss = criterion(outputs, labels)
+                        if phase == 'train':
+                            loss, step = criterion(outputs, labels, step=step)
+                        else:
+                            loss = nn.CrossEntropyLoss()(outputs, labels)
 
-                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
-                        
-                        
+
+                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda          
+                       
                         loss += l1_norm                     
-                        
+
                         _, preds = torch.max(outputs, 1)    
                         stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), digits=4, output_dict = True, zero_division = 0)
                         stats_out = stats['weighted avg']
@@ -121,7 +121,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        'acc': epoch_metrics['acc'].item(), 
                        'precision': epoch_metrics['precision'], 
                        'recall': epoch_metrics['recall'], 
-                       'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
+                    #    'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
           }
             
 
@@ -143,7 +143,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                                     'acc': epoch_metrics['acc'].item(), 
                                     'precision': epoch_metrics['precision'], 
                                     'recall': epoch_metrics['recall'], 
-                                    'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
+                                    # 'BPR_F1': epoch_metrics['f1_per_class'][0], 'FPR_F1': epoch_metrics['f1_per_class'][1], 'Healthy_F1': epoch_metrics['f1_per_class'][2], 'WBD_F1': epoch_metrics['f1_per_class'][3]
                                               }
     
                 PATH = os.path.join(args.root, 'models', args.model_name)
@@ -177,4 +177,4 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Acc of saved model: {:4f}'.format(best_f1_acc))
     print('F1 of saved model: {:4f}'.format(best_f1))
-    return model_out, best_f1, run_name, best_train_metrics, best_val_metrics
+    return model_out, best_f1

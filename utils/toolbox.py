@@ -260,14 +260,15 @@ class Metrics:
             'corrects': 0,
             'precision': 0.0,
             'recall': 0.0,
-            'f1': 0.0
+            'f1': 0.0,
+            'MSE': 0.0,
         }
         self.n = 0
         self.all_preds = []
         self.all_labels = []
 
     def update(self, loss=None, cont_loss=None, Genetic_loss=None, SR_loss=None, 
-               Euclid_loss=None, RF_loss=None, ESS=None, L1=None,
+               Euclid_loss=None, RF_loss=None, ESS=None, MSE=None, L1=None,
                preds=None, labels=None, stats_out=None):
         inputs_size = labels.size(0)
         if 'loss' in self.metric_names:
@@ -286,7 +287,9 @@ class Metrics:
             self.metrics['ESS'] += ESS.item() * inputs_size  
         if 'L1' in self.metric_names:
             self.metrics['L1'] += L1.item() * inputs_size  
-            
+        if 'MSE' in self.metric_names:
+            self.metrics['MSE'] += MSE.item() * inputs_size
+           
         if 'corrects' in self.metric_names:
             self.metrics['corrects'] += torch.sum(preds == labels.data)
         if 'precision' in self.metric_names:
@@ -295,8 +298,10 @@ class Metrics:
             self.metrics['recall'] += stats_out['recall'] * inputs_size
         if 'f1' in self.metric_names:
             self.metrics['f1'] += stats_out['f1-score'] * inputs_size
-        self.n += inputs_size
+     
 
+        self.n += inputs_size
+        
         if preds != None:
             # Store all predictions and labels for later calculation
             self.all_preds.extend(preds.cpu().numpy())
@@ -318,6 +323,9 @@ class Metrics:
             results['RF_loss'] = self.metrics['RF_loss'] / self.n
         if 'ESS' in self.metric_names:
             results['ESS'] = self.metrics['ESS'] / self.n
+        if 'MSE' in self.metric_names:
+            results['MSE'] = self.metrics['MSE'] / self.n
+
         if 'L1' in self.metric_names:
             results['L1'] = self.metrics['L1'] / self.n
             

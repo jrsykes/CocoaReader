@@ -1,110 +1,57 @@
 import torch
-from torchvision import datasets, models, transforms
+from torchvision import models
 import os
 from torch import nn
 from sklearn import metrics
-import pandas as pd
 import time
-import numpy as np
-#import cv2
 import sys
 import toolbox
 
-import subprocess
-import re
 
 sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Unsure"
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult"
 
-# data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Easy"
+data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Easy"
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy"
 
 
-data_dir = "/users/jrs596/scratch/dat/IR_split"
+# data_dir = "/users/jrs596/scratch/dat/IR_split"
 num_classes = len(os.listdir(os.path.join(data_dir, 'val'))) 
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-#67k - effortless-sweep-30
-# config = {
-#         'beta1': 0.9650025364732508,
-#         'beta2': 0.981605256508036,
-#         'dim_1': 79,
-#         'dim_2': 107,
-#         'dim_3': 93,
-#         'input_size': 415,
-#         'kernel_1': 5,
-#         'kernel_2': 1,
-#         'kernel_3': 7,
-#         'learning_rate': 0.0002975957026209971,
-#         'num_blocks_1': 2,
-#         'num_blocks_2': 1,
-#         'out_channels': 6
-#     }
-
-#smart-sweep-47 332k
-# config = {
-#     'beta1': 0.9657828624377116,
-#     'beta2': 0.9908102731106424,
-#     'dim_1': 104,
-#     'dim_2': 109,
-#     'dim_3': 110,
-#     'input_size': 350,
-#     'kernel_1': 5,
-#     'kernel_2': 7,
-#     'kernel_3': 13,
-#     'learning_rate': 0.00013365304940966892,
-#     'num_blocks_1': 1,
-#     'num_blocks_2': 2,
-#     'out_channels': 9
-# }
-
-# cool-sweep-42
-# config = {
-#     'beta1': 0.9671538235629524,
-#     'beta2': 0.9574398373980104,
-#     'dim_1': 126,
-#     'dim_2': 91,
-#     'dim_3': 89,
-#     'input_size': 371,
-#     'kernel_1': 5,
-#     'kernel_2': 1,
-#     'kernel_3': 17,
-#     'learning_rate': 9.66816458944127e-05,
-#     'num_blocks_1': 2,
-#     'num_blocks_2': 1,
-#     'out_channels': 7
-# }
 	
 config = {
-        "beta1": 0.9051880132274126,
-        "beta2": 0.9630258300974864,
-        "dim_1": 49,
-        "dim_2": 97,
-        "dim_3": 68,
-        "kernel_1": 11,
-        "kernel_2": 9,
-        "kernel_3": 13,
-        "learning_rate": 0.0005921981578304907,
-        "num_blocks_1": 2,
-        "num_blocks_2": 4,
-        "out_channels": 7,
-        "input_size": 285,
+        'beta1': 0.9305889820653824,  
+        'beta2': 0.977926878163776,  
+        'dim_1': 125,  
+        'dim_2': 80,  
+        'dim_3': 54, 
+        'input_size': 308,  
+        'kernel_1': 3,  
+        'kernel_2': 11,  
+        'kernel_3': 17,  
+        'learning_rate': 0.0007653560770141792,  
+        'num_blocks_1': 3,  
+        'num_blocks_2': 2,  
+        'out_channels': 5,  
+        'num_heads': 3, #3 for PhytNetV0, 4 for ResNet18  
+        'batch_size': 200,  
+        'num_decoder_layers': 4,
     }
- 
-model = toolbox.build_model(num_classes=config['out_channels'], arch='PhytNetV0_ablation', config=config)
 
-# weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+model = toolbox.build_model(num_classes=config['out_channels'], arch='PhytNetV0', config=config)
+
+weights_path = "/users/jrs596/scratch/models/PhytNet-Cocoa-SemiSupervised_DFLoss-Discrim-PreTrained.pth"
 # weights_path = "/users/jrs596/scratch/models/PhytNet67k-Cocoa-SemiSupervised_NotCocoa_OptDFLoss.pth"
 
-weights_path = '/users/jrs596/scratch/models/PhytNet-Cocoa-ablation.pth'
+# weights_path = '/users/jrs596/scratch/models/PhytNet-Cocoa-ablation.pth'
 
-PhyloNetWeights = torch.load(weights_path, map_location=device)
+PhytNetWeights = torch.load(weights_path, map_location=device)      
 
-
-model.load_state_dict(PhyloNetWeights, strict=True)
+model.load_state_dict(PhytNetWeights, strict=True)
 input_size = config['input_size']
 print('\nLoaded weights from: ', weights_path)
 
@@ -123,7 +70,7 @@ print('\nLoaded weights from: ', weights_path)
 model.eval()   # Set model to evaluate mode
 model = model.to(device)
 
-batch_size = 42
+batch_size = 200
 criterion = nn.CrossEntropyLoss()
 
 image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size

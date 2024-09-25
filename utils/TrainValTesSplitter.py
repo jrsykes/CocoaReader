@@ -218,23 +218,27 @@ destination = '/users/jrs596/scratch/dat/Ecuador/NotCocoa'
 # FAIGB_Spliter(root, destination)
 
 def compress_copy(root, destination):
-	for class_ in os.listdir(root):
-		images = os.listdir(os.path.join(root, class_))
+	os.makedirs(destination, exist_ok = True)
+	for split in os.listdir(root):
+		print("Processing split: ", split)
+		for class_ in os.listdir(os.path.join(root, split)):
+			print("Processing class: ", class_)
+			images = os.listdir(os.path.join(root, split, class_))
 
-		for image in images:
-			source = os.path.join(root, class_, image)
-			dest = os.path.join(destination, class_)
-			os.makedirs(os.path.join(dest), exist_ok = True)
-			#open image and compress to 330x330 pixels
-			im = Image.open(os.path.join(source))
-			im1 = im.resize((330,330))
-			im1.save(os.path.join(dest, image))
+			for image in images:
+				source = os.path.join(root, split, class_, image)
+				dest = os.path.join(destination, split, class_)
+				os.makedirs(os.path.join(dest), exist_ok = True)
+				#open image and compress to 330x330 pixels
+				im = Image.open(os.path.join(source))
+				im1 = im.resize((700,700))
+				im1.save(os.path.join(dest, image))
 		
 
-#source = '/local/scratch/jrs596/dat/EcuadorWebImages_EasyDif_FinalClean/Unsure'
-#destination = '/local/scratch/jrs596/dat/EcuadorWebImages_EasyDif_FinalClean_SplitCompress/Unsure'
+source = '/users/jrs596/scratch/dat/FAIGB/FAIGB_FullRes_30-10-23_split'
+destination = '/users/jrs596/scratch/dat/FAIGB/FAIGB_700_30-10-23_split'
 
-#compress_copy(source, destination)
+compress_copy(source, destination)
 
 def combine(original_data, disease_path, healthy_path):
 	os.makedirs(disease_path, exist_ok = True)
@@ -449,10 +453,10 @@ def cross_validation_split(dataset_dir, output_dir):
 
 	print("Dataset splitting complete.")
 
-# The root directory where the dataset is located
-dataset_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/compiled_IR/'
+# # The root directory where the dataset is located
+# dataset_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/compiled_IR/'
 
-# The directory where the split dataset will be saved
-output_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/IR_CrossVal_600'
+# # The directory where the split dataset will be saved
+# output_dir = '/users/jrs596/scratch/dat/IR_RGB_Comp_data/IR_CrossVal_600'
 
-cross_validation_split(dataset_dir, output_dir)
+# cross_validation_split(dataset_dir, output_dir)

@@ -160,41 +160,41 @@ def train():
     
     criterion = nn.CrossEntropyLoss()
     
-    input_size = torch.Size([3, config['input_size'], config['input_size']])
-    inputs = torch.randn(1, *input_size).to(device)
-    with torch.no_grad():
-        model(inputs)
+    # input_size = torch.Size([3, config['input_size'], config['input_size']])
+    # inputs = torch.randn(1, *input_size).to(device)
+    # with torch.no_grad():
+    #     model(inputs)
     
-    GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
-    wandb.log({'GFLOPs': GFLOPs, 'n_params': n_params})  # Log the GFLOPs and n_params of the model
-    del model
-    print()
-    print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
+    # GFLOPs, n_params = toolbox.count_flops(model=model, device=device, input_size=input_size)
+    # wandb.log({'GFLOPs': GFLOPs, 'n_params': n_params})  # Log the GFLOPs and n_params of the model
+    # del model
+    # print()
+    # print('GFLOPs: ', GFLOPs, 'n_params: ', n_params)
 
-    if GFLOPs < 10 and n_params < 50000000:
-        model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
+    # if GFLOPs < 10 and n_params < 50000000:
+    model = toolbox.build_model(num_classes=None, arch=args.arch, config=config).to(device)
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
                                         weight_decay=args.weight_decay, eps=args.eps, betas=(config['beta1'], config['beta2']))
         
-        train_model(args=args, 
-                    model=model, 
-                    optimizer=optimizer, 
-                    device=device, 
-                    dataloaders_dict=dataloaders_dict, 
-                    criterion=criterion, 
-                    patience=args.patience, 
-                    batch_size=args.batch_size,
-                    num_classes=config['out_channels'],
-                    )
+    train_model(args=args, 
+                model=model, 
+                optimizer=optimizer, 
+                device=device, 
+                dataloaders_dict=dataloaders_dict, 
+                criterion=criterion, 
+                patience=args.patience, 
+                batch_size=args.batch_size,
+                num_classes=config['out_channels'],
+                )
         # config['Run_name'] = run_name
         
-    else: 
-        print()
-        print('Model too large, aborting training')
-        print()
-        run.log({'Status': 'aborted'})  # Log the status as 'aborted'
-        run.finish()  # Finish the run
+    # else: 
+    #     print()
+    #     print('Model too large, aborting training')
+    #     print()
+    #     run.log({'Status': 'aborted'})  # Log the status as 'aborted'
+    #     run.finish()  # Finish the run
 
         # trained_model, best_f1, best_f1_loss, best_train_f1, config = None, None, None, None, None
 

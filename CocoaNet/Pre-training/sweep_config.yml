@@ -1,0 +1,61 @@
+sweep_config:
+    method: bayes
+metric:
+    name: Best_F1
+    goal: maximize
+parameters:
+    kernel_1:
+        distribution: int_uniform
+        min: 1
+        max: 20
+    kernel_2:
+        distribution: int_uniform
+        min: 1
+        max: 20
+    kernel_3:
+        distribution: int_uniform
+        min: 1
+        max: 20
+    kernel_4:
+        distribution: int_uniform
+        min: 1
+        max: 20
+    kernel_5:
+        distribution: int_uniform
+        min: 1
+        max: 20
+    kernel_6:
+        distribution: int_uniform
+        min: 1
+        max: 20    
+    dim_1:
+        distribution: int_uniform
+        min: 10
+        max: 40
+    dim_2:
+        distribution: int_uniform
+        min: 10
+        max: 40
+    nodes_1:
+        distribution: int_uniform
+        min: 90
+        max: 160
+    nodes_2:
+        distribution: int_uniform
+        min: 90
+        max: 160
+    beta1:
+        distribution: uniform
+        min: 0.88
+        max: 0.99
+    beta2:
+        distribution: uniform
+        min: 0.93
+        max: 0.999
+    learning_rate:
+        distribution: uniform
+        min: 1e-5
+        max: 1e-3
+
+
+

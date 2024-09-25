@@ -2,7 +2,7 @@
 
 #SBATCH --account=biol-cocoa-2023
 #SBATCH --job-name=PhytNet-cocoa
-#SBATCH --partition=gpuplus
+#SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --time=72:00:00
 #SBATCH --mem=100G
@@ -26,5 +26,5 @@ python /users/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/PhytNet_ablation/Torch_
         --arch 'PhytNetV0_ablation' \
         --GPU 0 \
         --sweep_config /users/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/PhytNet_ablation/PhytNet-Cocoa-config.yml \
-        # --sweep_id 'bfhhyd5u'
+        --sweep_id 'g8o0v8ub'
   

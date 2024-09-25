@@ -1,0 +1,13 @@
+Building model...
+PhytNetV0 loaded
+##################################################
+Traceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/./Torch_Custom_CNNs2.2.1.py", line 276, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/./Torch_Custom_CNNs2.2.1.py", line 197, in train
+    model.load_state_dict(PhyloNetWeights, strict=True)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/module.py", line 2152, in load_state_dict
+    raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+RuntimeError: Error(s) in loading state_dict for PhytNetV0:
+	size mismatch for fc.weight: copying a param with shape torch.Size([116, 93]) from checkpoint, the shape in current model is torch.Size([5, 93]).
+	size mismatch for fc.bias: copying a param with shape torch.Size([116]) from checkpoint, the shape in current model is torch.Size([5]).

@@ -29,7 +29,7 @@ def filter_slurm_log(file_path):
     return extracted_sections
 
 # Usage Example
-file_path = '/users/jrs596/slurm-3096532.out'
+file_path = '/users/jrs596/slurm-4432306.out'
 extracted = filter_slurm_log(file_path)
 for section in extracted:
     print(section)

@@ -10,6 +10,7 @@ from collections import Counter
 import torch
 import re
 
+from collections import Counter
 # pooled_features = torch.rand(42, 84)
 
 # pooled_features = pooled_features.numpy()
@@ -18,6 +19,8 @@ import re
 # labels = [random.randint(0, 20) for _ in range(42)]
 
 # %%
+
+
 class Node:
     def __init__(self, name):
         self.name = name
@@ -49,7 +52,6 @@ def generate_newick(data):
             if pd.notna(taxon):
                 current = current.get_or_create_child(taxon)
 
-
     # Convert to ete3 tree
     ete_tree = root.to_ete()
 
@@ -59,8 +61,6 @@ def trees(taxonomy, labels, pooled_features):
     labels = labels.detach().cpu().numpy().tolist()
     batch_taxonomy = taxonomy.loc[labels]
 
-    input_ete_tree = generate_newick(batch_taxonomy)
- 
     # Compute squared distance matrix using broadcasting
     pooled_features = pooled_features.detach().cpu().numpy()
     square = np.sum(pooled_features**2, axis=1, keepdims=True)
@@ -71,12 +71,14 @@ def trees(taxonomy, labels, pooled_features):
     observed_distances = np.sqrt(distance_squared)
     np.fill_diagonal(observed_distances, 0)
 
-
     names = taxonomy.apply(lambda row: row.dropna().iloc[-1], axis=1).tolist()
     names = [names[i] for i in labels]
 
     # Create a Counter object to count occurrences
     counts = Counter(names)
+
+    dumby_taxonomy = batch_taxonomy
+    name_to_base_name = {}  # Map from full name with suffix to base name
 
     # Process list to append suffixes for duplicates
     unique_names = []
@@ -86,9 +88,22 @@ def trees(taxonomy, labels, pooled_features):
             new_item = f"{item}{suffix}"
             counts[item] -= 1  # Decrease the count for the next occurrence
             unique_names.append(new_item)
+            name_to_base_name[new_item] = item  # Map to base name
+
+            # Subset row from taxonomy based on item in the last position
+            duplicate_row = taxonomy.loc[taxonomy.iloc[:, -1] == item].copy()
+            # Append species name in last position of duplicate row with count
+            duplicate_row.iloc[:, -1] = new_item
+
+            # Append duplicate row to dumby_taxonomy
+            dumby_taxonomy = pd.concat([dumby_taxonomy, duplicate_row], ignore_index=True)
+
         else:
             unique_names.append(item)
-        
+            name_to_base_name[item] = item  # Map to base name
+
+    target_ete_tree = generate_newick(dumby_taxonomy)
+
     distances_list = observed_distances.tolist()
     matrix = [row[:i+1] for i, row in enumerate(distances_list)]
 
@@ -109,20 +124,59 @@ def trees(taxonomy, labels, pooled_features):
     # Get the string from the in-memory file
     out_tree_newick = string_io.getvalue()
 
-    ete_out_tree = Tree(out_tree_newick, format=1)
-    ete_out_tree.set_outgroup(ete_out_tree.get_midpoint_outgroup())
+    ete_pred_tree = Tree(out_tree_newick, format=1)
+    ete_pred_tree.set_outgroup(ete_pred_tree.get_midpoint_outgroup())
 
-    # Calculate Robinson-Foulds Distance
-    # comparison = input_ete_tree.compare(ete_out_tree)
-    # rf_distance = torch.tensor(comparison['rf'], dtype=torch.float, requires_grad=True)
-    # res = torch.tensor((1 - comparison['ref_edges_in_source'])*100, dtype=torch.float, requires_grad=True)
-
-    trees = {'input_tree': input_ete_tree, 'output_tree': ete_out_tree}
+    trees = {'target_tree': target_ete_tree, 'pred_tree': ete_pred_tree}
     
-    return trees
+    return trees, name_to_base_name  # Return both trees and the name mapping
 
+def generate_relationship_matrix(tree_type, tree, name_to_base_name):
+    """Generate a relationship matrix from an ete3 Tree object."""
+    leaf_names = tree.get_leaf_names()
+    num_leaves = len(leaf_names)
+    
+    # Initialize the relationship matrix with zeros
+    relationship_matrix = np.zeros((num_leaves, num_leaves))
+    
+    # Populate the matrix with distances
+    for i in range(num_leaves):
+        for j in range(num_leaves):
+            base_name_i = name_to_base_name[leaf_names[i]]
+            base_name_j = name_to_base_name[leaf_names[j]]
+            if base_name_i != base_name_j:  # Compare using base names
+      
+                node1 = tree&leaf_names[i]
+                node2 = tree&leaf_names[j]
+                distance = node1.get_distance(node2)
+                # if i contains a number, add 1
+                if bool(re.search(r'\d', leaf_names[i])):
+                    distance -= 1
+             
+                relationship_matrix[i, j] = distance
 
-#rf = RobinsonFoulds(taxonomy, labels)
+            else:
+                # If they are the same base name, treat them as identical
+                relationship_matrix[i, j] = 0  # Maximum relatedness
+
+    # Scale the matrix
+    relationship_matrix = relationship_matrix / relationship_matrix.max()
+    # Invert the matrix
+    relationship_matrix = 1 - relationship_matrix
+
+    return pd.DataFrame(relationship_matrix, index=leaf_names, columns=leaf_names)
+
+def generate_matrices(trees, name_to_base_name):
+    """Generate relationship matrices for both target and predicted trees."""
+    target_tree = trees['target_tree']
+    pred_tree = trees['pred_tree']
+    
+    target_matrix = generate_relationship_matrix('target', target_tree, name_to_base_name)
+    pred_matrix = generate_relationship_matrix('pred', pred_tree, name_to_base_name)
+    
+    return {'target_matrix': torch.tensor(target_matrix.values, dtype=torch.float32), 'pred_matrix': torch.tensor(pred_matrix.values, requires_grad=True, dtype=torch.float32)}
+
+################################################################################################
 
 def common_edges(ref_tree, source_tree):
     def get_edges(tree):
@@ -182,7 +236,7 @@ def ESS(ref_tree, source_tree):
     score = calculate_edge_similarity_score(ref_tree, source_tree)
     score = torch.tensor(score, dtype=torch.float, requires_grad=True)
 
-    return score
+    return -score
 
 
 

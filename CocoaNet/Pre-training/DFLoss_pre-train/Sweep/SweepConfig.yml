@@ -1,0 +1,10 @@
+sweep_config:
+    method: bayes
+metric:
+    name: Best_F1
+    goal: maximize
+parameters:
+    delta:
+        distribution: uniform
+        min: 0.01
+        max: 5

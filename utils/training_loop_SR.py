@@ -63,20 +63,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
     
     my_metrics = toolbox.Metrics(metric_names= ['SR_loss', 'L1'], num_classes=num_classes)
 
-    # constructor = DistanceTreeConstructor()
-    # reducer = umap.UMAP(n_components=3)
-    # if os.path.exists(os.path.join(args.root, 'umap_data.csv')):
-    #     os.remove(os.path.join(args.root, 'umap_data.csv'))
-    
-    # #sample images for visualisation
-    # len_ = len(dataloaders_dict['val'].dataset)
-    # selected_indices = [0, len_//10, len_//9, len_//8, len_//7, len_//6, len_//5, len_//4, len_//3]
-    # selected_indices = [i for i in range(args.batch_size)]
-    # sampler = toolbox.NineImageSampler(selected_indices)
-    # sample_data_loader = DataLoader(dataloaders_dict['val'].dataset, batch_size=9, sampler=sampler)
-    # sample_images, _ = next(iter(sample_data_loader))
-    # sample_images = F.interpolate(sample_images, size=(356, 356), mode='bilinear', align_corners=True).to(device)
-    # Define the directory where the images are located
+
     data_dir = '/users/jrs596/scratch/dat/sample_SR_images'
 
     # Define the transformation to apply to the images
@@ -124,8 +111,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             n = len(dataloaders_dict[phase].dataset)
            #Begin training
             print(phase)
-            all_encoded = []
-            all_labels = []
+   
             epoch_loss = 0.00
             with Bar('Learning...', max=n/batch_size) as bar:
                
@@ -135,7 +121,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     SRinputs = inputs.to(device)
                     
                     #PhyNet
-                    inputs = F.interpolate(inputs, size=(356, 356), mode='bilinear', align_corners=True)                   
+                    inputs = F.interpolate(inputs, size=(308, 308), mode='bilinear', align_corners=True)                   
                     #ResNet18
                     # inputs = F.interpolate(inputs, size=(375, 375), mode='bilinear', align_corners=True)
                     
@@ -219,32 +205,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 wandb.log({"Train_SR_loss": results['SR_loss'], "Train_L1_norm": results['L1']})
             else:
                 wandb.log({"Val_SR_loss": results['SR_loss'], "Val_L1_norm": results['L1']})
-                                                
-                # all_encoded_np = np.concatenate(all_encoded, axis=0)
-                # all_labels_np = np.concatenate(all_labels, axis=0)
-     
-                # data_umap = reducer.fit_transform(all_encoded_np)
-           
-                # UMAP_table = wandb.Table(columns=["UMAP_X", "UMAP_Y", "UMAP_Z", "Label", "Epoch"])
-                # csv_data = []  # List to hold data for CSV
-
-                # for i in range(data_umap.shape[0]):
-                #     # UMAP_table.add_data(data_umap[i, 0], data_umap[i, 1], data_umap[i, 2], all_labels_np[i], epoch)
-                #     csv_data.append([data_umap[i, 0], data_umap[i, 1], data_umap[i, 2], all_labels_np[i], epoch])
-            
-                # # Convert the list of data to a pandas DataFrame
-                # df = pd.DataFrame(csv_data, columns=["UMAP_X", "UMAP_Y", "UMAP_Z", "Label", "Epoch"])
-
-                # with open(UMAP_csv_filename, 'a') as f:
-                #     # If the file does not exist, write the header, otherwise append without the header
-                #     df.to_csv(f, header=f.tell()==0, index=False)
-
-                # Log the table to wandb
-                # wandb.log({"UMAP_table": UMAP_table})
-
-                # # Clear the lists for the next epoch
-                # all_encoded.clear()
-                # all_labels.clear()
+                    
 
             # Reset metrics for the next epoch
             my_metrics.reset()

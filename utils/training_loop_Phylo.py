@@ -16,20 +16,14 @@ import RobinsonFoulds
 
 import networkx as nx
 from ete3 import Tree
+from phylo2vec.base import to_vector, to_newick
 
-def ete3_to_networkx(ete3_tree):
-    G = nx.Graph()
-    for node in ete3_tree.traverse("levelorder"):
-        if node.is_root():
-            G.add_node(node.name)
-        else:
-            G.add_node(node.name)
-            G.add_edge(node.up.name, node.name)
-    return G
 
-def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, taxonomy):      
+
+
+def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, taxonomy, ESS_alpha, MSE_alpha, scheduler):      
    
-    
+    MSE_criterion = torch.nn.MSELoss(reduction='mean')
     # Save or append the DataFrame to a CSV file
     UMAP_csv_filename = os.path.join(args.root, args.model_name + '_umap_data.csv')
     if os.path.exists(UMAP_csv_filename):
@@ -59,9 +53,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
         else:
             run_name = wandb.run.name
     
-    my_metrics = toolbox.Metrics(metric_names= ['ESS', 'L1'], num_classes=num_classes)
+    my_metrics = toolbox.Metrics(metric_names= ['loss', 'ESS', 'MSE', 'L1'], num_classes=num_classes)
 
-    # constructor = DistanceTreeConstructor()
     reducer = umap.UMAP(n_components=3)
     if os.path.exists(os.path.join(args.root, 'umap_data.csv')):
         os.remove(os.path.join(args.root, 'umap_data.csv'))
@@ -113,47 +106,58 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                     inputs = inputs.to(device)
                     labels = labels.to(device)
                     
+
                     with torch.set_grad_enabled(phase == 'train'):
                         #Forward pass   
-                        encoded_pooled, _ = model(inputs)
-      
+                        # encoded_pooled, _ = model(inputs)
+                        encoded_pooled = model(inputs)
+
+
+                        trees, name_to_base_name = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
+       
+                        matrices = RobinsonFoulds.generate_matrices(trees, name_to_base_name)
+
+                        MSE = MSE_criterion(matrices['pred_matrix'], matrices['target_matrix'])
+                  
+                        # cross_entropy_loss = criterion(fc_output, labels)
+                        #Edge similarity score
+                        ESS = RobinsonFoulds.ESS(trees["target_tree"], trees["pred_tree"])
+
+                        target_tree_newick = trees["target_tree"].write(format=1)
+                        pred_tree_newick = trees["pred_tree"].write(format=1)
+
+                        #output tree as graphical representation
+                        trees["target_tree"].write(format=1, outfile="/users/jrs596/tree_target.newick")
+                        trees["pred_tree"].write(format=1, outfile="/users/jrs596/tree_pred.newick")
+
+
+                        print(target_tree_newick)
                         print()
-                        # print(encoded_pooled[:,0:20])
-                        print("Min:", encoded_pooled.min())
-                        print("Max:", encoded_pooled.max())
+                        print(pred_tree_newick)
+
                         print()
-                        trees = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
+                        target_tree_vec = to_vector(target_tree_newick)
+                        # pred_tree_vec = to_vector(pred_tree_newick)
 
-                                                             
-                        # Convert ete3 trees to networkx graphs
-                        # graph1 = ete3_to_networkx(trees['input_tree'])
-                        # graph2 = ete3_to_networkx(trees['output_tree'])
+                        print("Target tree vector: ", target_tree_vec)
+                        # print("Shape of target tree vector: ", target_tree_vec.shape)
+                        print()
+                        # print("Pred tree vector: ", pred_tree_vec)
+                        # print("Shape of pred tree vector: ", pred_tree_vec.shape)
+                        exit()
 
-                        # start = time.time()
-                        # # Calculate the graph edit distance
-                        # distance = nx.graph_edit_distance(graph1, graph2)
-                        # print("Distance:", distance)
-                        
-                        # for v in nx.optimize_graph_edit_distance(graph1, graph2):
-                        #     minv = v
-                        # print(minv)
-                        
-                        # paths, cost = nx.optimal_edit_paths(graph1, graph2)
-                        # print("Cost:", cost)
-                        # print("Paths:", len(paths))
-                        
-                        # print("Time taken:", time.time() - start)
+                        #Make ESS negative so that it can be minimized
+                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
 
-                        ESS = RobinsonFoulds.ESS(trees["input_tree"], trees["output_tree"]) * 10
-                        l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) 
-                        loss = ESS + l1_norm * args.l1_lambda   
-                                      
-                        epoch_loss += loss
+                        loss_ = MSE * MSE_alpha + ESS * ESS_alpha + l1_norm   
+                        loss = MSE + ESS  
+
+                        epoch_loss += loss_
 
                         if phase == 'train':
                             optimizer.zero_grad()
 
-                            loss.backward()
+                            loss_.backward()
                             optimizer.step()
 
                         if phase == 'val':
@@ -161,16 +165,17 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             all_labels.append(labels.cpu().detach().numpy())
                             if idx == 0:                                
 
-                                encoded_pooled, _ = model(inputs)
-                                trees = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
+                                # encoded_pooled, _ = model(inputs)
+                                encoded_pooled = model(inputs)
+                                trees, _ = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
 
                                 PATH = os.path.join(args.root, "trees_" + args.model_name)
                                 os.makedirs(PATH, exist_ok=True)
-                                trees["output_tree"].write(format=1, outfile=os.path.join(PATH, str(epoch) + "tree_pred.newick"))
-                                trees["input_tree"].write(format=1, outfile=os.path.join(PATH, str(epoch) + "tree_input.newick"))                
-                           
+                                trees["pred_tree"].write(format=1, outfile=os.path.join(PATH, str(epoch) + "tree_pred.newick"))
+                                trees["target_tree"].write(format=1, outfile=os.path.join(PATH, str(epoch) + "tree_target.newick"))                
+
                         #Update metrics
-                        my_metrics.update(ESS=ESS, L1=l1_norm, labels=labels)
+                        my_metrics.update(loss=loss ,ESS=ESS, MSE=MSE, L1=l1_norm, labels=labels)
                     
                     bar.next()  
 
@@ -179,9 +184,11 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             
 
             if phase == 'train':
-                train_metrics = {'ESS': results['ESS'], 'L1': results['L1']}                              
-                                    
-            print('{} ESS: {:.4f} L1_norm: {:.4f}'.format(phase, results['ESS'], results['L1']))                
+                train_metrics = {'loss': results['loss'], 'ESS': results['ESS'], 'MSE': results['MSE'], 'L1': results['L1']}    
+            else:
+                scheduler.step(epoch_loss)
+                                                            
+            print('{} loss: {:.4f} ESS: {:.4f} MSE: {:.4f} L1_norm: {:.4f}'.format(phase, results['loss'], results['ESS'], results['MSE'], results['L1']))                
 
            # Save model and update best weights only if recall has improved
             if phase == 'val' and epoch_loss < best_loss:
@@ -189,7 +196,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                 val_loss_history.append(epoch_loss)
 
                 best_train_metrics = train_metrics
-                best_val_metrics = {'ESS': results['ESS'], 'L1': results['L1']}  
+                best_val_metrics = {'loss' : results['loss'], 'ESS': results['ESS'], 'MSE': results['MSE'], 'L1': results['L1']}  
     
                 PATH = os.path.join(args.root, 'models', args.model_name)
   
@@ -204,9 +211,9 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                      
             
             if phase == 'train':
-                wandb.log({"Train_ESS": results['ESS'], "Train_L1_norm": results['L1']})
+                wandb.log({"Train_loss": results['loss'], "Train_ESS": results['ESS'], "Train_MSE": results['MSE'], "Train_L1_norm": results['L1']})
             else:
-                wandb.log({"Val_ESS": results['ESS'], "Val_L1_norm": results['L1']})
+                wandb.log({"Val_loss": results['loss'], "Val_ESS": results['ESS'], "Val_MSE": results['MSE'], "Val_L1_norm": results['L1']})
                                                 
                 all_encoded_np = np.concatenate(all_encoded, axis=0)
                 all_labels_np = np.concatenate(all_labels, axis=0)

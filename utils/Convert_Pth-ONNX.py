@@ -4,22 +4,37 @@ import torch
 import os
 import pickle
 import numpy as np 
+import torch.nn as nn
+import datetime 
 
-root = '/local/scratch/jrs596/dat/models'
-model_name = 'CocoaNet18_DN'
-data_dir = "/local/scratch/jrs596/dat/split_cocoa_images"
+root = '/users/jrs596/scratch/models'
+model_name = 'CocoaNet18_' + datetime.datetime.now().strftime("%Y-%m-%d_%H%M")
+
+# data_dir = "/local/scratch/jrs596/dat/split_cocoa_images"
+data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Easy"
+
+resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+
+ResNet18Weights = torch.load(resnet18_cococa_weights, map_location="cpu")
+
+CocoaNet = models.resnet18(weights=None)
+in_feat = CocoaNet.fc.in_features
+CocoaNet.fc = nn.Linear(in_feat, 5)
+CocoaNet.load_state_dict(ResNet18Weights, strict=True)
+input_size = 375
+
+CocoaNet.eval() 
+
+# CocoaNet = torch.load(os.path.join(root, model_name + '.pth'), map_location=torch.device('cpu'))
 
 
-CocoaNet = torch.load(os.path.join(root, model_name + '.pth'), map_location=torch.device('cpu'))
 
-
-
-image_height = 750
-image_width = 750
+# input_size = 750
+# input_size = 750
 
 from PIL import Image
 
-image_file = "/local/scratch/jrs596/dat/FPR.jpg"
+image_file = "/users/jrs596/Monilia20.jpg"
 
 
 def preprocess_image(image_path, height, width, channels=3):
@@ -36,9 +51,9 @@ def preprocess_image(image_path, height, width, channels=3):
     image_data = np.expand_dims(image_data, 0)
     return image_data
 
-x = preprocess_image(image_file, image_height, image_width)
+x = preprocess_image(image_file, input_size, input_size)
 x = torch.tensor(x)
-#x = torch.randn(1, 3, image_height, image_width, requires_grad=True)
+#x = torch.randn(1, 3, input_size, input_size, requires_grad=True)
 
 
 torch_out = CocoaNet(x)

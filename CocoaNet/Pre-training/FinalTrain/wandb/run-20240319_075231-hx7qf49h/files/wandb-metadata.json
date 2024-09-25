@@ -1,0 +1,313 @@
+{
+    "os": "Linux-4.18.0-477.15.1.el8_8.x86_64-x86_64-with-glibc2.28",
+    "python": "3.10.13",
+    "heartbeatAt": "2024-03-19T07:52:35.445469",
+    "startedAt": "2024-03-19T07:52:31.461255",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--model_name",
+        "PhytNet-Cocoa-SemiSupervised_DFLoss-pre-trained",
+        "--project_name",
+        "Pre-training",
+        "--root",
+        "/users/jrs596/scratch",
+        "--data_dir",
+        "dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca",
+        "--min_epochs",
+        "15",
+        "--max_epochs",
+        "200",
+        "--batch_size",
+        "42",
+        "--patience",
+        "10",
+        "--arch",
+        "PhytNetV0",
+        "--GPU",
+        "0",
+        "--use_wandb",
+        "--save",
+        "--custom_pretrained_weights",
+        "/users/jrs596/scratch/models/PhytNet-DFLoss-FAIGB.pth"
+    ],
+    "state": "running",
+    "program": "/users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/./Torch_Custom_CNNs2.2.1.py",
+    "codePathLocal": "Torch_Custom_CNNs2.2.1.py",
+    "codePath": "CocoaNet/Pre-training/FinalTrain/Torch_Custom_CNNs2.2.1.py",
+    "git": {
+        "remote": "git@github.com:jrsykes/CocoaReader.git",
+        "commit": "59169313ca54cdad592f2d037f23f859d1d77dfc"
+    },
+    "email": null,
+    "root": "/users/jrs596/scripts/CocoaReader",
+    "host": "gpu25.viking2.yor.alces.network",
+    "username": "jrs596",
+    "executable": "/users/jrs596/scratch/python_environments/envs/torch5/bin/python",
+    "cpu_count": 48,
+    "cpu_count_logical": 48,
+    "cpu_freq": {
+        "current": 2684.4473333333326,
+        "min": 0.0,
+        "max": 0.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3616.856,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 3570.986,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        },
+        {
+            "current": 2644.905,
+            "min": 0.0,
+            "max": 0.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 15.580928802490234,
+            "used": 8.120697021484375
+        }
+    },
+    "gpu": "NVIDIA H100 PCIe",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA H100 PCIe",
+            "memory_total": 85520809984
+        }
+    ],
+    "memory": {
+        "total": 502.99907302856445
+    }
+}

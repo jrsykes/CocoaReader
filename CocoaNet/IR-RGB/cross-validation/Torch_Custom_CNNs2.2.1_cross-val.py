@@ -111,38 +111,22 @@ def train():
         wandb.save(os.path.join(script_dir, '*')) 
         wandb.save(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils', '*'))
         
-        #define config dictionary with wandb
-        # config = {
-        #     'input_size': 455,
-        #     'dim_1': 65, 
-        #     'dim_2': 34, 
-        #     'dim_3': 24,
-        #     'kernel_1': 1, 
-        #     'kernel_2': 1,
-        #     'kernel_3': 17,
-        #     'num_blocks_1': 6,
-        #     'num_blocks_2': 10,
-        #     'out_channels': 9,    
-        #     'batch_size': 42,
-        #     'beta1': 0.9101095382523464,
-        #     'beta2': 0.9783140796978422,  
-        #     'learning_rate': 0.0003472804733326055
-        # }
+
         
         config = {
-        "beta1": 0.9051880132274126,
-        "beta2": 0.9630258300974864,
-        "dim_1": 49,
-        "dim_2": 97,
-        "dim_3": 68,
+        "beta1": 0.8021329726064048,
+        "beta2": 0.9647337580404268,
+        "dim_1": 128,
+        "dim_2": 116,
+        "dim_3": 59,
         "kernel_1": 11,
-        "kernel_2": 9,
-        "kernel_3": 13,
-        "learning_rate": 0.0005921981578304907,
+        "kernel_2": 7,
+        "kernel_3": 5,
+        "learning_rate": 0.0005533712358146683,
         "num_blocks_1": 2,
-        "num_blocks_2": 4,
-        "out_channels": 7,
-        "input_size": 285,
+        "num_blocks_2": 6,
+        "out_channels": 6,
+        "input_size": 430,
         }
 
         toolbox.SetSeeds(42)
