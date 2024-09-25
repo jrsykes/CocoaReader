@@ -87,7 +87,6 @@ sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 import toolbox
 from training_loop import train_model
 
-
 def train():
 
     run = wandb.init(project=args.project_name, settings=wandb.Settings(_service_wait=300))
@@ -99,60 +98,28 @@ def train():
     toolbox.SetSeeds(42)
 
     data_dir, _, device = toolbox.setup(args)
-    # device = torch.device("cuda:" + args.GPU)
 
     #define config dictionary with wandb
  
     config = {
-        'input_size': wandb.config.input_size,
-        'dim_1': wandb.config.dim_1, 
-        'dim_2': wandb.config.dim_2, 
-        'dim_3': wandb.config.dim_3,
-        'kernel_1': wandb.config.kernel_1, 
-        'kernel_2': wandb.config.kernel_2,
-        'kernel_3': wandb.config.kernel_3,
-        'num_blocks_1': wandb.config.num_blocks_1,
-        'num_blocks_2': wandb.config.num_blocks_2,
-        'out_channels': wandb.config.out_channels,    
-        'batch_size': args.batch_size,
-        'beta1': wandb.config.beta1,
-        'beta2': wandb.config.beta2,  
-        'learning_rate': wandb.config.learning_rate,
-    }
+        "beta1": 0.9051880132274126,
+        "beta2": 0.9630258300974864,
+        "dim_1": 49,
+        "dim_2": 97,
+        "dim_3": 68,
+        "kernel_1": 11,
+        "kernel_2": 9,
+        "kernel_3": 13,
+        "learning_rate": 0.0005921981578304907,
+        "num_blocks_1": 2,
+        "num_blocks_2": 4,
+        "out_channels": 7,
+        "input_size": 285,
+        }
+
     
-    # config = {
-    #     'input_size': 455,
-    #     'dim_1': 65, 
-    #     'dim_2': 34, 
-    #     'dim_3': 24,
-    #     'kernel_1': 1, 
-    #     'kernel_2': 1,
-    #     'kernel_3': 17,
-    #     'num_blocks_1': 6,
-    #     'num_blocks_2': 10,
-    #     'out_channels': 9,    
-    #     'batch_size': 42,
-    #     'beta1': 0.9101095382523464,
-    #     'beta2': 0.9783140796978422,  
-    #     'learning_rate': 0.0003472804733326055
-    # }
-    # config = {
-    #     "beta1": 0.9051880132274126,
-    #     "beta2": 0.9630258300974864,
-    #     "dim_1": 49,
-    #     "dim_2": 97,
-    #     "dim_3": 68,
-    #     "kernel_1": 11,
-    #     "kernel_2": 9,
-    #     "kernel_3": 13,
-    #     "learning_rate": 0.0005921981578304907,
-    #     "num_blocks_1": 2,
-    #     "num_blocks_2": 4,
-    #     "out_channels": 7,
-    #     "input_size": 285,
-    # }
-        
     model = toolbox.build_model(arch=args.arch, num_classes=config['out_channels'], config=config).to(device)
+    
     
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 # Step 1: Organize the Data into Two DataFrames
 
-root = '/scratch/staff/jrs596/dat/cross-val_data/'
+root = '/local/scratch/jrs596/dat/cross-val_data/'
 # Load the CSV files into pandas DataFrames
 train_model1 = pd.read_csv(os.path.join(root, 'DisNet_CrossVal_IR_val_metrics.csv'), header=None)
 train_model2 = pd.read_csv(os.path.join(root, 'ResNet18_CrossVal_IR_train_metrics.csv'), header=None)
@@ -37,7 +37,7 @@ dataframes = []
 
 models_train = [train_model1, train_model2, train_model3]
 models_test = [test_model1, test_model2, test_model3]
-model_names = ["PhtyNet IR", "ResNet18 IR", "ResNet18 RGB"]
+model_names = ["PhytNet IR", "ResNet18 IR", "ResNet18 RGB"]
 
 for i, (train_df, test_df) in enumerate(zip(models_train, models_test)):
     for df, phase in zip([train_df, test_df], ["train", "val"]):
@@ -60,7 +60,7 @@ legend_fontsize = 18
 legend_title_fontsize = 18
 
 # Plot the data
-for phase in ["train", "val"]:
+for i, phase in enumerate(["train", "val"]):
     plt.figure(figsize=(15, 8))
     palette = ["#3c6997", "#d62839", "#718355"]
     sns.set_palette(palette)
@@ -75,17 +75,26 @@ for phase in ["train", "val"]:
     ax.tick_params(axis='y', labelsize=tick_fontsize)  # Adjust y-axis tick label font size
     ax.set_ylim(0, 1.2)
 
+    # Add "A" or "B" to the top left corner of the plots
+    if i == 0:
+        plt.text(0.01, 1.15, "A", transform=ax.transAxes, fontsize=24, fontweight='bold', va='top', ha='right')
+    else:
+        plt.text(0.01, 1.15, "B", transform=ax.transAxes, fontsize=24, fontweight='bold', va='top', ha='right')
+
+    # Add vertical dotted lines between x-axis labels
+    for x in range(len(x_axis_labels) - 1):
+        ax.axvline(x=x + 0.5, color='black', linestyle=':', linewidth=1, ymin=0, ymax=1.2)
+    
     # Set the title and adjust the legend position based on the phase
     if phase == "train":
-        # ax.set_title("Training", fontsize=20)
         plt.legend(title="Model", loc="upper left", prop={'size': legend_fontsize}, 
                    title_fontsize=legend_title_fontsize, bbox_to_anchor=(0, 1.05))
     else:
-        # ax.set_title("Validation", fontsize=20)
         ax.legend().set_visible(False)  # Hide the legend for "val" phase
-                  
+    
+              
     sns.despine()  # This will remove the top and right spines
-    plt.savefig(os.path.join(root, f"cross-val_{phase}.png"), dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(root, f"cross-val_{phase}.png"), dpi=600, bbox_inches='tight')
 
     plt.show()
 

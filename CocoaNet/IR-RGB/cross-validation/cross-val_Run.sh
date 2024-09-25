@@ -16,11 +16,11 @@ source activate torch5
 
 
 # Run the python script with srun
-python /users/jrs596/scripts/CocoaReader/CocoaNet/IR-RGB/cross-validation/Torch_Custom_CNNs2.2.1_cross-val.py \
+python scripts/CocoaReader/CocoaNet/IR-RGB/cross-validation/Torch_Custom_CNNs2.2.1_cross-val.py \
         --project_name 'PhytNet-CocoaIR-ablation' \
         --run_name 'PhytNet_CrossVal_IR' \
-        --root '/users/jrs596' \
-        --data_dir '/users/jrs596/scratch/dat/IR_RGB_Comp_data/IR_CrossVal_600' \
+        --root '/home/userfs/j/jrs596' \
+        --data_dir '/local/scratch/jrs596/dat/IR_RGB_Comp_data/cross-val_IR' \
         --min_epochs 15 \
         --max_epochs 200 \
         --batch_size 21 \

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 # Step 1: Organize the Data into Two DataFrames
 
-root = '/scratch/staff/jrs596/dat/cross-val_data/'
+root = '/local/scratch/jrs596/dat/cross-val_data/'
 # Load the CSV files into pandas DataFrames
 train_model1 = pd.read_csv(os.path.join(root, 'DisNet_CrossVal_IR_val_metrics.csv'), header=None)
 train_model2 = pd.read_csv(os.path.join(root, 'ResNet18_CrossVal_IR_train_metrics.csv'), header=None)
