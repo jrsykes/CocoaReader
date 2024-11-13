@@ -41,7 +41,7 @@ class Node:
             t.add_child(child.to_ete())
         return t
 
-def generate_newick(data):
+def generate_trees(data):
     root = Node('Root')
 
     # Traverse the DataFrame to build the tree structure
@@ -57,19 +57,39 @@ def generate_newick(data):
 
     return ete_tree
 
+
 def trees(taxonomy, labels, pooled_features):
     labels = labels.detach().cpu().numpy().tolist()
     batch_taxonomy = taxonomy.loc[labels]
 
-    # Compute squared distance matrix using broadcasting
+    # # Compute squared distance matrix using broadcasting
     pooled_features = pooled_features.detach().cpu().numpy()
-    square = np.sum(pooled_features**2, axis=1, keepdims=True)
-    distance_squared = square + square.T - 2 * np.dot(pooled_features, pooled_features.T)
-    distance_squared = np.clip(distance_squared, a_min=0, a_max=None)
+
+    ##########################
+    # # Compute squared distance matrix using broadcasting
+
+    # square = np.sum(pooled_features**2, axis=1, keepdims=True)
+    # distance_squared = square + square.T - 2 * np.dot(pooled_features, pooled_features.T)
+    # distance_squared = np.clip(distance_squared, a_min=0, a_max=None)
     
-    # Compute the distance matrix and set the diagonal to 0
-    observed_distances = np.sqrt(distance_squared)
-    np.fill_diagonal(observed_distances, 0)
+    # # Compute the distance matrix and set the diagonal to 0
+    # observed_distances = np.sqrt(distance_squared)
+    # np.fill_diagonal(observed_distances, 0)
+
+    ##########################
+    # # Compute cosine similarity matrix
+    # Normalize pooled features for cosine similarity calculation
+    norms = np.linalg.norm(pooled_features, axis=1, keepdims=True)
+    normalized_features = pooled_features / norms  # Normalize each feature vector
+
+    # Compute cosine similarity matrix
+    cosine_similarity = np.dot(normalized_features, normalized_features.T)
+
+    # Convert to cosine distance
+    observed_distances = 1 - cosine_similarity
+    np.fill_diagonal(observed_distances, 0)  # Set diagonal to 0 (distance to self)
+    print()
+    print(observed_distances)
 
     names = taxonomy.apply(lambda row: row.dropna().iloc[-1], axis=1).tolist()
     names = [names[i] for i in labels]
@@ -77,7 +97,7 @@ def trees(taxonomy, labels, pooled_features):
     # Create a Counter object to count occurrences
     counts = Counter(names)
 
-    dumby_taxonomy = batch_taxonomy
+    temp_taxonomy = batch_taxonomy
     name_to_base_name = {}  # Map from full name with suffix to base name
 
     # Process list to append suffixes for duplicates
@@ -96,13 +116,13 @@ def trees(taxonomy, labels, pooled_features):
             duplicate_row.iloc[:, -1] = new_item
 
             # Append duplicate row to dumby_taxonomy
-            dumby_taxonomy = pd.concat([dumby_taxonomy, duplicate_row], ignore_index=True)
+            temp_taxonomy = pd.concat([temp_taxonomy, duplicate_row], ignore_index=True)
 
         else:
             unique_names.append(item)
             name_to_base_name[item] = item  # Map to base name
 
-    target_ete_tree = generate_newick(dumby_taxonomy)
+    target_ete_tree = generate_trees(temp_taxonomy)
 
     distances_list = observed_distances.tolist()
     matrix = [row[:i+1] for i, row in enumerate(distances_list)]
@@ -122,14 +142,17 @@ def trees(taxonomy, labels, pooled_features):
     Phylo.write(out_tree, string_io, 'newick')
 
     # Get the string from the in-memory file
-    out_tree_newick = string_io.getvalue()
+    pred_tree_newick = string_io.getvalue()
 
-    ete_pred_tree = Tree(out_tree_newick, format=1)
+    ete_pred_tree = Tree(pred_tree_newick, format=1)
     ete_pred_tree.set_outgroup(ete_pred_tree.get_midpoint_outgroup())
 
     trees = {'target_tree': target_ete_tree, 'pred_tree': ete_pred_tree}
+             
     
     return trees, name_to_base_name  # Return both trees and the name mapping
+
+
 
 def generate_relationship_matrix(tree_type, tree, name_to_base_name):
     """Generate a relationship matrix from an ete3 Tree object."""

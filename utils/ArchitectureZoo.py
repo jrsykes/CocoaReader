@@ -90,7 +90,7 @@ class PhytNetV0(nn.Module):
         w = torch.flatten(w, 1)      
         y = self.fc(w)
         
-        return x, w, y
+        return w, y
 ######################################################################################
 
 class Bottleneck_ablation(nn.Module):

@@ -66,6 +66,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
             print(phase)
             with Bar('Learning...', max=n/batch_size+1) as bar:
                
+                # for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
                 for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
                     
                     #Load images and lables from current batch onto GPU(s)
@@ -80,7 +81,7 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # Get model outputs and calculate loss
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
-
+                 
                         _, _, outputs = model(inputs)
                         # outputs = model(inputs)
 

@@ -5,10 +5,17 @@ from torch import nn
 from sklearn import metrics
 import time
 import sys
+<<<<<<< HEAD
+import toolbox
+
+=======
+>>>>>>> refs/remotes/origin/main
+
+sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
+
 import toolbox
 
 
-sys.path.append('/home/userfs/j/jrs596/scripts/CocoaReader/utils')
 
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Unsure"
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult"
@@ -17,12 +24,17 @@ data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClea
 # data_dir = "/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Easy"
 
 
+<<<<<<< HEAD
 # data_dir = "/users/jrs596/scratch/dat/IR_split"
+=======
+data_dir = "/local/scratch/jrs596/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca/Easy"
+>>>>>>> refs/remotes/origin/main
 num_classes = len(os.listdir(os.path.join(data_dir, 'val'))) 
 
-device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cuda:1") if torch.cuda.is_available() else torch.device("cpu")
 
 	
+<<<<<<< HEAD
 config = {
         'beta1': 0.9305889820653824,  
         'beta2': 0.977926878163776,  
@@ -54,23 +66,58 @@ PhytNetWeights = torch.load(weights_path, map_location=device)
 model.load_state_dict(PhytNetWeights, strict=True)
 input_size = config['input_size']
 print('\nLoaded weights from: ', weights_path)
+=======
+# config = {
+#         "beta1": 0.9051880132274126,
+#         "beta2": 0.9630258300974864,
+#         "dim_1": 49,
+#         "dim_2": 97,
+#         "dim_3": 68,
+#         "kernel_1": 11,
+#         "kernel_2": 9,
+#         "kernel_3": 13,
+#         "learning_rate": 0.0005921981578304907,
+#         "num_blocks_1": 2,
+#         "num_blocks_2": 4,
+#         "out_channels": 7,
+#         "input_size": 285,
+#     }
+ 
+# model = toolbox.build_model(num_classes=config['out_channels'], arch='PhytNetV0_ablation', config=config)
+
+# # weights_path = "/users/jrs596/scratch/models/PhytNet183k-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+# # weights_path = "/users/jrs596/scratch/models/PhytNet67k-Cocoa-SemiSupervised_NotCocoa_OptDFLoss.pth"
+
+# weights_path = '/users/jrs596/scratch/models/PhytNet-Cocoa-ablation.pth'
+
+# PhyloNetWeights = torch.load(weights_path, map_location=device)
+
+
+# model.load_state_dict(PhyloNetWeights, strict=True)
+# input_size = config['input_size']
+# print('\nLoaded weights from: ', weights_path)
+>>>>>>> refs/remotes/origin/main
 
 # resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa.pth"
 # resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-IN-PT.pth"
-# resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
+resnet18_cococa_weights = "/users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss2.pth"
 
-# ResNet18Weights = torch.load(resnet18_cococa_weights, map_location=device)
+ResNet18Weights = torch.load(resnet18_cococa_weights, map_location=device)
 
-# model = models.resnet18(weights=None)
-# in_feat = model.fc.in_features
-# model.fc = nn.Linear(in_feat, 5)
-# model.load_state_dict(ResNet18Weights, strict=True)
-# input_size = 375
+model = models.resnet18(weights=None)
+in_feat = model.fc.in_features
+model.fc = nn.Linear(in_feat, 5)
+model.load_state_dict(ResNet18Weights, strict=True)
+input_size = 375
 
 model.eval()   # Set model to evaluate mode
 model = model.to(device)
 
+<<<<<<< HEAD
 batch_size = 200
+=======
+batch_size = 6
+>>>>>>> refs/remotes/origin/main
 criterion = nn.CrossEntropyLoss()
 
 image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=input_size) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
@@ -95,19 +142,19 @@ for phase in ['train', 'val']:
 	for idx, (inputs, labels) in enumerate(dataloaders_dict[phase]):
 		inputs = inputs.to(device)
 		labels = labels.to(device)
-		_,_,outputs = model(inputs)
-		# outputs = model(inputs)
-	loss = criterion(outputs, labels)
-	_, preds = torch.max(outputs, 1)    
-	stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), output_dict = True)
-	stats_out = stats['weighted avg']
+		# _,_,outputs = model(inputs)
+		outputs = model(inputs)
+		loss = criterion(outputs, labels)
+		_, preds = torch.max(outputs, 1)    
+	# stats = metrics.classification_report(labels.data.tolist(), preds.tolist(), output_dict = True)
+	# stats_out = stats['weighted avg']
 				   
-	my_metrics.update(loss=loss, preds=preds, labels=labels, stats_out=stats_out)
-	epoch_metrics = my_metrics.calculate()
-	print()
-	print(phase)
-	print(epoch_metrics)
-	my_metrics.reset()
+	# my_metrics.update(loss=loss, preds=preds, labels=labels, stats_out=stats_out)
+	# epoch_metrics = my_metrics.calculate()
+	# print()
+	# print(phase)
+	# print(epoch_metrics)
+	# my_metrics.reset()
 
 # FPS calculation
 FPS = (N * batch_size) / (time.time() - start)

@@ -2,7 +2,7 @@
 
 #SBATCH --account=biol-cocoa-2023
 #SBATCH --job-name=PhytNet-cocoa
-#SBATCH --partition=gpu
+#SBATCH --partition=gpuplus
 #SBATCH --gres=gpu:1
 #SBATCH --time=72:00:00
 #SBATCH --mem=100G
@@ -12,7 +12,7 @@
 source activate torch5
 
 python /users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/Torch_Custom_CNNs2.2.1.py \
-        --model_name 'PhytNet-Cocoa-SemiSupervised_DFLoss-Discrim-PreTrained' \
+        --model_name 'PhytNet-Cocoa-SemiSupervised_DFLoss-PhyloPreTrained' \
         --project_name 'Pre-training' \
         --root '/users/jrs596/scratch' \
         --data_dir 'dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca' \
@@ -25,5 +25,5 @@ python /users/jrs596/scripts/CocoaReader/CocoaNet/Pre-training/FinalTrain/Torch_
         --GPU 0 \
         --use_wandb \
         --save \
-        --custom_pretrained_weights '/users/jrs596/scratch/models/PhytNet-DFLoss-FAIGB.pth' 
+        --custom_pretrained_weights '/users/jrs596/scratch/models/PhytNet_PhyloPT_Flowers_NoL1_CosignSim.pth' 
 

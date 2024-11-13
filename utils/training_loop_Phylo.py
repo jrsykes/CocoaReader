@@ -20,7 +20,6 @@ from phylo2vec.base import to_vector, to_newick
 
 
 
-
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, taxonomy, ESS_alpha, MSE_alpha, scheduler):      
    
     MSE_criterion = torch.nn.MSELoss(reduction='mean')
@@ -109,55 +108,33 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
 
                     with torch.set_grad_enabled(phase == 'train'):
                         #Forward pass   
-                        # encoded_pooled, _ = model(inputs)
-                        encoded_pooled = model(inputs)
-
-
+                        encoded_pooled, _ = model(inputs)
+                        # encoded_pooled = model(inputs)
+        
                         trees, name_to_base_name = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
        
                         matrices = RobinsonFoulds.generate_matrices(trees, name_to_base_name)
 
-                        MSE = MSE_criterion(matrices['pred_matrix'], matrices['target_matrix'])
+                        MSE = MSE_criterion(matrices['pred_matrix'], matrices['target_matrix']) * MSE_alpha
                   
-                        # cross_entropy_loss = criterion(fc_output, labels)
-                        #Edge similarity score
-                        ESS = RobinsonFoulds.ESS(trees["target_tree"], trees["pred_tree"])
-
-                        target_tree_newick = trees["target_tree"].write(format=1)
-                        pred_tree_newick = trees["pred_tree"].write(format=1)
-
+                        # #Edge similarity score
+                        ESS = RobinsonFoulds.ESS(trees["target_tree"], trees["pred_tree"]) * ESS_alpha
+                   
                         #output tree as graphical representation
                         trees["target_tree"].write(format=1, outfile="/users/jrs596/tree_target.newick")
                         trees["pred_tree"].write(format=1, outfile="/users/jrs596/tree_pred.newick")
 
-
-                        print(target_tree_newick)
-                        print()
-                        print(pred_tree_newick)
-
-                        print()
-                        target_tree_vec = to_vector(target_tree_newick)
-                        # pred_tree_vec = to_vector(pred_tree_newick)
-
-                        print("Target tree vector: ", target_tree_vec)
-                        # print("Shape of target tree vector: ", target_tree_vec.shape)
-                        print()
-                        # print("Pred tree vector: ", pred_tree_vec)
-                        # print("Shape of pred tree vector: ", pred_tree_vec.shape)
-                        exit()
-
-                        #Make ESS negative so that it can be minimized
                         l1_norm = sum(p.abs().sum() for p in model.parameters() if p.dim() > 1) * args.l1_lambda
 
-                        loss_ = MSE * MSE_alpha + ESS * ESS_alpha + l1_norm   
-                        loss = MSE + ESS  
+                        loss = MSE  + ESS # + l1_norm   
+                        # loss = MSE + ESS  
 
-                        epoch_loss += loss_
+                        epoch_loss += loss
 
                         if phase == 'train':
                             optimizer.zero_grad()
 
-                            loss_.backward()
+                            loss.backward()
                             optimizer.step()
 
                         if phase == 'val':
@@ -165,8 +142,8 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                             all_labels.append(labels.cpu().detach().numpy())
                             if idx == 0:                                
 
-                                # encoded_pooled, _ = model(inputs)
-                                encoded_pooled = model(inputs)
+                                encoded_pooled, _ = model(inputs)
+                                # encoded_pooled = model(inputs)
                                 trees, _ = RobinsonFoulds.trees(taxonomy, labels, encoded_pooled)
 
                                 PATH = os.path.join(args.root, "trees_" + args.model_name)

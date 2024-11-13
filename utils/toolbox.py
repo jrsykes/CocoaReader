@@ -7,7 +7,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torchvision import datasets, transforms, models
-from ArchitectureZoo import PhytNetV0, PhytNetV0_ablation, PhytNet_SRAutoencoder
+from ArchitectureZoo import PhytNetV0, PhytNet_SRAutoencoder
+from PhytNet_ablation import PhytNetV0_ablation
 import timm
 from thop import profile
 from sklearn.metrics import f1_score

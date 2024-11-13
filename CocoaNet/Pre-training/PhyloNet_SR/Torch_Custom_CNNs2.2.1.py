@@ -103,35 +103,36 @@ def train():
     data_dir, num_classes, device = toolbox.setup(args)
 
     #DFLoss semi-sup sweep
-    # 'learning_rate': 0.0007653560770141792,  
-    # config = {
-    #         'beta1': 0.99,  
-    #         'beta2': 0.999,  
-    #         'dim_1': 125,  
-    #         'dim_2': 80,  
-    #         'dim_3': 54, 
-    #         'input_size': args.input_size,  
-    #         'kernel_1': 3,  
-    #         'kernel_2': 11,  
-    #         'kernel_3': 17,  
-    #         'learning_rate': 1e-5,  
-    #         'num_blocks_1': 3,  
-    #         'num_blocks_2': 2,  
-    #         'out_channels': 6,  
-    #         'num_heads': 3, #3 for PhytNetV0, 4 for ResNet18  
-    #         'batch_size': args.batch_size,  
-    #         'num_decoder_layers': 4,
-    #     }
-
     config = {
-            'beta1': 0.9337945165908664,
-            'beta2': 0.983814856567766,
-            'eps': 1.6383803732305626e-08,
-            'input_size': 224,
-            'learning_rate': 3.123482287711683e-05,
+            'beta1': 0.99,  
+            'beta2': 0.999,  
+            'dim_1': 125,  
+            'dim_2': 80,  
+            'dim_3': 54, 
+            'input_size': 224,  
+            'kernel_1': 3,  
+            'kernel_2': 11,  
+            'kernel_3': 17,  
+            'learning_rate': 1e-5,  
+            'num_blocks_1': 3,  
+            'num_blocks_2': 2,  
+            'out_channels': 6,  
+            'num_heads': 3, #3 for PhytNetV0, 4 for ResNet18  
+            'batch_size': args.batch_size,  
+            'num_decoder_layers': 4,
             'ESS_alpha': 100,
-            'MSE_alpha': 4
+            'MSE_alpha': 0.01
         }
+
+    # config = {
+    #         'beta1': 0.9337945165908664,
+    #         'beta2': 0.983814856567766,
+    #         'eps': 1.6383803732305626e-08,
+    #         'input_size': 224,
+    #         'learning_rate': 3.123482287711683e-05,
+    #         'ESS_alpha': 100,
+    #         'MSE_alpha': 4
+    #     }
     
     image_datasets = toolbox.build_datasets(data_dir=data_dir, input_size=config['input_size']) #If images are pre compressed, use input_size=None, else use input_size=args.input_size
 
@@ -143,36 +144,36 @@ def train():
     #cross entropy loss
     criterion = nn.CrossEntropyLoss()
     
-    # model = toolbox.build_model(num_classes=config['out_channels'], arch=args.arch, config=config)
+    model = toolbox.build_model(num_classes=config['out_channels'], arch=args.arch, config=config)
     ##############################
     #Modified Resnet18
      # Load the pre-trained ResNet-18 model
-    model = torchvision.models.resnet18(weights=None)
+    # original_model = torchvision.models.resnet18() 
 
 
-    class ModifiedResNet18(nn.Module):
-        def __init__(self, original_model):
-            super(ModifiedResNet18, self).__init__()
-            # Keep all layers except the last two (the fc layer)
-            self.features = nn.Sequential(*list(original_model.children())[:-2])
-            self.avgpool = original_model.avgpool
-            # Initialize the fully connected layer with the same output size as the original
-            # self.fc = original_model.fc
+    # class ModifiedResNet18(nn.Module):
+    #     def __init__(self, original_model):
+    #         super(ModifiedResNet18, self).__init__()
+    #         # Keep all layers except the last two (the fc layer)
+    #         self.features = nn.Sequential(*list(original_model.children())[:-2])
+    #         self.avgpool = original_model.avgpool
+    #         # Initialize the fully connected layer with the same output size as the original
+    #         # self.fc = original_model.fc
 
-        def forward(self, x):
-            # Pass input through the feature layers
-            x = self.features(x)
-            # Pass through the average pooling layer
-            avgpool_output = self.avgpool(x)
-            # Flatten the output before passing it to the fully connected layer
-            # flat = torch.flatten(avgpool_output, 1)
-            # Pass through the fully connected layer for standard output
-            # fc_output = self.fc(flat)
-            # Return both the standard output and the avgpool output
-            return avgpool_output.squeeze()
+    #     def forward(self, x):
+    #         # Pass input through the feature layers
+    #         x = self.features(x)
+    #         # Pass through the average pooling layer
+    #         avgpool_output = self.avgpool(x)
+    #         # Flatten the output before passing it to the fully connected layer
+    #         # flat = torch.flatten(avgpool_output, 1)
+    #         # Pass through the fully connected layer for standard output
+    #         # fc_output = self.fc(flat)
+    #         # Return both the standard output and the avgpool output
+    #         return avgpool_output.squeeze()
 
-    # Instantiate the modified model
-    model = ModifiedResNet18(model)
+    # # Instantiate the modified model
+    # model = ModifiedResNet18(original_model)
 
         
     if torch.cuda.device_count() > 1:
