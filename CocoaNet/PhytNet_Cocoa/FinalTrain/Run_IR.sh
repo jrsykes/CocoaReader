@@ -9,9 +9,9 @@
 #SBATCH --cpus-per-task=12  
 
 
-# Activate the conda environment
-source activate torch5
-
+# Activate the conda environment (works in non-interactive shells, e.g. SLURM)
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate /users/jrs596/scratch/python_environments/envs/torch5
 
 # python /users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py \
 #         --model_name 'ResNet18-Cocoa-SemiSupervised_NotCocoa_DFLoss2' \
@@ -28,10 +28,10 @@ source activate torch5
 #         --save 
 
 python /users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py \
-        --model_name 'PhytNet-Cocoa-FullSupervised_redo' \
+        --model_name 'PhytNetV1_332-Cocoa-SemiSupervised-NotCocoa_DFLoss_redo' \
         --project_name 'PhytNet-Cocoa-Final' \
         --root '/users/jrs596/scratch' \
-        --data_dir 'dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split' \
+        --data_dir 'dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca' \
         --min_epochs 15 \
         --max_epochs 200 \
         --batch_size 42 \
@@ -41,4 +41,3 @@ python /users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch
         --use_wandb \
         --save \
         # --custom_pretrained_weights '/users/jrs596/scratch/models/PhytNet_SR_FAIGB1.pth'
-

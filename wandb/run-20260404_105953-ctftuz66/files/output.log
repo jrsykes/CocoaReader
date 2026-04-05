@@ -1,0 +1,950 @@
+Building model...
+PhytNetV0 loaded
+##################################################
+No weights loaded
+Image input size:  415
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+train
+
+
+
+Learning... |############################### | 112/112
+[?25h
+train Loss: 1.3662 Acc: 0.4010
+train Precision: 0.2150 Recall: 0.4010 F1: 0.2642
+val
+val Loss: 1.2529 Acc: 0.4646
+val Precision: 0.2957 Recall: 0.4646 F1: 0.3569
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 1
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+
+Learning... |##############################  | 108/112
+train Loss: 1.2697 Acc: 0.4569
+train Precision: 0.3181 Recall: 0.4569 F1: 0.3610
+val
+val Loss: 1.2363 Acc: 0.4952
+val Precision: 0.3233 Recall: 0.4952 F1: 0.3845
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 2
+----------
+Patience: 10/10
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+
+Learning... |##############################  | 108/112
+train Loss: 1.2567 Acc: 0.4650
+train Precision: 0.3195 Recall: 0.4650 F1: 0.3648
+val
+val Loss: 1.2321 Acc: 0.4857
+val Precision: 0.3625 Recall: 0.4857 F1: 0.3826
+Epoch 3
+----------
+Patience: 10/10
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+
+Learning... |#############################   | 105/112
+train Loss: 1.2504 Acc: 0.4669
+train Precision: 0.3207 Recall: 0.4669 F1: 0.3661
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.2261 Acc: 0.4837
+val Precision: 0.4073 Recall: 0.4837 F1: 0.4278
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 4
+----------
+Patience: 10/10
+
+
+
+
+Learning... |#############################   | 105/112
+train Loss: 1.2511 Acc: 0.4622
+train Precision: 0.3241 Recall: 0.4622 F1: 0.3629
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.2294 Acc: 0.4799
+val Precision: 0.3449 Recall: 0.4799 F1: 0.3733
+Epoch 5
+----------
+Patience: 10/10
+
+
+
+
+Learning... |#############################   | 104/112
+train Loss: 1.2338 Acc: 0.4680
+train Precision: 0.3302 Recall: 0.4680 F1: 0.3705
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.2044 Acc: 0.4876
+val Precision: 0.3215 Recall: 0.4876 F1: 0.3789
+Epoch 6
+----------
+Patience: 10/10
+
+
+
+
+Learning... |##############################  | 106/112
+train Loss: 1.2254 Acc: 0.4733
+train Precision: 0.3536 Recall: 0.4733 F1: 0.3773
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.2193 Acc: 0.4665
+val Precision: 0.2998 Recall: 0.4665 F1: 0.3609
+Epoch 7
+----------
+Patience: 10/10
+
+
+
+
+Learning... |#############################   | 103/112
+train Loss: 1.2162 Acc: 0.4793
+train Precision: 0.3927 Recall: 0.4793 F1: 0.3935
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.2004 Acc: 0.4857
+val Precision: 0.3093 Recall: 0.4857 F1: 0.3742
+Epoch 8
+----------
+Patience: 10/10
+
+
+
+
+Learning... |############################    | 102/112
+train Loss: 1.2044 Acc: 0.4814
+train Precision: 0.4235 Recall: 0.4814 F1: 0.4044
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.1902 Acc: 0.4914
+val Precision: 0.4698 Recall: 0.4914 F1: 0.4220
+Epoch 9
+----------
+Patience: 10/10
+
+
+
+
+Learning... |############################    | 102/112
+train Loss: 1.1950 Acc: 0.4887
+train Precision: 0.4538 Recall: 0.4887 F1: 0.4192
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.1623 Acc: 0.5067
+val Precision: 0.4552 Recall: 0.5067 F1: 0.4405
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 10
+----------
+Patience: 10/10
+
+
+
+
+Learning... |#############################   | 104/112
+train Loss: 1.1861 Acc: 0.4902
+train Precision: 0.4708 Recall: 0.4902 F1: 0.4304
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.1607 Acc: 0.5048
+val Precision: 0.4665 Recall: 0.5048 F1: 0.4372
+Epoch 11
+----------
+Patience: 10/10
+
+
+
+
+Learning... |############################    | 102/112
+train Loss: 1.1715 Acc: 0.4994
+train Precision: 0.4968 Recall: 0.4994 F1: 0.4538
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.1684 Acc: 0.4933
+val Precision: 0.4462 Recall: 0.4933 F1: 0.4485
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 12
+----------
+Patience: 10/10
+
+
+
+
+Learning... |############################    | 100/112
+train Loss: 1.1617 Acc: 0.5109
+train Precision: 0.5020 Recall: 0.5109 F1: 0.4669
+Learning... |############################### | 112/112
+Learning... |##########################      | 11/13
+val Loss: 1.1500 Acc: 0.5105
+val Precision: 0.5141 Recall: 0.5105 F1: 0.4514
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 13
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 99/112
+train Loss: 1.1562 Acc: 0.5124
+train Precision: 0.5134 Recall: 0.5124 F1: 0.4689
+Learning... |############################### | 112/112
+Learning... |##########################      | 11/13
+val Loss: 1.1543 Acc: 0.5086
+val Precision: 0.4877 Recall: 0.5086 F1: 0.4575
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 14
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 102/112
+train Loss: 1.1516 Acc: 0.5107
+train Precision: 0.5160 Recall: 0.5107 F1: 0.4654
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.1330 Acc: 0.5335
+val Precision: 0.5428 Recall: 0.5335 F1: 0.5209
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 15
+----------
+Patience: 10/10
+
+
+
+
+Learning... |###########################     | 98/112
+train Loss: 1.1505 Acc: 0.5194
+train Precision: 0.5242 Recall: 0.5194 F1: 0.4800
+Learning... |############################### | 112/112
+Learning... |###################             | 8/13
+val Loss: 1.1501 Acc: 0.5220
+val Precision: 0.5414 Recall: 0.5220 F1: 0.5201
+Epoch 16
+----------
+Patience: 9/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 99/112
+train Loss: 1.1251 Acc: 0.5331
+train Precision: 0.5474 Recall: 0.5331 F1: 0.5002
+Learning... |############################### | 112/112
+Learning... |############################    | 12/13
+val Loss: 1.0902 Acc: 0.5335
+val Precision: 0.5097 Recall: 0.5335 F1: 0.4907
+Epoch 17
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |###########################     | 98/112
+train Loss: 1.1127 Acc: 0.5301
+train Precision: 0.5399 Recall: 0.5301 F1: 0.4942
+Learning... |############################### | 112/112
+Learning... |#######################         | 10/13
+val Loss: 1.0881 Acc: 0.5430
+val Precision: 0.5445 Recall: 0.5430 F1: 0.5182
+Epoch 18
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 99/112
+train Loss: 1.0981 Acc: 0.5359
+train Precision: 0.5398 Recall: 0.5359 F1: 0.5012
+Learning... |############################### | 112/112
+Learning... |##########################      | 11/13
+val Loss: 1.0997 Acc: 0.5182
+val Precision: 0.5128 Recall: 0.5182 F1: 0.4604
+Epoch 19
+----------
+Patience: 9/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 103/112
+train Loss: 1.0994 Acc: 0.5410
+train Precision: 0.5440 Recall: 0.5410 F1: 0.5077
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.0771 Acc: 0.5296
+val Precision: 0.5677 Recall: 0.5296 F1: 0.5075
+Epoch 20
+----------
+Patience: 10/10
+
+
+
+
+Learning... |#############################   | 103/112
+train Loss: 1.0980 Acc: 0.5442
+train Precision: 0.5619 Recall: 0.5442 F1: 0.5151
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.0761 Acc: 0.5468
+val Precision: 0.5607 Recall: 0.5468 F1: 0.5207
+Epoch 21
+----------
+Patience: 10/10
+
+
+
+
+Learning... |############################    | 101/112
+train Loss: 1.0818 Acc: 0.5437
+train Precision: 0.5559 Recall: 0.5437 F1: 0.5118
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+val Loss: 1.0924 Acc: 0.5354
+val Precision: 0.5521 Recall: 0.5354 F1: 0.5174
+Epoch 22
+----------
+Patience: 9/10
+train
+[?25h
+
+
+
+Learning... |############################    | 100/112
+train Loss: 1.0725 Acc: 0.5482
+train Precision: 0.5627 Recall: 0.5482 F1: 0.5207
+Learning... |############################### | 112/112
+Learning... |############################    | 12/13
+val Loss: 1.0610 Acc: 0.5698
+val Precision: 0.5769 Recall: 0.5698 F1: 0.5618
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 23
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 101/112
+train Loss: 1.0642 Acc: 0.5514
+train Precision: 0.5580 Recall: 0.5514 F1: 0.5250
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+val Loss: 1.0613 Acc: 0.5430
+val Precision: 0.5514 Recall: 0.5430 F1: 0.5054
+Epoch 24
+----------
+Patience: 9/10
+train
+[?25h
+
+
+
+Learning... |############################    | 101/112
+train Loss: 1.0389 Acc: 0.5602
+train Precision: 0.5726 Recall: 0.5602 F1: 0.5345
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+val Loss: 1.0518 Acc: 0.5583
+val Precision: 0.5739 Recall: 0.5583 F1: 0.5502
+Epoch 25
+----------
+Patience: 10/10
+train
+[?25h
+
+
+
+Learning... |############################    | 102/112
+train Loss: 1.0456 Acc: 0.5617
+train Precision: 0.5738 Recall: 0.5617 F1: 0.5368
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.0260 Acc: 0.5832
+val Precision: 0.5583 Recall: 0.5832 F1: 0.5450
+Epoch 26
+----------
+Patience: 10/10
+
+
+
+
+Learning... |############################    | 100/112
+train Loss: 1.0538 Acc: 0.5606
+train Precision: 0.5809 Recall: 0.5606 F1: 0.5358
+Learning... |############################### | 112/112
+Learning... |#######                         | 3/13
+val Loss: 1.0614 Acc: 0.5507
+val Precision: 0.5438 Recall: 0.5507 F1: 0.5033
+Epoch 27
+----------
+Patience: 9/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |##########################      | 93/112
+train Loss: 1.0406 Acc: 0.5638
+train Precision: 0.5811 Recall: 0.5638 F1: 0.5394
+Learning... |############################### | 112/112
+Learning... |####                            | 2/13
+val Loss: 0.9964 Acc: 0.6023
+val Precision: 0.5996 Recall: 0.6023 F1: 0.5737
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 28
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |##########################      | 93/112
+train Loss: 1.0306 Acc: 0.5683
+train Precision: 0.5751 Recall: 0.5683 F1: 0.5428
+Learning... |############################### | 112/112
+Learning... |#######                         | 3/13
+val Loss: 0.9923 Acc: 0.5946
+val Precision: 0.5996 Recall: 0.5946 F1: 0.5572
+Epoch 29
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.0262 Acc: 0.5762
+train Precision: 0.5997 Recall: 0.5762 F1: 0.5518
+val
+val Loss: 0.9918 Acc: 0.5813
+val Precision: 0.5838 Recall: 0.5813 F1: 0.5482
+Epoch 30
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#########################       | 90/112
+train Loss: 1.0420 Acc: 0.5651
+train Precision: 0.6019 Recall: 0.5651 F1: 0.5415
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+val Loss: 1.0091 Acc: 0.5793
+val Precision: 0.6045 Recall: 0.5793 F1: 0.5433
+Epoch 31
+----------
+Patience: 9/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.0103 Acc: 0.5798
+train Precision: 0.6033 Recall: 0.5798 F1: 0.5580
+val
+val Loss: 0.9849 Acc: 0.5793
+val Precision: 0.5793 Recall: 0.5793 F1: 0.5479
+Epoch 32
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.0059 Acc: 0.5770
+train Precision: 0.5927 Recall: 0.5770 F1: 0.5537
+val
+val Loss: 0.9742 Acc: 0.6080
+val Precision: 0.6236 Recall: 0.6080 F1: 0.6026
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 33
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.0044 Acc: 0.5792
+train Precision: 0.5981 Recall: 0.5792 F1: 0.5601
+val
+val Loss: 0.9703 Acc: 0.6214
+val Precision: 0.6389 Recall: 0.6214 F1: 0.6056
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 34
+----------
+Patience: 10/10
+[?25hing... |##############################  | 13/13
+[?25hing... |##############################  | 13/13
+Learning... |#########                       | 35/112
+Learning... |#################               | 62/112
+Learning... |#########################       | 89/112
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 1.0038 Acc: 0.5817
+train Precision: 0.6032 Recall: 0.5817 F1: 0.5636
+val
+val Loss: 0.9641 Acc: 0.6042
+val Precision: 0.5930 Recall: 0.6042 F1: 0.5779
+Epoch 35
+----------
+Patience: 10/10
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+Learning... |                                | 0/13112
+Learning... |                                | 0/13112
+train Loss: 1.0023 Acc: 0.5898
+train Precision: 0.6085 Recall: 0.5898 F1: 0.5704
+val
+val Loss: 1.0254 Acc: 0.5660
+val Precision: 0.5898 Recall: 0.5660 F1: 0.5481
+Epoch 36
+----------
+Patience: 9/10
+Learning... |##                              | 8/11212
+Learning... |#########                       | 35/1122
+Learning... |#################               | 62/1122
+Learning... |#########################       | 90/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 0.9886 Acc: 0.5913
+train Precision: 0.6053 Recall: 0.5913 F1: 0.5757
+val
+val Loss: 0.9851 Acc: 0.6138
+val Precision: 0.6578 Recall: 0.6138 F1: 0.5818
+Epoch 37
+----------
+Patience: 8/10
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+Learning... |                                | 0/13112
+Learning... |                                | 0/13112
+train Loss: 1.0016 Acc: 0.5843
+train Precision: 0.6085 Recall: 0.5843 F1: 0.5656
+val
+val Loss: 0.9706 Acc: 0.5927
+val Precision: 0.5906 Recall: 0.5927 F1: 0.5562
+Epoch 38
+----------
+Patience: 7/10
+Learning... |#                               | 7/11212
+Learning... |#########                       | 35/1122
+Learning... |#################               | 63/1122
+Learning... |#########################       | 91/1122
+Learning... |#########################       | 91/1122
+train Loss: 0.9803 Acc: 0.5883
+train Precision: 0.6129 Recall: 0.5883 F1: 0.5701
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+val Loss: 0.9627 Acc: 0.6080
+val Precision: 0.6277 Recall: 0.6080 F1: 0.5861
+Epoch 39
+----------
+Patience: 10/10
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+Learning... |                                | 0/13112
+Learning... |                                | 0/13112
+train Loss: 0.9739 Acc: 0.5958
+train Precision: 0.6217 Recall: 0.5958 F1: 0.5806
+val
+val Loss: 0.9713 Acc: 0.5966
+val Precision: 0.6174 Recall: 0.5966 F1: 0.5428
+Epoch 40
+----------
+Patience: 9/10
+Learning... |#                               | 7/11212
+Learning... |#########                       | 33/1122
+Learning... |#################               | 61/1122
+Learning... |#########################       | 89/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 0.9800 Acc: 0.5920
+train Precision: 0.6164 Recall: 0.5920 F1: 0.5745
+val
+val Loss: 0.9634 Acc: 0.6061
+val Precision: 0.6121 Recall: 0.6061 F1: 0.5843
+Epoch 41
+----------
+Patience: 8/10
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+Learning... |                                | 0/13112
+Learning... |                                | 0/13112
+train Loss: 0.9715 Acc: 0.5986
+train Precision: 0.6216 Recall: 0.5986 F1: 0.5794
+val
+val Loss: 0.9563 Acc: 0.6195
+val Precision: 0.6451 Recall: 0.6195 F1: 0.6196
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 42
+----------
+Patience: 10/10
+Learning... |#                               | 7/11212
+Learning... |#########                       | 33/1122
+Learning... |#################               | 60/1122
+Learning... |#########################       | 88/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 0.9864 Acc: 0.5933
+train Precision: 0.6200 Recall: 0.5933 F1: 0.5754
+val
+val Loss: 0.9976 Acc: 0.5793
+val Precision: 0.5850 Recall: 0.5793 F1: 0.5288
+Epoch 43
+----------
+Patience: 9/10
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+Learning... |                                | 0/13112
+Learning... |                                | 0/13112
+train Loss: 0.9609 Acc: 0.6035
+train Precision: 0.6284 Recall: 0.6035 F1: 0.5906
+val
+val Loss: 0.9378 Acc: 0.6195
+val Precision: 0.6300 Recall: 0.6195 F1: 0.6053
+Epoch 44
+----------
+Patience: 10/10
+Learning... |##                              | 8/11212
+Learning... |#########                       | 35/1122
+Learning... |#################               | 62/1122
+Learning... |#########################       | 89/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 0.9528 Acc: 0.6108
+train Precision: 0.6281 Recall: 0.6108 F1: 0.5949
+val
+val Loss: 0.9349 Acc: 0.6157
+val Precision: 0.6164 Recall: 0.6157 F1: 0.6053
+Epoch 45
+----------
+Patience: 10/10
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+Learning... |                                | 0/13112
+Learning... |                                | 0/13112
+train Loss: 0.9657 Acc: 0.6007
+train Precision: 0.6218 Recall: 0.6007 F1: 0.5860
+val
+val Loss: 0.9455 Acc: 0.5946
+val Precision: 0.6235 Recall: 0.5946 F1: 0.5773
+Epoch 46
+----------
+Patience: 9/10
+Learning... |#                               | 6/11212
+Learning... |#########                       | 33/1122
+Learning... |################                | 59/1122
+Learning... |########################        | 86/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 0.9554 Acc: 0.6090
+train Precision: 0.6360 Recall: 0.6090 F1: 0.5947
+val
+val Loss: 0.9312 Acc: 0.6272
+val Precision: 0.6271 Recall: 0.6272 F1: 0.6129
+Epoch 47
+----------
+Patience: 10/10
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+[?25hing... |############################### | 112/112
+train Loss: 0.9486 Acc: 0.6114
+train Precision: 0.6312 Recall: 0.6114 F1: 0.5975
+val
+val Loss: 0.9722 Acc: 0.6023
+val Precision: 0.6189 Recall: 0.6023 F1: 0.5575
+Epoch 48
+----------
+Patience: 9/10
+Learning... |                                | 2/11212
+Learning... |#######                         | 28/1122
+Learning... |#######                         | 28/1122
+Learning... |#######                         | 28/1122
+Learning... |#######                         | 28/1122
+Learning... |#######                         | 28/1122
+train Loss: 0.9563 Acc: 0.6116
+train Precision: 0.6349 Recall: 0.6116 F1: 0.5956
+val
+val Loss: 0.9517 Acc: 0.6099
+val Precision: 0.6101 Recall: 0.6099 F1: 0.5729
+Epoch 49
+----------
+Patience: 8/10
+Learning... |                                | 3/11222
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+train Loss: 0.9446 Acc: 0.6103
+train Precision: 0.6353 Recall: 0.6103 F1: 0.5966
+val
+val Loss: 0.9845 Acc: 0.5813
+val Precision: 0.6155 Recall: 0.5813 F1: 0.5322
+Epoch 50
+----------
+Patience: 7/10
+Learning... |                                | 3/11222
+Learning... |########                        | 30/1122
+Learning... |########                        | 30/1122
+Learning... |########                        | 30/1122
+Learning... |########                        | 30/1122
+Learning... |########                        | 30/1122
+train Loss: 0.9560 Acc: 0.6039
+train Precision: 0.6349 Recall: 0.6039 F1: 0.5894
+val
+val Loss: 0.9377 Acc: 0.6539
+val Precision: 0.6559 Recall: 0.6539 F1: 0.6388
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 51
+----------
+Patience: 6/10
+Learning... |                                | 2/11222
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+Learning... |                                | 0/13122
+Learning... |                                | 0/13122
+train Loss: 0.9586 Acc: 0.6039
+train Precision: 0.6420 Recall: 0.6039 F1: 0.5872
+val
+val Loss: 0.9218 Acc: 0.6329
+val Precision: 0.6577 Recall: 0.6329 F1: 0.6273
+Epoch 52
+----------
+Patience: 10/10
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+train Loss: 0.9443 Acc: 0.6101
+train Precision: 0.6371 Recall: 0.6101 F1: 0.5972
+Learning... |                                | 1/11222
+Learning... |                                | 1/11222
+val Loss: 0.9390 Acc: 0.6482
+val Precision: 0.6658 Recall: 0.6482 F1: 0.6370
+Epoch 53
+----------
+Patience: 9/10
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+Learning... |########                        | 29/1122
+Learning... |                                | 0/13122
+Learning... |                                | 0/13122
+train Loss: 0.9424 Acc: 0.6120
+train Precision: 0.6339 Recall: 0.6120 F1: 0.5958
+val
+val Loss: 0.9269 Acc: 0.6348
+val Precision: 0.6601 Recall: 0.6348 F1: 0.6331
+Epoch 54
+----------
+Patience: 8/10
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+[?25hing... |                                | 0/13122
+train Loss: 0.9304 Acc: 0.6229
+train Precision: 0.6555 Recall: 0.6229 F1: 0.6142
+Learning... |                                | 0/11222
+Learning... |                                | 0/11222
+val Loss: 0.9024 Acc: 0.6444
+val Precision: 0.6564 Recall: 0.6444 F1: 0.6326
+Epoch 55
+----------
+Patience: 10/10
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+train Loss: 0.9133 Acc: 0.6302
+train Precision: 0.6496 Recall: 0.6302 F1: 0.6198
+val
+val Loss: 0.9051 Acc: 0.6444
+val Precision: 0.6458 Recall: 0.6444 F1: 0.6333
+Epoch 56
+----------
+Patience: 9/10
+Learning... |                                | 0/11222
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+train Loss: 0.9097 Acc: 0.6325
+train Precision: 0.6543 Recall: 0.6325 F1: 0.6209
+Learning... |                                | 0/11222
+Learning... |                                | 0/11222
+val Loss: 0.9025 Acc: 0.6424
+val Precision: 0.6382 Recall: 0.6424 F1: 0.6261
+Epoch 57
+----------
+Patience: 8/10
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+train Loss: 0.9186 Acc: 0.6278
+train Precision: 0.6585 Recall: 0.6278 F1: 0.6166
+Learning... |                                | 0/11222
+Learning... |                                | 0/11222
+val Loss: 0.9108 Acc: 0.6348
+val Precision: 0.6381 Recall: 0.6348 F1: 0.6210
+Epoch 58
+----------
+Patience: 7/10
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+train Loss: 0.9076 Acc: 0.6293
+train Precision: 0.6523 Recall: 0.6293 F1: 0.6189
+Learning... |                                | 0/11222
+Learning... |                                | 0/11222
+val Loss: 0.8983 Acc: 0.6577
+val Precision: 0.6908 Recall: 0.6577 F1: 0.6481
+Saving model weights to: /users/jrs596/scratch/models/PhytNet-Cocoa-FullSupervised_redo.pth
+Epoch 59
+----------
+Patience: 10/10
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+Learning... |######                          | 23/1122
+train Loss: 0.9129 Acc: 0.6280
+train Precision: 0.6562 Recall: 0.6280 F1: 0.6148
+Learning... |                                | 0/11222
+Learning... |                                | 0/11222
+val Loss: 1.0060 Acc: 0.5946
+val Precision: 0.6588 Recall: 0.5946 F1: 0.5559
+Epoch 60
+----------
+Patience: 9/10
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+Learning... |######                          | 22/1122
+train Loss: 0.9080 Acc: 0.6276
+train Precision: 0.6449 Recall: 0.6276 F1: 0.6133
+Learning... |                                | 0/11222
+Learning... |                                | 0/11222
+val Loss: 0.9082 Acc: 0.6329
+val Precision: 0.6453 Recall: 0.6329 F1: 0.6253
+Epoch 61
+----------
+Patience: 8/10
+Learning... |#####                           | 20/1122
+Learning... |#####                           | 20/1122
+Learning... |#####                           | 20/1122
+Learning... |#####                           | 20/1122
+Learning... |#####                           | 20/1122
+train Loss: 0.9263 Acc: 0.6261
+train Precision: 0.6455 Recall: 0.6261 F1: 0.6129
+Learning... |#####################           | 9/13122
+Learning... |#####################           | 9/13122
+val Loss: 0.9092 Acc: 0.6291
+val Precision: 0.6319 Recall: 0.6291 F1: 0.6058
+Epoch 62
+----------
+Patience: 7/10
+[?25hing... |#####################           | 9/13122
+[?25hing... |#####################           | 9/13122
+[?25hing... |#####################           | 9/13122
+    inputs = inputs.to(device)el(args=args,  | 9/13122
+    inputs = inputs.to(device)el(args=args,  | 9/13122

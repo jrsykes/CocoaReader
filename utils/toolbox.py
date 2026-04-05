@@ -162,6 +162,37 @@ class Soft_max_focal_loss(nn.Module):
         focal_loss = (self.alpha * (1-pt)**self.gamma * ce_loss).mean() # mean over the batch
         return focal_loss
     
+class MultiClassFocalLoss(nn.Module):
+    """
+    Standard multi-class focal loss for single-label classification.
+    logits: (N, C), targets: (N,)
+    """
+    def __init__(self, gamma=2.0, alpha=None, reduction='mean'):
+        super(MultiClassFocalLoss, self).__init__()
+        self.gamma = gamma
+        self.alpha = alpha
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        ce_loss = F.cross_entropy(logits, targets, reduction='none')
+        pt = torch.exp(-ce_loss)
+        focal_factor = (1.0 - pt) ** self.gamma
+        loss = focal_factor * ce_loss
+
+        if self.alpha is not None:
+            if isinstance(self.alpha, (float, int)):
+                alpha_t = torch.full_like(loss, float(self.alpha))
+            else:
+                alpha = torch.as_tensor(self.alpha, dtype=logits.dtype, device=logits.device)
+                alpha_t = alpha[targets]
+            loss = alpha_t * loss
+
+        if self.reduction == 'sum':
+            return loss.sum()
+        if self.reduction == 'none':
+            return loss
+        return loss.mean()
+    
     
 def Remove_module_from_layers(unpickled_model_wts):
     new_keys = []

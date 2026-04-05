@@ -1,0 +1,25 @@
+Building model...
+PhytNetV0 loaded
+##################################################
+No weights loaded
+Image input size:  415
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+train
+Learning... |                                | 0/112
+[?25hTraceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 321, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 276, in train
+    model, best_f1 = train_model(args=args,
+  File "/users/jrs596/scripts/CocoaReader/utils/training_loop.py", line 116, in train_model
+    loss, step = criterion(outputs, labels, step=step)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+TypeError: CrossEntropyLoss.forward() got an unexpected keyword argument 'step'

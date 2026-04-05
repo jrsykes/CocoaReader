@@ -1,0 +1,28 @@
+
+CondaError: Run 'conda init' before 'conda activate'
+
+Namespace(model_name='PhytNet-Cocoa-FullSupervised_redo', project_name='PhytNet-Cocoa-Final', run_name='test', sweep_id=None, wandb_MODE='online', sweep_config=None, model_config=None, sweep_count=1000, root='/users/jrs596/scratch', data_dir='dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split', save=True, custom_pretrained_weights=None, quantise=False, batch_size=42, max_epochs=200, min_epochs=15, patience=10, beta=1.0, learning_rate=0.001, l1_lambda=1e-05, weight_decay=0.0001, eps=1e-06, batchnorm_momentum=0.1, input_size=None, delta=1.4, arch='PhytNetV0', cont_train=False, remove_batch_norm=False, split_image=False, n_tokens=4, criterion='crossentropy', GPU='0', use_wandb=True)
+Traceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 88, in <module>
+    import toolbox
+ModuleNotFoundError: No module named 'toolbox'
+
+============================
+ Job utilisation efficiency
+============================
+
+Job ID: 31590965
+Cluster: viking2.yor.alces.network
+User/Group: jrs596/clusterusers
+State: FAILED (exit code 1)
+Nodes: 1
+Cores per node: 12
+CPU Utilized: 00:00:05
+CPU Efficiency: 1.89% of 00:04:24 core-walltime
+Job Wall-clock time: 00:00:22
+Memory Utilized: 5.17 MB
+Memory Efficiency: 0.01% of 100.00 GB
+ Requested wall clock time: 3-00:00:00
+    Actual wall clock time: 00:00:22
+Wall clock time efficiency: 0.0%
+           Job queued time: 00:00:30

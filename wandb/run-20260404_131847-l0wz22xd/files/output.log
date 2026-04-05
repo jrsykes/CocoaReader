@@ -1,0 +1,1826 @@
+
+Building model...
+resnet18 loaded
+##################################################
+No weights loaded
+Major epoch:  0 : 0
+Image input size:  375
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+train
+
+
+
+
+
+Learning... |############################### | 112/112
+[?25h
+train Loss: 2.6855 Acc: 0.5843
+train Precision: 0.6195 Recall: 0.5843 F1: 0.5762
+
+Learning... |############################    | 12/13
+val Loss: 2.4044 Acc: 0.6922
+val Precision: 0.7014 Recall: 0.6922 F1: 0.6872
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 1
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 100/112
+train Loss: 2.2695 Acc: 0.7518
+train Precision: 0.7764 Recall: 0.7518 F1: 0.7518
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.2449 Acc: 0.7553
+val Precision: 0.7654 Recall: 0.7553 F1: 0.7509
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 2
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 2.0843 Acc: 0.8314
+train Precision: 0.8516 Recall: 0.8314 F1: 0.8321
+val
+val Loss: 2.1825 Acc: 0.7935
+val Precision: 0.8096 Recall: 0.7935 F1: 0.7927
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 3
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |###########################     | 96/112
+train Loss: 1.9461 Acc: 0.8833
+train Precision: 0.9005 Recall: 0.8833 F1: 0.8848
+Learning... |############################### | 112/112
+Learning... |############################    | 12/13
+val Loss: 2.1701 Acc: 0.8031
+val Precision: 0.8219 Recall: 0.8031 F1: 0.7994
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 4
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |##############################  | 109/112
+train Loss: 1.8490 Acc: 0.9157
+train Precision: 0.9262 Recall: 0.9157 F1: 0.9166
+val
+val Loss: 2.1627 Acc: 0.7992
+val Precision: 0.8133 Recall: 0.7992 F1: 0.7976
+Epoch 5
+----------
+Patience: 10/10
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |##########################      | 93/112
+train Loss: 1.7575 Acc: 0.9496
+train Precision: 0.9568 Recall: 0.9496 F1: 0.9501
+Learning... |############################### | 112/112
+Learning... |##############                  | 6/13
+val Loss: 2.1661 Acc: 0.8107
+val Precision: 0.8290 Recall: 0.8107 F1: 0.8110
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 6
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 104/112
+train Loss: 1.6880 Acc: 0.9699
+train Precision: 0.9742 Recall: 0.9699 F1: 0.9704
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.1733 Acc: 0.7973
+val Precision: 0.8099 Recall: 0.7973 F1: 0.7919
+Epoch 7
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |#######                         | 3/13
+train Loss: 1.6458 Acc: 0.9757
+train Precision: 0.9792 Recall: 0.9757 F1: 0.9759
+val
+val Loss: 2.1866 Acc: 0.8050
+val Precision: 0.8160 Recall: 0.8050 F1: 0.8016
+Epoch 8
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 105/112
+train Loss: 1.6054 Acc: 0.9825
+train Precision: 0.9853 Recall: 0.9825 F1: 0.9828
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.1754 Acc: 0.7916
+val Precision: 0.8131 Recall: 0.7916 F1: 0.7844
+Epoch 9
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |####                            | 2/13
+train Loss: 1.5685 Acc: 0.9883
+train Precision: 0.9895 Recall: 0.9883 F1: 0.9883
+val
+val Loss: 2.1321 Acc: 0.8126
+val Precision: 0.8217 Recall: 0.8126 F1: 0.8103
+Epoch 10
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 105/112
+train Loss: 1.5413 Acc: 0.9883
+train Precision: 0.9901 Recall: 0.9883 F1: 0.9885
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.1498 Acc: 0.8011
+val Precision: 0.8163 Recall: 0.8011 F1: 0.7988
+Epoch 11
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |##                              | 1/13
+train Loss: 1.5209 Acc: 0.9872
+train Precision: 0.9886 Recall: 0.9872 F1: 0.9873
+val
+val Loss: 2.1450 Acc: 0.8088
+val Precision: 0.8176 Recall: 0.8088 F1: 0.8072
+Epoch 12
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |##############################  | 107/112
+train Loss: 1.5071 Acc: 0.9842
+train Precision: 0.9864 Recall: 0.9842 F1: 0.9845
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 1/112
+val Loss: 2.0393 Acc: 0.8145
+val Precision: 0.8272 Recall: 0.8145 F1: 0.8140
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 13
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |####                            | 2/13
+train Loss: 1.4687 Acc: 0.9923
+train Precision: 0.9932 Recall: 0.9923 F1: 0.9924
+val
+val Loss: 2.0814 Acc: 0.8164
+val Precision: 0.8339 Recall: 0.8164 F1: 0.8164
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 14
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 103/112
+train Loss: 1.4469 Acc: 0.9927
+train Precision: 0.9937 Recall: 0.9927 F1: 0.9928
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.1111 Acc: 0.8031
+val Precision: 0.8188 Recall: 0.8031 F1: 0.7995
+Epoch 15
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.4258 Acc: 0.9927
+train Precision: 0.9936 Recall: 0.9927 F1: 0.9928
+val
+val Loss: 2.0937 Acc: 0.8145
+val Precision: 0.8254 Recall: 0.8145 F1: 0.8113
+Epoch 16
+----------
+Patience: 9/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 102/112
+train Loss: 1.4050 Acc: 0.9927
+train Precision: 0.9936 Recall: 0.9927 F1: 0.9928
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.0862 Acc: 0.8164
+val Precision: 0.8389 Recall: 0.8164 F1: 0.8157
+Epoch 17
+----------
+Patience: 8/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.3853 Acc: 0.9934
+train Precision: 0.9942 Recall: 0.9934 F1: 0.9934
+val
+val Loss: 2.0343 Acc: 0.8184
+val Precision: 0.8306 Recall: 0.8184 F1: 0.8171
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 18
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################    | 102/112
+train Loss: 1.3633 Acc: 0.9942
+train Precision: 0.9949 Recall: 0.9942 F1: 0.9943
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.0868 Acc: 0.7954
+val Precision: 0.8090 Recall: 0.7954 F1: 0.7951
+Epoch 19
+----------
+Patience: 9/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.3477 Acc: 0.9936
+train Precision: 0.9947 Recall: 0.9936 F1: 0.9937
+val
+val Loss: 2.0652 Acc: 0.7935
+val Precision: 0.8030 Recall: 0.7935 F1: 0.7891
+Epoch 20
+----------
+Patience: 8/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 103/112
+train Loss: 1.3258 Acc: 0.9951
+train Precision: 0.9959 Recall: 0.9951 F1: 0.9952
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.0341 Acc: 0.8145
+val Precision: 0.8281 Recall: 0.8145 F1: 0.8125
+Epoch 21
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |####                            | 2/13
+train Loss: 1.3102 Acc: 0.9947
+train Precision: 0.9954 Recall: 0.9947 F1: 0.9948
+val
+val Loss: 2.0059 Acc: 0.8279
+val Precision: 0.8368 Recall: 0.8279 F1: 0.8262
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 22
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 104/112
+train Loss: 1.2966 Acc: 0.9938
+train Precision: 0.9946 Recall: 0.9938 F1: 0.9939
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.9620 Acc: 0.8241
+val Precision: 0.8412 Recall: 0.8241 F1: 0.8235
+Epoch 23
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |##                              | 1/13
+train Loss: 1.2804 Acc: 0.9940
+train Precision: 0.9951 Recall: 0.9940 F1: 0.9942
+val
+val Loss: 2.0206 Acc: 0.8222
+val Precision: 0.8375 Recall: 0.8222 F1: 0.8178
+Epoch 24
+----------
+Patience: 9/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 103/112
+train Loss: 1.2690 Acc: 0.9927
+train Precision: 0.9937 Recall: 0.9927 F1: 0.9928
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 2.0747 Acc: 0.7897
+val Precision: 0.8023 Recall: 0.7897 F1: 0.7883
+Epoch 25
+----------
+Patience: 8/10
+
+
+
+
+Learning... |##############################  | 109/112
+train Loss: 1.2593 Acc: 0.9934
+train Precision: 0.9945 Recall: 0.9934 F1: 0.9936
+val
+val Loss: 2.0711 Acc: 0.8050
+val Precision: 0.8195 Recall: 0.8050 F1: 0.8024
+Epoch 26
+----------
+Patience: 7/10
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |###########################     | 96/112
+train Loss: 1.2443 Acc: 0.9932
+train Precision: 0.9941 Recall: 0.9932 F1: 0.9933
+Learning... |############################### | 112/112
+Learning... |##########################      | 11/13
+val Loss: 1.9820 Acc: 0.8260
+val Precision: 0.8408 Recall: 0.8260 F1: 0.8228
+Epoch 27
+----------
+Patience: 6/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |############################### | 111/112
+train Loss: 1.2311 Acc: 0.9947
+train Precision: 0.9954 Recall: 0.9947 F1: 0.9948
+val
+val Loss: 1.9966 Acc: 0.7897
+val Precision: 0.8135 Recall: 0.7897 F1: 0.7880
+Epoch 28
+----------
+Patience: 5/10
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |###########################     | 96/112
+train Loss: 1.2214 Acc: 0.9942
+train Precision: 0.9951 Recall: 0.9942 F1: 0.9943
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+val Loss: 2.0012 Acc: 0.8107
+val Precision: 0.8265 Recall: 0.8107 F1: 0.8079
+Epoch 29
+----------
+Patience: 4/10
+train
+[?25h
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.2059 Acc: 0.9949
+train Precision: 0.9955 Recall: 0.9949 F1: 0.9949
+val
+val Loss: 1.9478 Acc: 0.8107
+val Precision: 0.8254 Recall: 0.8107 F1: 0.8089
+Epoch 30
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |###########################     | 98/112
+train Loss: 1.1955 Acc: 0.9957
+train Precision: 0.9964 Recall: 0.9957 F1: 0.9958
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.9729 Acc: 0.8088
+val Precision: 0.8306 Recall: 0.8088 F1: 0.8093
+Epoch 31
+----------
+Patience: 9/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |                                | 0/13
+train Loss: 1.1754 Acc: 0.9983
+train Precision: 0.9985 Recall: 0.9983 F1: 0.9983
+val
+val Loss: 1.8849 Acc: 0.8356
+val Precision: 0.8505 Recall: 0.8356 F1: 0.8335
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 32
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |###########################     | 98/112
+train Loss: 1.1622 Acc: 0.9968
+train Precision: 0.9974 Recall: 0.9968 F1: 0.9970
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+val Loss: 1.9358 Acc: 0.8279
+val Precision: 0.8434 Recall: 0.8279 F1: 0.8268
+Epoch 33
+----------
+Patience: 9/10
+
+
+
+
+Learning... |############################### | 112/112
+train Loss: 1.1569 Acc: 0.9945
+train Precision: 0.9957 Recall: 0.9945 F1: 0.9947
+val
+val Loss: 2.0047 Acc: 0.8088
+val Precision: 0.8238 Recall: 0.8088 F1: 0.8061
+Epoch 34
+----------
+Patience: 8/10
+train
+Learning... |##############################  | 13/13
+[?25h
+Learning... |##########                      | 37/112
+Learning... |###################             | 68/112
+Learning... |############################    | 99/112
+Learning... |############################    | 99/112
+train Loss: 1.1445 Acc: 0.9966
+train Precision: 0.9971 Recall: 0.9966 F1: 0.9966
+Learning... |                                | 0/11212
+Learning... |                                | 0/11212
+val Loss: 1.9782 Acc: 0.8317
+val Precision: 0.8503 Recall: 0.8317 F1: 0.8316
+Epoch 35
+----------
+Patience: 7/10
+Learning... |######                          | 23/1122
+Learning... |###############                 | 53/1122
+Learning... |#######################         | 83/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 1.1377 Acc: 0.9936
+train Precision: 0.9947 Recall: 0.9936 F1: 0.9938
+val
+val Loss: 1.9388 Acc: 0.8164
+val Precision: 0.8246 Recall: 0.8164 F1: 0.8135
+Epoch 36
+----------
+Patience: 6/10
+Learning... |##                              | 8/11212
+Learning... |###########                     | 39/1122
+Learning... |###################             | 69/1122
+Learning... |############################    | 100/112
+Learning... |############################    | 100/112
+train Loss: 1.1275 Acc: 0.9934
+train Precision: 0.9942 Recall: 0.9934 F1: 0.9935
+Learning... |                                | 0/11212
+Learning... |                                | 0/11212
+val Loss: 2.0119 Acc: 0.8088
+val Precision: 0.8392 Recall: 0.8088 F1: 0.8057
+Epoch 37
+----------
+Patience: 5/10
+Learning... |#######                         | 25/1122
+Learning... |###############                 | 54/1122
+Learning... |#######################         | 84/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 1.1126 Acc: 0.9972
+train Precision: 0.9976 Recall: 0.9972 F1: 0.9973
+val
+val Loss: 1.9440 Acc: 0.8145
+val Precision: 0.8273 Recall: 0.8145 F1: 0.8122
+Epoch 38
+----------
+Patience: 4/10
+Learning... |##                              | 9/11212
+Learning... |###########                     | 39/1122
+Learning... |###################             | 68/1122
+Learning... |############################    | 99/1122
+Learning... |############################    | 99/1122
+train Loss: 1.1055 Acc: 0.9951
+train Precision: 0.9958 Recall: 0.9951 F1: 0.9952
+Learning... |                                | 0/11212
+Learning... |                                | 0/11212
+val Loss: 1.9216 Acc: 0.8050
+val Precision: 0.8172 Recall: 0.8050 F1: 0.8028
+Epoch 39
+----------
+Patience: 3/10
+Learning... |######                          | 24/1122
+Learning... |###############                 | 54/1122
+Learning... |#######################         | 83/1122
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+train Loss: 1.1031 Acc: 0.9936
+train Precision: 0.9945 Recall: 0.9936 F1: 0.9937
+val
+val Loss: 1.9952 Acc: 0.8107
+val Precision: 0.8262 Recall: 0.8107 F1: 0.8093
+Epoch 40
+----------
+Patience: 2/10
+Learning... |#                               | 7/11212
+Learning... |##########                      | 37/1122
+Learning... |###################             | 67/1122
+Learning... |###########################     | 96/1122
+Learning... |###########################     | 96/1122
+train Loss: 1.0975 Acc: 0.9923
+train Precision: 0.9937 Recall: 0.9923 F1: 0.9926
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+val Loss: 1.8942 Acc: 0.8164
+val Precision: 0.8298 Recall: 0.8164 F1: 0.8158
+Epoch 41
+----------
+Patience: 1/10
+Learning... |#####                           | 19/1122
+Learning... |##############                  | 51/1122
+Learning... |######################          | 80/1122
+Learning... |############################### | 111/112
+Learning... |############################### | 111/112
+train Loss: 1.0843 Acc: 0.9955
+train Precision: 0.9961 Recall: 0.9955 F1: 0.9956
+val
+val Loss: 1.9016 Acc: 0.7935
+val Precision: 0.8013 Recall: 0.7935 F1: 0.7913
+Epoch 42
+----------
+Patience: 0/10
+Learning... |#                               | 5/11212
+Learning... |#########                       | 35/1122
+Learning... |##################              | 65/1122
+Learning... |###########################     | 95/1122
+Learning... |###########################     | 95/1122
+train Loss: 1.0789 Acc: 0.9934
+train Precision: 0.9942 Recall: 0.9934 F1: 0.9934
+Learning... |############################### | 112/112
+Learning... |############################### | 112/112
+val Loss: 1.9587 Acc: 0.8011
+val Precision: 0.8171 Recall: 0.8011 F1: 0.7962
+Training complete in 7m 46s
+Acc of saved model: 0.835564
+F1 of saved model: 0.833528
+Relabeling images from:
+  /users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult
+Image input size:  375
+Image resize applied
+Initializing Datasets and Dataloaders...
+Learning... |                                | 0/11612
+Learning... |                                | 0/11612
+Relabeled:  159  images
+Major epoch:  0 : 1
+Image input size:  375
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+Learning... |########                        | 30/1162
+Learning... |################                | 59/1162
+Learning... |########################        | 88/1162
+Learning... |############################### | 115/116
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 1.0878 Acc: 0.9891
+train Precision: 0.9907 Recall: 0.9891 F1: 0.9893
+val
+val Loss: 1.9823 Acc: 0.8050
+val Precision: 0.8249 Recall: 0.8050 F1: 0.8059
+Epoch 1
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1316
+Learning... |#########                       | 36/1166
+Learning... |#################               | 64/1166
+Learning... |#########################       | 93/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 1.0790 Acc: 0.9915
+train Precision: 0.9930 Recall: 0.9915 F1: 0.9918
+val
+val Loss: 1.9923 Acc: 0.8011
+val Precision: 0.8172 Recall: 0.8011 F1: 0.7999
+Epoch 2
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1316
+Learning... |###########                     | 41/1166
+Learning... |###################             | 70/1166
+Learning... |##########################      | 98/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 1.0694 Acc: 0.9920
+train Precision: 0.9930 Recall: 0.9920 F1: 0.9921
+val
+val Loss: 1.8926 Acc: 0.8222
+val Precision: 0.8294 Recall: 0.8222 F1: 0.8197
+Epoch 3
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1316
+Learning... |#############                   | 48/1166
+Learning... |#####################           | 78/1166
+Learning... |#############################   | 107/116
+Learning... |#############################   | 107/116
+train Loss: 1.0543 Acc: 0.9965
+train Precision: 0.9969 Recall: 0.9965 F1: 0.9965
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 2.0147 Acc: 0.7897
+val Precision: 0.7991 Recall: 0.7897 F1: 0.7861
+Epoch 4
+----------
+Patience: 10/10
+Learning... |#######                         | 28/1166
+Learning... |###############                 | 57/1166
+Learning... |#######################         | 86/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 1.0449 Acc: 0.9957
+train Precision: 0.9961 Recall: 0.9957 F1: 0.9957
+val
+val Loss: 1.8881 Acc: 0.8203
+val Precision: 0.8338 Recall: 0.8203 F1: 0.8201
+Epoch 5
+----------
+Patience: 10/10
+Learning... |#                               | 6/11616
+Learning... |#########                       | 36/1166
+Learning... |##################              | 66/1166
+Learning... |##########################      | 96/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 1.0371 Acc: 0.9953
+train Precision: 0.9961 Recall: 0.9953 F1: 0.9954
+val
+val Loss: 1.8901 Acc: 0.8164
+val Precision: 0.8288 Recall: 0.8164 F1: 0.8151
+Epoch 6
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1316
+Learning... |############                    | 45/1166
+Learning... |####################            | 73/1166
+Learning... |############################    | 102/116
+Learning... |############################    | 102/116
+train Loss: 1.0322 Acc: 0.9946
+train Precision: 0.9953 Recall: 0.9946 F1: 0.9947
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+val Loss: 1.9324 Acc: 0.8241
+val Precision: 0.8414 Recall: 0.8241 F1: 0.8216
+Epoch 7
+----------
+Patience: 10/10
+train
+Learning... |##############                  | 51/1166
+Learning... |######################          | 81/1166
+Learning... |##############################  | 110/116
+Learning... |##############################  | 110/116
+train Loss: 1.0224 Acc: 0.9959
+train Precision: 0.9964 Recall: 0.9959 F1: 0.9959
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 1.8501 Acc: 0.8356
+val Precision: 0.8488 Recall: 0.8356 F1: 0.8339
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 8
+----------
+Patience: 10/10
+Learning... |#######                         | 28/1166
+Learning... |###############                 | 57/1166
+Learning... |#######################         | 86/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 1.0145 Acc: 0.9959
+train Precision: 0.9964 Recall: 0.9959 F1: 0.9959
+val
+val Loss: 1.9236 Acc: 0.8126
+val Precision: 0.8281 Recall: 0.8126 F1: 0.8122
+Epoch 9
+----------
+Patience: 10/10
+Learning... |#                               | 6/11616
+Learning... |#########                       | 35/1166
+Learning... |#################               | 63/1166
+Learning... |#########################       | 92/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 1.0067 Acc: 0.9961
+train Precision: 0.9966 Recall: 0.9961 F1: 0.9961
+val
+val Loss: 1.9104 Acc: 0.8126
+val Precision: 0.8333 Recall: 0.8126 F1: 0.8150
+Epoch 10
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1316
+Learning... |###########                     | 41/1166
+Learning... |###################             | 70/1166
+Learning... |##########################      | 98/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 0.9983 Acc: 0.9953
+train Precision: 0.9959 Recall: 0.9953 F1: 0.9953
+val
+val Loss: 1.8858 Acc: 0.8107
+val Precision: 0.8213 Recall: 0.8107 F1: 0.8085
+Epoch 11
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1316
+Learning... |############                    | 47/1166
+Learning... |#####################           | 77/1166
+Learning... |#############################   | 106/116
+Learning... |#############################   | 106/116
+train Loss: 0.9957 Acc: 0.9948
+train Precision: 0.9955 Recall: 0.9948 F1: 0.9949
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 1.8851 Acc: 0.8184
+val Precision: 0.8282 Recall: 0.8184 F1: 0.8176
+Epoch 12
+----------
+Patience: 10/10
+Learning... |#######                         | 26/1166
+Learning... |###############                 | 55/1166
+Learning... |####################            | 76/1166
+Learning... |############################    | 105/116
+Learning... |############################    | 105/116
+train Loss: 0.9854 Acc: 0.9959
+train Precision: 0.9963 Recall: 0.9959 F1: 0.9959
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 1.8809 Acc: 0.8203
+val Precision: 0.8456 Recall: 0.8203 F1: 0.8215
+Epoch 13
+----------
+Patience: 10/10
+Learning... |######                          | 25/1166
+Learning... |###############                 | 55/1166
+Learning... |#######################         | 85/1166
+Learning... |############################### | 114/116
+Learning... |############################### | 114/116
+train Loss: 0.9796 Acc: 0.9959
+train Precision: 0.9966 Recall: 0.9959 F1: 0.9960
+val
+val Loss: 1.8015 Acc: 0.8260
+val Precision: 0.8394 Recall: 0.8260 F1: 0.8240
+Epoch 14
+----------
+Patience: 10/10
+Learning... |#                               | 5/11616
+Learning... |#########                       | 34/1166
+Learning... |#################               | 64/1166
+Learning... |#########################       | 93/1166
+Learning... |#########################       | 93/1166
+train Loss: 0.9690 Acc: 0.9967
+train Precision: 0.9972 Recall: 0.9967 F1: 0.9968
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+val Loss: 1.7526 Acc: 0.8260
+val Precision: 0.8422 Recall: 0.8260 F1: 0.8259
+Epoch 15
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1316
+Learning... |############                    | 44/1166
+Learning... |####################            | 73/1166
+Learning... |############################    | 103/116
+Learning... |############################    | 103/116
+train Loss: 0.9580 Acc: 0.9977
+train Precision: 0.9982 Recall: 0.9977 F1: 0.9978
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 1.8329 Acc: 0.8394
+val Precision: 0.8470 Recall: 0.8394 F1: 0.8381
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 16
+----------
+Patience: 9/10
+Learning... |#####                           | 21/1166
+Learning... |#############                   | 50/1166
+Learning... |######################          | 80/1166
+Learning... |#############################   | 109/116
+Learning... |#############################   | 109/116
+train Loss: 0.9560 Acc: 0.9953
+train Precision: 0.9959 Recall: 0.9953 F1: 0.9953
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 1.8284 Acc: 0.8088
+val Precision: 0.8236 Recall: 0.8088 F1: 0.8071
+Epoch 17
+----------
+Patience: 8/10
+Learning... |#######                         | 29/1166
+Learning... |################                | 59/1166
+Learning... |########################        | 89/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 0.9561 Acc: 0.9946
+train Precision: 0.9956 Recall: 0.9946 F1: 0.9947
+val
+val Loss: 1.8623 Acc: 0.8145
+val Precision: 0.8286 Recall: 0.8145 F1: 0.8145
+Epoch 18
+----------
+Patience: 7/10
+Learning... |##############################  | 13/1316
+Learning... |##########                      | 39/1166
+Learning... |##################              | 69/1166
+Learning... |##########################      | 98/1166
+Learning... |##########################      | 98/1166
+train Loss: 0.9509 Acc: 0.9955
+train Precision: 0.9963 Recall: 0.9955 F1: 0.9956
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+val Loss: 1.7907 Acc: 0.8298
+val Precision: 0.8482 Recall: 0.8298 F1: 0.8304
+Epoch 19
+----------
+Patience: 6/10
+Learning... |##############################  | 13/1316
+Learning... |#############                   | 48/1166
+Learning... |#####################           | 78/1166
+Learning... |#############################   | 108/116
+Learning... |#############################   | 108/116
+train Loss: 0.9409 Acc: 0.9967
+train Precision: 0.9973 Recall: 0.9967 F1: 0.9968
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 1.7900 Acc: 0.8145
+val Precision: 0.8259 Recall: 0.8145 F1: 0.8138
+Epoch 20
+----------
+Patience: 5/10
+Learning... |#######                         | 28/1166
+Learning... |###############                 | 57/1166
+Learning... |########################        | 88/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 0.9299 Acc: 0.9977
+train Precision: 0.9981 Recall: 0.9977 F1: 0.9978
+val
+val Loss: 1.7819 Acc: 0.8184
+val Precision: 0.8323 Recall: 0.8184 F1: 0.8150
+Epoch 21
+----------
+Patience: 4/10
+Learning... |##############################  | 13/1316
+Learning... |##########                      | 37/1166
+Learning... |#################               | 65/1166
+Learning... |#########################       | 93/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 0.9218 Acc: 0.9979
+train Precision: 0.9983 Recall: 0.9979 F1: 0.9980
+val
+val Loss: 1.7951 Acc: 0.8164
+val Precision: 0.8287 Recall: 0.8164 F1: 0.8161
+Epoch 22
+----------
+Patience: 3/10
+Learning... |##############################  | 13/1316
+Learning... |###########                     | 43/1166
+Learning... |###################             | 72/1166
+Learning... |###########################     | 101/116
+Learning... |###########################     | 101/116
+train Loss: 0.9170 Acc: 0.9959
+train Precision: 0.9966 Recall: 0.9959 F1: 0.9960
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+val Loss: 1.8410 Acc: 0.8126
+val Precision: 0.8294 Recall: 0.8126 F1: 0.8092
+Epoch 23
+----------
+Patience: 2/10
+train
+Learning... |##############                  | 51/1166
+Learning... |######################          | 80/1166
+Learning... |#############################   | 109/116
+Learning... |#############################   | 109/116
+train Loss: 0.9152 Acc: 0.9959
+train Precision: 0.9966 Recall: 0.9959 F1: 0.9960
+Learning... |                                | 0/11616
+Learning... |                                | 0/11616
+val Loss: 1.8869 Acc: 0.8164
+val Precision: 0.8365 Recall: 0.8164 F1: 0.8120
+Epoch 24
+----------
+Patience: 1/10
+Learning... |#######                         | 29/1166
+Learning... |################                | 59/1166
+Learning... |########################        | 88/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 0.9146 Acc: 0.9942
+train Precision: 0.9951 Recall: 0.9942 F1: 0.9943
+val
+val Loss: 1.8630 Acc: 0.8184
+val Precision: 0.8273 Recall: 0.8184 F1: 0.8147
+Epoch 25
+----------
+Patience: 0/10
+Learning... |##############################  | 13/1316
+Learning... |##########                      | 37/1166
+Learning... |##################              | 66/1166
+Learning... |#########################       | 94/1166
+Learning... |############################### | 116/116
+Learning... |############################### | 116/116
+train Loss: 0.9053 Acc: 0.9971
+train Precision: 0.9975 Recall: 0.9971 F1: 0.9971
+val
+val Loss: 1.8507 Acc: 0.8145
+val Precision: 0.8288 Recall: 0.8145 F1: 0.8110
+Training complete in 4m 13s
+Acc of saved model: 0.839388
+F1 of saved model: 0.838117
+Relabeling images from:
+  /users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Difficult
+Image input size:  375
+Image resize applied
+Learning... |##############################  | 13/1316
+Learning... |##############################  | 13/1316
+Relabeled:  72  images
+Major epoch:  0 : 2
+Image input size:  375
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+Learning... |####                            | 16/1186
+Learning... |############                    | 45/1186
+Learning... |####################            | 74/1186
+Learning... |############################    | 104/118
+Learning... |############################### | 117/118
+Learning... |############################### | 117/118
+train Loss: 0.9169 Acc: 0.9892
+train Precision: 0.9906 Recall: 0.9892 F1: 0.9893
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+val Loss: 1.9074 Acc: 0.7954
+val Precision: 0.8087 Recall: 0.7954 F1: 0.7944
+Epoch 1
+----------
+Patience: 10/10
+train
+Learning... |#############                   | 51/1188
+Learning... |#####################           | 79/1188
+Learning... |#############################   | 108/118
+Learning... |#############################   | 108/118
+train Loss: 0.9048 Acc: 0.9943
+train Precision: 0.9950 Recall: 0.9943 F1: 0.9944
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.8232 Acc: 0.7973
+val Precision: 0.8105 Recall: 0.7973 F1: 0.7956
+Epoch 2
+----------
+Patience: 10/10
+Learning... |#######                         | 26/1188
+Learning... |###############                 | 56/1188
+Learning... |######################          | 84/1188
+Learning... |##############################  | 113/118
+Learning... |##############################  | 113/118
+train Loss: 0.9037 Acc: 0.9915
+train Precision: 0.9926 Recall: 0.9915 F1: 0.9916
+Learning... |                                | 2/11818
+Learning... |                                | 2/11818
+val Loss: 1.7508 Acc: 0.8184
+val Precision: 0.8351 Recall: 0.8184 F1: 0.8172
+Epoch 3
+----------
+Patience: 10/10
+Learning... |########                        | 31/1188
+Learning... |################                | 61/1188
+Learning... |########################        | 91/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8933 Acc: 0.9957
+train Precision: 0.9963 Recall: 0.9957 F1: 0.9958
+val
+val Loss: 1.9102 Acc: 0.8011
+val Precision: 0.8188 Recall: 0.8011 F1: 0.8018
+Epoch 4
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 38/1188
+Learning... |##################              | 67/1188
+Learning... |##########################      | 97/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8870 Acc: 0.9949
+train Precision: 0.9959 Recall: 0.9949 F1: 0.9951
+val
+val Loss: 1.7990 Acc: 0.8126
+val Precision: 0.8212 Recall: 0.8126 F1: 0.8073
+Epoch 5
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |###########                     | 44/1188
+Learning... |####################            | 74/1188
+Learning... |###########################     | 103/118
+Learning... |###########################     | 103/118
+train Loss: 0.8887 Acc: 0.9933
+train Precision: 0.9941 Recall: 0.9933 F1: 0.9934
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.8159 Acc: 0.8241
+val Precision: 0.8371 Recall: 0.8241 F1: 0.8238
+Epoch 6
+----------
+Patience: 10/10
+Learning... |#####                           | 21/1188
+Learning... |#############                   | 50/1188
+Learning... |#####################           | 78/1188
+Learning... |############################    | 107/118
+Learning... |############################    | 107/118
+train Loss: 0.9030 Acc: 0.9904
+train Precision: 0.9919 Recall: 0.9904 F1: 0.9906
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.8952 Acc: 0.7935
+val Precision: 0.8148 Recall: 0.7935 F1: 0.7952
+Epoch 7
+----------
+Patience: 10/10
+Learning... |######                          | 24/1188
+Learning... |##############                  | 53/1188
+Learning... |#####################           | 81/1188
+Learning... |#############################   | 110/118
+Learning... |#############################   | 110/118
+train Loss: 0.8972 Acc: 0.9915
+train Precision: 0.9928 Recall: 0.9915 F1: 0.9917
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.8793 Acc: 0.7897
+val Precision: 0.8030 Recall: 0.7897 F1: 0.7909
+Epoch 8
+----------
+Patience: 10/10
+Learning... |#######                         | 28/1188
+Learning... |###############                 | 57/1188
+Learning... |#######################         | 87/1188
+Learning... |############################### | 116/118
+Learning... |############################### | 116/118
+train Loss: 0.8842 Acc: 0.9967
+train Precision: 0.9973 Recall: 0.9967 F1: 0.9968
+Learning... |#                               | 5/11818
+Learning... |#                               | 5/11818
+val Loss: 1.7542 Acc: 0.8279
+val Precision: 0.8438 Recall: 0.8279 F1: 0.8238
+Epoch 9
+----------
+Patience: 10/10
+Learning... |#########                       | 34/1188
+Learning... |#################               | 63/1188
+Learning... |#########################       | 93/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8887 Acc: 0.9937
+train Precision: 0.9947 Recall: 0.9937 F1: 0.9938
+val
+val Loss: 1.8037 Acc: 0.8011
+val Precision: 0.8128 Recall: 0.8011 F1: 0.8010
+Epoch 10
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 40/1188
+Learning... |##################              | 69/1188
+Learning... |##########################      | 98/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8815 Acc: 0.9939
+train Precision: 0.9947 Recall: 0.9939 F1: 0.9940
+val
+val Loss: 1.8418 Acc: 0.8203
+val Precision: 0.8347 Recall: 0.8203 F1: 0.8168
+Epoch 11
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |###########                     | 44/1188
+Learning... |###################             | 73/1188
+Learning... |###########################     | 102/118
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8856 Acc: 0.9945
+train Precision: 0.9954 Recall: 0.9945 F1: 0.9946
+val
+val Loss: 1.8148 Acc: 0.8088
+val Precision: 0.8210 Recall: 0.8088 F1: 0.8073
+Epoch 12
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |#############                   | 50/1188
+Learning... |#####################           | 80/1188
+Learning... |###########################     | 102/118
+Learning... |###########################     | 102/118
+train Loss: 0.8767 Acc: 0.9947
+train Precision: 0.9957 Recall: 0.9947 F1: 0.9949
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+val Loss: 1.7992 Acc: 0.8260
+val Precision: 0.8369 Recall: 0.8260 F1: 0.8250
+Epoch 13
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |#############                   | 50/1188
+Learning... |#####################           | 80/1188
+Learning... |#############################   | 110/118
+Learning... |#############################   | 110/118
+train Loss: 0.8650 Acc: 0.9955
+train Precision: 0.9962 Recall: 0.9955 F1: 0.9956
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.8124 Acc: 0.8069
+val Precision: 0.8232 Recall: 0.8069 F1: 0.8066
+Epoch 14
+----------
+Patience: 10/10
+Learning... |#######                         | 28/1188
+Learning... |###############                 | 56/1188
+Learning... |#######################         | 86/1188
+Learning... |############################### | 115/118
+Learning... |############################### | 115/118
+train Loss: 0.8545 Acc: 0.9974
+train Precision: 0.9977 Recall: 0.9974 F1: 0.9974
+val
+val Loss: 1.8194 Acc: 0.8260
+val Precision: 0.8442 Recall: 0.8260 F1: 0.8269
+Epoch 15
+----------
+Patience: 10/10
+Learning... |#                               | 4/11818
+Learning... |########                        | 33/1188
+Learning... |################                | 62/1188
+Learning... |########################        | 91/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8529 Acc: 0.9945
+train Precision: 0.9953 Recall: 0.9945 F1: 0.9946
+val
+val Loss: 1.8504 Acc: 0.8050
+val Precision: 0.8255 Recall: 0.8050 F1: 0.8016
+Epoch 16
+----------
+Patience: 9/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 38/1188
+Learning... |##################              | 68/1188
+Learning... |##########################      | 98/1188
+Learning... |##########################      | 98/1188
+train Loss: 0.8494 Acc: 0.9953
+train Precision: 0.9959 Recall: 0.9953 F1: 0.9954
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+val Loss: 1.8124 Acc: 0.8069
+val Precision: 0.8278 Recall: 0.8069 F1: 0.8087
+Epoch 17
+----------
+Patience: 8/10
+Learning... |##############################  | 13/1318
+Learning... |############                    | 46/1188
+Learning... |####################            | 75/1188
+Learning... |############################    | 104/118
+Learning... |############################    | 104/118
+train Loss: 0.8426 Acc: 0.9963
+train Precision: 0.9970 Recall: 0.9963 F1: 0.9964
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7736 Acc: 0.8356
+val Precision: 0.8549 Recall: 0.8356 F1: 0.8364
+Epoch 18
+----------
+Patience: 7/10
+Learning... |######                          | 23/1188
+Learning... |##############                  | 52/1188
+Learning... |#####################           | 81/1188
+Learning... |#############################   | 110/118
+Learning... |#############################   | 110/118
+train Loss: 0.8437 Acc: 0.9957
+train Precision: 0.9965 Recall: 0.9957 F1: 0.9959
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7214 Acc: 0.8203
+val Precision: 0.8314 Recall: 0.8203 F1: 0.8188
+Epoch 19
+----------
+Patience: 10/10
+Learning... |#######                         | 27/1188
+Learning... |###############                 | 56/1188
+Learning... |#######################         | 85/1188
+Learning... |##############################  | 114/118
+Learning... |##############################  | 114/118
+train Loss: 0.8570 Acc: 0.9937
+train Precision: 0.9947 Recall: 0.9937 F1: 0.9938
+val
+val Loss: 1.7943 Acc: 0.8184
+val Precision: 0.8257 Recall: 0.8184 F1: 0.8166
+Epoch 20
+----------
+Patience: 9/10
+Learning... |                                | 2/11818
+Learning... |########                        | 32/1188
+Learning... |################                | 61/1188
+Learning... |########################        | 90/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8487 Acc: 0.9947
+train Precision: 0.9956 Recall: 0.9947 F1: 0.9949
+val
+val Loss: 1.7281 Acc: 0.8375
+val Precision: 0.8500 Recall: 0.8375 F1: 0.8359
+Epoch 21
+----------
+Patience: 8/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 38/1188
+Learning... |##################              | 67/1188
+Learning... |##########################      | 96/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8384 Acc: 0.9967
+train Precision: 0.9971 Recall: 0.9967 F1: 0.9968
+val
+val Loss: 1.7624 Acc: 0.8298
+val Precision: 0.8458 Recall: 0.8298 F1: 0.8307
+Epoch 22
+----------
+Patience: 7/10
+Learning... |##############################  | 13/1318
+Learning... |###########                     | 42/1188
+Learning... |###################             | 71/1188
+Learning... |###########################     | 100/118
+Learning... |###########################     | 100/118
+train Loss: 0.8331 Acc: 0.9972
+train Precision: 0.9976 Recall: 0.9972 F1: 0.9972
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+val Loss: 1.7521 Acc: 0.8241
+val Precision: 0.8367 Recall: 0.8241 F1: 0.8247
+Epoch 23
+----------
+Patience: 6/10
+Learning... |##############################  | 13/1318
+Learning... |############                    | 47/1188
+Learning... |####################            | 76/1188
+Learning... |############################    | 104/118
+Learning... |############################    | 104/118
+train Loss: 0.8244 Acc: 0.9976
+train Precision: 0.9978 Recall: 0.9976 F1: 0.9976
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7806 Acc: 0.8107
+val Precision: 0.8236 Recall: 0.8107 F1: 0.8082
+Epoch 24
+----------
+Patience: 5/10
+Learning... |######                          | 23/1188
+Learning... |#############                   | 51/1188
+Learning... |#####################           | 80/1188
+Learning... |#############################   | 109/118
+Learning... |#############################   | 109/118
+train Loss: 0.8159 Acc: 0.9974
+train Precision: 0.9977 Recall: 0.9974 F1: 0.9974
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7725 Acc: 0.8164
+val Precision: 0.8325 Recall: 0.8164 F1: 0.8161
+Epoch 25
+----------
+Patience: 4/10
+Learning... |#######                         | 28/1188
+Learning... |###############                 | 57/1188
+Learning... |#######################         | 86/1188
+Learning... |############################### | 116/118
+Learning... |############################### | 116/118
+train Loss: 0.8112 Acc: 0.9978
+train Precision: 0.9980 Recall: 0.9978 F1: 0.9978
+val
+val Loss: 1.7371 Acc: 0.8011
+val Precision: 0.8184 Recall: 0.8011 F1: 0.8004
+Epoch 26
+----------
+Patience: 3/10
+Learning... |#                               | 5/11818
+Learning... |#########                       | 34/1188
+Learning... |#################               | 63/1188
+Learning... |########################        | 92/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8051 Acc: 0.9969
+train Precision: 0.9974 Recall: 0.9969 F1: 0.9970
+val
+val Loss: 1.8620 Acc: 0.8107
+val Precision: 0.8267 Recall: 0.8107 F1: 0.8061
+Epoch 27
+----------
+Patience: 2/10
+Learning... |##############################  | 13/1318
+Learning... |###########                     | 41/1188
+Learning... |##################              | 70/1188
+Learning... |##########################      | 99/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8208 Acc: 0.9923
+train Precision: 0.9935 Recall: 0.9923 F1: 0.9925
+val
+val Loss: 1.8541 Acc: 0.7973
+val Precision: 0.8184 Recall: 0.7973 F1: 0.7981
+Epoch 28
+----------
+Patience: 1/10
+Learning... |##############################  | 13/1318
+Learning... |############                    | 46/1188
+Learning... |####################            | 75/1188
+Learning... |############################    | 104/118
+Learning... |############################    | 104/118
+train Loss: 0.8196 Acc: 0.9929
+train Precision: 0.9941 Recall: 0.9929 F1: 0.9930
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.6760 Acc: 0.7992
+val Precision: 0.8195 Recall: 0.7992 F1: 0.7991
+Epoch 29
+----------
+Patience: 10/10
+Learning... |#####                           | 22/1188
+Learning... |##############                  | 52/1188
+Learning... |######################          | 82/1188
+Learning... |##############################  | 111/118
+Learning... |##############################  | 111/118
+train Loss: 0.8106 Acc: 0.9965
+train Precision: 0.9970 Recall: 0.9965 F1: 0.9966
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7045 Acc: 0.8222
+val Precision: 0.8348 Recall: 0.8222 F1: 0.8224
+Epoch 30
+----------
+Patience: 9/10
+Learning... |#######                         | 28/1188
+Learning... |###############                 | 57/1188
+Learning... |#######################         | 86/1188
+Learning... |############################### | 116/118
+Learning... |############################### | 116/118
+train Loss: 0.8126 Acc: 0.9947
+train Precision: 0.9956 Recall: 0.9947 F1: 0.9948
+Learning... |#                               | 4/11818
+Learning... |#                               | 4/11818
+val Loss: 1.7007 Acc: 0.8222
+val Precision: 0.8334 Recall: 0.8222 F1: 0.8202
+Epoch 31
+----------
+Patience: 8/10
+Learning... |########                        | 33/1188
+Learning... |#################               | 63/1188
+Learning... |########################        | 92/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8090 Acc: 0.9951
+train Precision: 0.9959 Recall: 0.9951 F1: 0.9952
+val
+val Loss: 1.6999 Acc: 0.8184
+val Precision: 0.8322 Recall: 0.8184 F1: 0.8171
+Epoch 32
+----------
+Patience: 7/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 40/1188
+Learning... |##################              | 69/1188
+Learning... |##########################      | 98/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8031 Acc: 0.9969
+train Precision: 0.9973 Recall: 0.9969 F1: 0.9970
+val
+val Loss: 1.7913 Acc: 0.8126
+val Precision: 0.8327 Recall: 0.8126 F1: 0.8141
+Epoch 33
+----------
+Patience: 6/10
+Learning... |##############################  | 13/1318
+Learning... |############                    | 46/1188
+Learning... |####################            | 75/1188
+Learning... |############################    | 104/118
+Learning... |############################    | 104/118
+train Loss: 0.7942 Acc: 0.9974
+train Precision: 0.9978 Recall: 0.9974 F1: 0.9974
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.6431 Acc: 0.8184
+val Precision: 0.8337 Recall: 0.8184 F1: 0.8174
+Epoch 34
+----------
+Patience: 10/10
+Learning... |#####                           | 22/1188
+Learning... |#############                   | 51/1188
+Learning... |#####################           | 80/1188
+Learning... |#############################   | 109/118
+Learning... |#############################   | 109/118
+train Loss: 0.8008 Acc: 0.9955
+train Precision: 0.9960 Recall: 0.9955 F1: 0.9956
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7382 Acc: 0.8088
+val Precision: 0.8279 Recall: 0.8088 F1: 0.8098
+Epoch 35
+----------
+Patience: 9/10
+Learning... |#######                         | 27/1188
+Learning... |###############                 | 56/1188
+Learning... |#######################         | 85/1188
+Learning... |##############################  | 114/118
+Learning... |##############################  | 114/118
+train Loss: 0.8051 Acc: 0.9943
+train Precision: 0.9950 Recall: 0.9943 F1: 0.9944
+Learning... |                                | 3/11818
+Learning... |                                | 3/11818
+val Loss: 1.6777 Acc: 0.7954
+val Precision: 0.8068 Recall: 0.7954 F1: 0.7940
+Epoch 36
+----------
+Patience: 8/10
+Learning... |########                        | 30/1188
+Learning... |################                | 61/1188
+Learning... |########################        | 89/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.8014 Acc: 0.9957
+train Precision: 0.9963 Recall: 0.9957 F1: 0.9958
+val
+val Loss: 1.7524 Acc: 0.7992
+val Precision: 0.8115 Recall: 0.7992 F1: 0.7992
+Epoch 37
+----------
+Patience: 7/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 37/1188
+Learning... |#################               | 65/1188
+Learning... |#########################       | 94/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7968 Acc: 0.9957
+train Precision: 0.9965 Recall: 0.9957 F1: 0.9959
+val
+val Loss: 1.7338 Acc: 0.8069
+val Precision: 0.8179 Recall: 0.8069 F1: 0.8056
+Epoch 38
+----------
+Patience: 6/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 40/1188
+Learning... |##################              | 70/1188
+Learning... |##########################      | 99/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7887 Acc: 0.9967
+train Precision: 0.9974 Recall: 0.9967 F1: 0.9969
+val
+val Loss: 1.7723 Acc: 0.8088
+val Precision: 0.8217 Recall: 0.8088 F1: 0.8051
+Epoch 39
+----------
+Patience: 5/10
+Learning... |##############################  | 13/1318
+Learning... |###########                     | 43/1188
+Learning... |####################            | 75/1188
+Learning... |############################    | 104/118
+Learning... |############################    | 104/118
+train Loss: 0.7925 Acc: 0.9935
+train Precision: 0.9947 Recall: 0.9935 F1: 0.9937
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7582 Acc: 0.8107
+val Precision: 0.8288 Recall: 0.8107 F1: 0.8087
+Epoch 40
+----------
+Patience: 4/10
+Learning... |#####                           | 22/1188
+Learning... |#############                   | 51/1188
+Learning... |#####################           | 80/1188
+Learning... |###########################     | 102/118
+Learning... |###########################     | 102/118
+train Loss: 0.7922 Acc: 0.9951
+train Precision: 0.9958 Recall: 0.9951 F1: 0.9952
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+val Loss: 1.7202 Acc: 0.8031
+val Precision: 0.8191 Recall: 0.8031 F1: 0.7993
+Epoch 41
+----------
+Patience: 3/10
+Learning... |##############################  | 13/1318
+Learning... |#############                   | 48/1188
+Learning... |####################            | 77/1188
+Learning... |############################    | 106/118
+Learning... |############################    | 106/118
+train Loss: 0.7927 Acc: 0.9955
+train Precision: 0.9963 Recall: 0.9955 F1: 0.9956
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.8582 Acc: 0.8031
+val Precision: 0.8135 Recall: 0.8031 F1: 0.7996
+Epoch 42
+----------
+Patience: 2/10
+Learning... |######                          | 24/1188
+Learning... |##############                  | 53/1188
+Learning... |######################          | 82/1188
+Learning... |##############################  | 111/118
+Learning... |##############################  | 111/118
+train Loss: 0.7959 Acc: 0.9927
+train Precision: 0.9939 Recall: 0.9927 F1: 0.9929
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.7340 Acc: 0.8050
+val Precision: 0.8153 Recall: 0.8050 F1: 0.8048
+Epoch 43
+----------
+Patience: 1/10
+Learning... |#######                         | 29/1188
+Learning... |###############                 | 58/1188
+Learning... |#######################         | 88/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7918 Acc: 0.9937
+train Precision: 0.9947 Recall: 0.9937 F1: 0.9938
+val
+val Loss: 1.7017 Acc: 0.8107
+val Precision: 0.8206 Recall: 0.8107 F1: 0.8089
+Epoch 44
+----------
+Patience: 0/10
+Learning... |#                               | 6/11818
+Learning... |#########                       | 35/1188
+Learning... |#################               | 64/1188
+Learning... |#########################       | 93/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7984 Acc: 0.9923
+train Precision: 0.9934 Recall: 0.9923 F1: 0.9924
+val
+val Loss: 1.7514 Acc: 0.8107
+val Precision: 0.8301 Recall: 0.8107 F1: 0.8121
+Training complete in 7m 19s
+Acc of saved model: 0.000000
+F1 of saved model: 0.838117
+Major epoch:  1 : 0
+Image input size:  375
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 38/1188
+Learning... |##################              | 67/1188
+Learning... |##########################      | 97/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7978 Acc: 0.9943
+train Precision: 0.9951 Recall: 0.9943 F1: 0.9945
+val
+val Loss: 1.6733 Acc: 0.8203
+val Precision: 0.8359 Recall: 0.8203 F1: 0.8181
+Epoch 1
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |########                        | 33/1188
+Learning... |#################               | 63/1188
+Learning... |#########################       | 93/1188
+Learning... |##############################  | 111/118
+Learning... |##############################  | 111/118
+train Loss: 0.7914 Acc: 0.9951
+train Precision: 0.9957 Recall: 0.9951 F1: 0.9952
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.6517 Acc: 0.8222
+val Precision: 0.8428 Recall: 0.8222 F1: 0.8223
+Epoch 2
+----------
+Patience: 10/10
+Learning... |#######                         | 26/1188
+Learning... |##############                  | 55/1188
+Learning... |#######################         | 85/1188
+Learning... |############################### | 115/118
+Learning... |############################### | 115/118
+train Loss: 0.7775 Acc: 0.9961
+train Precision: 0.9967 Recall: 0.9961 F1: 0.9962
+val
+val Loss: 1.5724 Acc: 0.8356
+val Precision: 0.8506 Recall: 0.8356 F1: 0.8352
+Epoch 3
+----------
+Patience: 10/10
+Learning... |#                               | 6/11818
+Learning... |#########                       | 35/1188
+Learning... |#################               | 63/1188
+Learning... |########################        | 91/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7701 Acc: 0.9969
+train Precision: 0.9977 Recall: 0.9969 F1: 0.9971
+val
+val Loss: 1.7229 Acc: 0.8184
+val Precision: 0.8338 Recall: 0.8184 F1: 0.8189
+Epoch 4
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |##########                      | 38/1188
+Learning... |##################              | 67/1188
+Learning... |##########################      | 97/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7790 Acc: 0.9941
+train Precision: 0.9950 Recall: 0.9941 F1: 0.9942
+val
+val Loss: 1.8133 Acc: 0.8145
+val Precision: 0.8263 Recall: 0.8145 F1: 0.8125
+Epoch 5
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |###########                     | 43/1188
+Learning... |###################             | 72/1188
+Learning... |###########################     | 101/118
+Learning... |###########################     | 101/118
+train Loss: 0.7717 Acc: 0.9947
+train Precision: 0.9954 Recall: 0.9947 F1: 0.9948
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+val Loss: 1.7225 Acc: 0.8145
+val Precision: 0.8254 Recall: 0.8145 F1: 0.8113
+Epoch 6
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |#############                   | 48/1188
+Learning... |####################            | 77/1188
+Learning... |#############################   | 108/118
+Learning... |#############################   | 108/118
+train Loss: 0.7674 Acc: 0.9965
+train Precision: 0.9969 Recall: 0.9965 F1: 0.9966
+Learning... |                                | 0/11818
+Learning... |                                | 0/11818
+val Loss: 1.6877 Acc: 0.8184
+val Precision: 0.8309 Recall: 0.8184 F1: 0.8164
+Epoch 7
+----------
+Patience: 10/10
+Learning... |#######                         | 26/1188
+Learning... |##############                  | 54/1188
+Learning... |######################          | 84/1188
+Learning... |##############################  | 113/118
+Learning... |##############################  | 113/118
+train Loss: 0.7584 Acc: 0.9976
+train Precision: 0.9980 Recall: 0.9976 F1: 0.9977
+Learning... |                                | 1/11818
+Learning... |                                | 1/11818
+val Loss: 1.6280 Acc: 0.8241
+val Precision: 0.8339 Recall: 0.8241 F1: 0.8192
+Epoch 8
+----------
+Patience: 10/10
+Learning... |########                        | 30/1188
+Learning... |###############                 | 58/1188
+Learning... |#######################         | 87/1188
+Learning... |############################### | 116/118
+Learning... |############################### | 116/118
+train Loss: 0.7656 Acc: 0.9953
+train Precision: 0.9958 Recall: 0.9953 F1: 0.9954
+val
+val Loss: 1.7093 Acc: 0.8164
+val Precision: 0.8276 Recall: 0.8164 F1: 0.8156
+Epoch 9
+----------
+Patience: 10/10
+Learning... |#                               | 5/11818
+Learning... |#########                       | 35/1188
+Learning... |#################               | 64/1188
+Learning... |########################        | 91/1188
+Learning... |############################### | 118/118
+Learning... |############################### | 118/118
+train Loss: 0.7602 Acc: 0.9959
+train Precision: 0.9969 Recall: 0.9959 F1: 0.9962
+val
+val Loss: 1.6640 Acc: 0.8241
+val Precision: 0.8356 Recall: 0.8241 F1: 0.8241
+Epoch 10
+----------
+Patience: 10/10
+Learning... |##############################  | 13/1318
+Learning... |###########                     | 41/1188
+Learning... |##################              | 69/1188
+Learning... |##########################      | 98/1188
+FileNotFoundError: [Errno 2] No such file or directory: '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Working_Dir/scarlet-feather-9/Easy/train/FPR/1682463323.4811375PXL_20230303_134657525.jpg'
+FileNotFoundError: [Errno 2] No such file or directory: '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split/Working_Dir/scarlet-feather-9/Easy/train/FPR/1682463323.4811375PXL_20230303_134657525.jpg'

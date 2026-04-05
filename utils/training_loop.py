@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import time
+import inspect
 # import copy
 import wandb
 from sklearn import metrics
@@ -16,6 +17,39 @@ from random_word import RandomWords
 import toolbox
 #sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
 # from toolbox import DynamicFocalLoss
+
+def _extract_logits(model_output):
+    # Support architectures that return:
+    # - logits tensor
+    # - tuple/list where logits are one element (often last)
+    # - dict with logits-like keys
+    if torch.is_tensor(model_output):
+        return model_output
+
+    if isinstance(model_output, (tuple, list)):
+        for item in reversed(model_output):
+            if torch.is_tensor(item):
+                return item
+        raise TypeError("Model returned tuple/list without any tensor outputs.")
+
+    if isinstance(model_output, dict):
+        for key in ("logits", "output", "outputs", "preds", "predictions", "y"):
+            value = model_output.get(key)
+            if torch.is_tensor(value):
+                return value
+        for value in model_output.values():
+            if torch.is_tensor(value):
+                return value
+        raise TypeError("Model returned dict without any tensor outputs.")
+
+    raise TypeError(f"Unsupported model output type: {type(model_output)}")
+
+def _criterion_accepts_step(criterion):
+    try:
+        params = inspect.signature(criterion.forward).parameters
+        return "step" in params
+    except (TypeError, ValueError, AttributeError):
+        return False
 
 def train_model(args, model, optimizer, device, dataloaders_dict, criterion, patience, batch_size, num_classes, best_f1=0.0):      
 
@@ -82,13 +116,19 @@ def train_model(args, model, optimizer, device, dataloaders_dict, criterion, pat
                        # In train mode we calculate the loss by summing the final output and the auxiliary output
                        # but in testing we only consider the final output.
                  
-                        _, _, outputs = model(inputs)
-                        # outputs = model(inputs)
+                        outputs = _extract_logits(model(inputs))
 
 
                         # loss = criterion(outputs, labels)
                         if phase == 'train':
-                            loss, step = criterion(outputs, labels, step=step)
+                            if _criterion_accepts_step(criterion):
+                                criterion_out = criterion(outputs, labels, step=step)
+                                if isinstance(criterion_out, tuple):
+                                    loss, step = criterion_out
+                                else:
+                                    loss = criterion_out
+                            else:
+                                loss = criterion(outputs, labels)
                         else:
                             loss = nn.CrossEntropyLoss()(outputs, labels)
 

@@ -1,0 +1,28 @@
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_setup.py:_flush():76] Current SDK version is 0.16.4
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_setup.py:_flush():76] Configure stats pid to 2989537
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_setup.py:_flush():76] Loading settings from /users/jrs596/.config/wandb/settings
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_setup.py:_flush():76] Loading settings from /users/jrs596/scripts/CocoaReader/wandb/settings
+2026-04-05 05:42:31,918 WARNING MainThread:2989537 [wandb_setup.py:_flush():76] Unknown environment variable: WANDB_CACHE_DIR
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'program_abspath': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'program': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py'}
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_init.py:_log_setup():526] Logging user logs to /users/jrs596/scripts/CocoaReader/wandb/run-20260405_054231-znn3rx20/logs/debug.log
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_init.py:_log_setup():527] Logging internal logs to /users/jrs596/scripts/CocoaReader/wandb/run-20260405_054231-znn3rx20/logs/debug-internal.log
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_init.py:init():566] calling init triggers
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_init.py:init():573] wandb.init called with sweep_config: {}
+config: {}
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_init.py:init():616] starting backend
+2026-04-05 05:42:31,918 INFO    MainThread:2989537 [wandb_init.py:init():620] setting up manager
+2026-04-05 05:42:31,919 INFO    MainThread:2989537 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2026-04-05 05:42:31,921 INFO    MainThread:2989537 [wandb_init.py:init():628] backend started and connected
+2026-04-05 05:42:31,922 INFO    MainThread:2989537 [wandb_init.py:init():720] updated telemetry
+2026-04-05 05:42:31,932 INFO    MainThread:2989537 [wandb_init.py:init():753] communicating run to backend with 90.0 second timeout
+2026-04-05 05:42:32,516 INFO    MainThread:2989537 [wandb_run.py:_on_init():2262] communicating current version
+2026-04-05 05:42:32,569 INFO    MainThread:2989537 [wandb_run.py:_on_init():2271] got version response upgrade_message: "wandb version 0.25.1 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2026-04-05 05:42:32,569 INFO    MainThread:2989537 [wandb_init.py:init():804] starting run threads in backend
+2026-04-05 05:42:35,506 INFO    MainThread:2989537 [wandb_run.py:_console_start():2241] atexit reg
+2026-04-05 05:42:35,506 INFO    MainThread:2989537 [wandb_run.py:_redirect():2096] redirect: wrap_raw
+2026-04-05 05:42:35,507 INFO    MainThread:2989537 [wandb_run.py:_redirect():2161] Wrapping output streams.
+2026-04-05 05:42:35,507 INFO    MainThread:2989537 [wandb_run.py:_redirect():2186] Redirects installed.
+2026-04-05 05:42:35,507 INFO    MainThread:2989537 [wandb_init.py:init():847] run started, returning control to user process

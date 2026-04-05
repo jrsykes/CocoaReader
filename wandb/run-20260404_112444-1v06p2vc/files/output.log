@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 324, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 155, in train
+    shutil.copytree(src_dir_easy, dest_dir_easy)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 557, in copytree
+    with os.scandir(src) as itr:
+FileNotFoundError: [Errno 2] No such file or directory: '/users/jrs596/scratch/dat/Ecuador/EcuadorWebImages_EasyDifUnsure_Combined_split/Easy'

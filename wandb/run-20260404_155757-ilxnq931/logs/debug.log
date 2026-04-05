@@ -1,0 +1,40 @@
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_setup.py:_flush():76] Current SDK version is 0.16.4
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_setup.py:_flush():76] Configure stats pid to 2467372
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_setup.py:_flush():76] Loading settings from /users/jrs596/.config/wandb/settings
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_setup.py:_flush():76] Loading settings from /users/jrs596/scripts/CocoaReader/wandb/settings
+2026-04-04 15:57:57,971 WARNING MainThread:2467372 [wandb_setup.py:_flush():76] Unknown environment variable: WANDB_CACHE_DIR
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'program_abspath': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'program': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py'}
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_init.py:_log_setup():526] Logging user logs to /users/jrs596/scripts/CocoaReader/wandb/run-20260404_155757-ilxnq931/logs/debug.log
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_init.py:_log_setup():527] Logging internal logs to /users/jrs596/scripts/CocoaReader/wandb/run-20260404_155757-ilxnq931/logs/debug-internal.log
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_init.py:init():566] calling init triggers
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_init.py:init():573] wandb.init called with sweep_config: {}
+config: {}
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_init.py:init():616] starting backend
+2026-04-04 15:57:57,971 INFO    MainThread:2467372 [wandb_init.py:init():620] setting up manager
+2026-04-04 15:57:57,972 INFO    MainThread:2467372 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2026-04-04 15:57:57,978 INFO    MainThread:2467372 [wandb_init.py:init():628] backend started and connected
+2026-04-04 15:57:57,979 INFO    MainThread:2467372 [wandb_init.py:init():720] updated telemetry
+2026-04-04 15:57:57,989 INFO    MainThread:2467372 [wandb_init.py:init():753] communicating run to backend with 90.0 second timeout
+2026-04-04 15:57:58,456 INFO    MainThread:2467372 [wandb_run.py:_on_init():2262] communicating current version
+2026-04-04 15:57:58,611 INFO    MainThread:2467372 [wandb_run.py:_on_init():2271] got version response upgrade_message: "wandb version 0.25.1 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2026-04-04 15:57:58,611 INFO    MainThread:2467372 [wandb_init.py:init():804] starting run threads in backend
+2026-04-04 15:58:02,577 WARNING MainThread:2467372 [wandb_init.py:init():1198] interrupted
+Traceback (most recent call last):
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 1176, in init
+    run = wi.init()
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 817, in init
+    run_start_result = run_start_handle.wait(timeout=30)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/wandb/sdk/lib/mailbox.py", line 283, in wait
+    found, abandoned = self._slot._get_and_clear(timeout=wait_timeout)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/wandb/sdk/lib/mailbox.py", line 130, in _get_and_clear
+    if self._wait(timeout=timeout):
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/site-packages/wandb/sdk/lib/mailbox.py", line 126, in _wait
+    return self._event.wait(timeout=timeout)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/threading.py", line 607, in wait
+    signaled = self._cond.wait(timeout)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/threading.py", line 324, in wait
+    gotit = waiter.acquire(True, timeout)
+KeyboardInterrupt

@@ -84,9 +84,13 @@ parser.add_argument('--use_wandb', action='store_true', default=False,
 args = parser.parse_args()
 print(args)
 
-sys.path.append(os.path.join(os.getcwd(), 'scripts/CocoaReader/utils'))
+# Add CocoaReader utils to PYTHONPATH based on this file's location.
+script_dir = os.path.dirname(os.path.abspath(__file__))
+utils_dir = os.path.abspath(os.path.join(script_dir, "..", "..", "..", "utils"))
+if utils_dir not in sys.path:
+    sys.path.append(utils_dir)
 import toolbox
-from training_loop import train_model
+from training_loop import train_model, _extract_logits
 
 def Relabel(model, device, data_dir, working_dir, copied_images, classes, config):
     print("\nRelabeling images from:\n ", data_dir, "\n")
@@ -99,8 +103,9 @@ def Relabel(model, device, data_dir, working_dir, copied_images, classes, config
     
     # Iterate over the images in the dataloader and relabel them if the model's prediction matches the ground truth label
     for idx, (images, labels) in enumerate(dif_dataloader):
-        _, _, preds = model(images.to(device))
-        preds = torch.argmax(preds, dim=1)
+        with torch.no_grad():
+            logits = _extract_logits(model(images.to(device)))
+            preds = torch.argmax(logits, dim=1)
         for i in range(images.size(0)):  # Loop through each item in the batch
             #Healthy = 2, NotCocoa = 3
             #There are not difficult or unsure Healthy of NotCocoa images, just dumby images
@@ -157,38 +162,38 @@ def train():
 
     if args.arch == 'PhytNetV0':
         # 67k - effortless-sweep-30
-        config = {
-            'beta1': 0.9650025364732508,
-            'beta2': 0.981605256508036,
-            'dim_1': 79,
-            'dim_2': 107,
-            'dim_3': 93,
-            'input_size': 415,
-            'kernel_1': 5,
-            'kernel_2': 1,
-            'kernel_3': 7,
-            'learning_rate': 0.0002975957026209971,
-            'num_blocks_1': 2,
-            'num_blocks_2': 1,
-            'out_channels': 6
-            }
-        #332k - smart-sweep-47
         # config = {
-        #     'beta1': 0.9657828624377116,
-        #     'beta2': 0.9908102731106424,
-        #     'dim_1': 104,
-        #     'dim_2': 109,
-        #     'dim_3': 110,
-        #     'input_size': 350,
+        #     'beta1': 0.9650025364732508,
+        #     'beta2': 0.981605256508036,
+        #     'dim_1': 79,
+        #     'dim_2': 107,
+        #     'dim_3': 93,
+        #     'input_size': 415,
         #     'kernel_1': 5,
-        #     'kernel_2': 7,
-        #     'kernel_3': 13,
-        #     'learning_rate': 0.00013365304940966892,
-        #     'num_blocks_1': 1,
-        #     'num_blocks_2': 2,
-        #     'out_channels': 9
-        # }
-        #183k - cool-sweep-42
+        #     'kernel_2': 1,
+        #     'kernel_3': 7,
+        #     'learning_rate': 0.0002975957026209971,
+        #     'num_blocks_1': 2,
+        #     'num_blocks_2': 1,
+        #     'out_channels': 6
+        #     }
+        # # 332k - smart-sweep-47
+        config = {
+            'beta1': 0.9657828624377116,
+            'beta2': 0.9908102731106424,
+            'dim_1': 104,
+            'dim_2': 109,
+            'dim_3': 110,
+            'input_size': 350,
+            'kernel_1': 5,
+            'kernel_2': 7,
+            'kernel_3': 13,
+            'learning_rate': 0.00013365304940966892,
+            'num_blocks_1': 1,
+            'num_blocks_2': 2,
+            'out_channels': 9
+        }
+        # 183k - cool-sweep-42
         # config = {
         #     'beta1': 0.9671538235629524,
         #     'beta2': 0.9574398373980104,
@@ -247,24 +252,25 @@ def train():
     copied_images = set()
 
     # Loop through two different datasets: dest_dir_difficult and dest_dir_unsure
-    # for major_epoch, data_dir in enumerate([dest_dir_difficult, dest_dir_unsure]):
-    #     minor_epoch = 0
-    #     n_relabeled = 1
-    for i in range(1):
-        for j in range(1):
+    for major_epoch, data_dir in enumerate([dest_dir_difficult, dest_dir_unsure]):
+        minor_epoch = 0
+        n_relabeled = 1
+    # for i in range(1):
+    #     for j in range(1):
         
         # if major_epoch == 1:
         #     Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
 
-        # while n_relabeled > 0:
-        #     print("\nMajor epoch: ", major_epoch, ":", minor_epoch)
-        #     minor_epoch += 1
+        while n_relabeled > 0:
+            print("\nMajor epoch: ", major_epoch, ":", minor_epoch)
+            minor_epoch += 1
             
             # Build datasets and dataloaders for the easy dataset
             # dest_dir_easy = args.data_dir
             
             image_datasets = toolbox.build_datasets(data_dir=dest_dir_easy, input_size=config['input_size'])
             dataloaders_dict = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size, shuffle=True, num_workers=6, worker_init_fn=toolbox.worker_init_fn, drop_last=False) for x in ['train', 'val']}
+            # criterion = toolbox.MultiClassFocalLoss(gamma=2.0, alpha=None, reduction='mean')
             criterion = toolbox.DynamicFocalLoss(delta=4.4, dataloader=dataloaders_dict['train'])
             
  
@@ -280,17 +286,17 @@ def train():
                                          num_classes=config['out_channels'],
                                          best_f1=prev_best_f1)         
             
-            # if best_f1 <= prev_best_f1:
-            #     break
-            # else:
-            #     prev_best_f1 = best_f1  
+            if best_f1 <= prev_best_f1:
+                break
+            else:
+                prev_best_f1 = best_f1  
             
-                # Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
+                Relabel(model=model, device=device, data_dir=data_dir, working_dir=working_dir, copied_images=copied_images, classes=classes, config=config)
 
            
 
     wandb.finish()
-    shutil.rmtree(working_dir)
+    # shutil.rmtree(working_dir)
 
 os.environ["wandb__SERVICE_WAIT"] = "300"
 if args.sweep_config != None:

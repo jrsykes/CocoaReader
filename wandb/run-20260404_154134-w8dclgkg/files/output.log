@@ -1,0 +1,126 @@
+
+Building model...
+resnet18 loaded
+##################################################
+No weights loaded
+Major epoch:  0 : 0
+Image input size:  375
+Image resize applied
+Initializing Datasets and Dataloaders...
+Metrics to be calculated:  ['loss', 'corrects', 'precision', 'recall', 'f1', 'L1']
+Epoch 0
+----------
+Patience: 10/10
+train
+
+
+
+
+
+Learning... |############################### | 112/112
+[?25h
+train Loss: 2.6855 Acc: 0.5843
+train Precision: 0.6195 Recall: 0.5843 F1: 0.5762
+Learning... |##############################  | 13/13
+[?25h
+val Loss: 2.4044 Acc: 0.6922
+val Precision: 0.7014 Recall: 0.6922 F1: 0.6872
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 1
+----------
+Patience: 10/10
+train
+
+
+
+Learning... |############################### | 110/112
+train Loss: 2.2695 Acc: 0.7518
+train Precision: 0.7764 Recall: 0.7518 F1: 0.7518
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 2/112
+val Loss: 2.2449 Acc: 0.7553
+val Precision: 0.7654 Recall: 0.7553 F1: 0.7509
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 2
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |##                              | 1/13
+train Loss: 2.0843 Acc: 0.8314
+train Precision: 0.8516 Recall: 0.8314 F1: 0.8321
+val
+val Loss: 2.1825 Acc: 0.7935
+val Precision: 0.8096 Recall: 0.7935 F1: 0.7927
+Learning... |##############################  | 13/13
+[?25h
+Learning... |###                             | 13/112
+Epoch 3
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |                                | 0/112
+train Loss: 1.9461 Acc: 0.8833
+train Precision: 0.9005 Recall: 0.8833 F1: 0.8848
+val
+val Loss: 2.1701 Acc: 0.8031
+val Precision: 0.8219 Recall: 0.8031 F1: 0.7994
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 4
+----------
+Patience: 10/10
+
+
+
+
+Learning... |############################### | 111/112
+train Loss: 1.8490 Acc: 0.9157
+train Precision: 0.9262 Recall: 0.9157 F1: 0.9166
+Learning... |############################### | 112/112
+Learning... |##############################  | 13/13
+[?25h
+Learning... |#                               | 5/112
+val Loss: 2.1627 Acc: 0.7992
+val Precision: 0.8133 Recall: 0.7992 F1: 0.7976
+Epoch 5
+----------
+Patience: 10/10
+
+
+
+Learning... |############################### | 112/112
+Learning... |#######################         | 10/13
+train Loss: 1.7575 Acc: 0.9496
+train Precision: 0.9568 Recall: 0.9496 F1: 0.9501
+val
+val Loss: 2.1661 Acc: 0.8107
+val Precision: 0.8290 Recall: 0.8107 F1: 0.8110
+Saving model weights to: /users/jrs596/scratch/models/ResNet18-Cocoa-SemiSupervised_redo.pth
+Epoch 6
+----------
+Patience: 10/10
+Learning... |##############################  | 13/13
+[?25h
+
+
+
+Learning... |#############################   | 105/112
+[?25hTraceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 322, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 277, in train
+    model, best_f1 = train_model(args=args,
+  File "/users/jrs596/scripts/CocoaReader/utils/training_loop.py", line 151, in train_model
+    my_metrics.update(loss=loss, L1=l1_norm, preds=preds, labels=labels, stats_out=stats_out)
+  File "/users/jrs596/scripts/CocoaReader/utils/toolbox.py", line 276, in update
+    self.metrics['loss'] += loss.item() * inputs_size
+KeyboardInterrupt

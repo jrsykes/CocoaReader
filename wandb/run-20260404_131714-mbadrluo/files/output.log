@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 322, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 156, in train
+    shutil.copytree(src_dir_easy, dest_dir_easy)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 559, in copytree
+    return _copytree(entries=entries, src=src, dst=dst, symlinks=symlinks,
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 495, in _copytree
+    copytree(srcobj, dstname, symlinks, ignore, copy_function,
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 559, in copytree
+    return _copytree(entries=entries, src=src, dst=dst, symlinks=symlinks,
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 495, in _copytree
+    copytree(srcobj, dstname, symlinks, ignore, copy_function,
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 559, in copytree
+    return _copytree(entries=entries, src=src, dst=dst, symlinks=symlinks,
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 499, in _copytree
+    copy_function(srcobj, dstname)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 434, in copy2
+    copyfile(src, dst, follow_symlinks=follow_symlinks)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 267, in copyfile
+    _fastcopy_sendfile(fsrc, fdst)
+  File "/users/jrs596/scratch/python_environments/envs/torch5/lib/python3.10/shutil.py", line 142, in _fastcopy_sendfile
+    sent = os.sendfile(outfd, infd, offset, blocksize)
+KeyboardInterrupt

@@ -1,0 +1,248 @@
+2026-04-05 05:36:50,027 INFO    StreamThr :2986882 [internal.py:wandb_internal():86] W&B internal server running at pid: 2986882, started at: 2026-04-05 05:36:50.026191
+2026-04-05 05:36:50,028 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status
+2026-04-05 05:36:50,029 INFO    WriterThread:2986882 [datastore.py:open_for_write():87] open: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/run-nmnv0k5i.wandb
+2026-04-05 05:36:50,032 DEBUG   SenderThread:2986882 [sender.py:send():378] send: header
+2026-04-05 05:36:50,036 DEBUG   SenderThread:2986882 [sender.py:send():378] send: run
+2026-04-05 05:36:50,517 INFO    SenderThread:2986882 [dir_watcher.py:__init__():211] watching files in: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files
+2026-04-05 05:36:50,518 INFO    SenderThread:2986882 [sender.py:_start_run_threads():1099] run started: nmnv0k5i with start time 1775363810.027002
+2026-04-05 05:36:50,524 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: check_version
+2026-04-05 05:36:50,524 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: check_version
+2026-04-05 05:36:50,576 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: run_start
+2026-04-05 05:36:50,595 DEBUG   HandlerThread:2986882 [system_info.py:__init__():26] System info init
+2026-04-05 05:36:50,595 DEBUG   HandlerThread:2986882 [system_info.py:__init__():41] System info init done
+2026-04-05 05:36:50,595 INFO    HandlerThread:2986882 [system_monitor.py:start():194] Starting system monitor
+2026-04-05 05:36:50,595 INFO    SystemMonitor:2986882 [system_monitor.py:_start():158] Starting system asset monitoring threads
+2026-04-05 05:36:50,596 INFO    HandlerThread:2986882 [system_monitor.py:probe():214] Collecting system info
+2026-04-05 05:36:50,596 INFO    SystemMonitor:2986882 [interfaces.py:start():190] Started cpu monitoring
+2026-04-05 05:36:50,596 INFO    SystemMonitor:2986882 [interfaces.py:start():190] Started disk monitoring
+2026-04-05 05:36:50,597 INFO    SystemMonitor:2986882 [interfaces.py:start():190] Started gpu monitoring
+2026-04-05 05:36:50,597 INFO    SystemMonitor:2986882 [interfaces.py:start():190] Started memory monitoring
+2026-04-05 05:36:50,598 INFO    SystemMonitor:2986882 [interfaces.py:start():190] Started network monitoring
+2026-04-05 05:36:50,637 DEBUG   HandlerThread:2986882 [system_info.py:probe():150] Probing system
+2026-04-05 05:36:50,639 DEBUG   HandlerThread:2986882 [system_info.py:_probe_git():135] Probing git
+2026-04-05 05:36:50,649 DEBUG   HandlerThread:2986882 [system_info.py:_probe_git():143] Probing git done
+2026-04-05 05:36:50,649 DEBUG   HandlerThread:2986882 [system_info.py:probe():198] Probing system done
+2026-04-05 05:36:50,649 DEBUG   HandlerThread:2986882 [system_monitor.py:probe():223] {'os': 'Linux-4.18.0-553.56.1.el8_10.x86_64-x86_64-with-glibc2.28', 'python': '3.10.13', 'heartbeatAt': '2026-04-05T04:36:50.637233', 'startedAt': '2026-04-05T04:36:50.001637', 'docker': None, 'cuda': None, 'args': ('--model_name', 'PhytNetV1_183-Cocoa-SemiSupervised-NotCocoa_DFLoss_redo', '--project_name', 'PhytNet-Cocoa-Final', '--root', '/users/jrs596/scratch', '--data_dir', 'dat/Ecuador/EcuadorWebImages_EasyDif_FinalClean_Compress500_split_NotCooca', '--min_epochs', '15', '--max_epochs', '200', '--batch_size', '42', '--patience', '10', '--arch', 'PhytNetV1', '--GPU', '0', '--use_wandb', '--save'), 'state': 'running', 'program': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'codePathLocal': 'CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'codePath': 'CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'git': {'remote': 'git@github.com:jrsykes/CocoaReader.git', 'commit': 'a6f8fd0626a871906a092686ac1e18ac407e0c19'}, 'email': None, 'root': '/users/jrs596/scripts/CocoaReader', 'host': 'gpu21.viking2.yor.alces.network', 'username': 'jrs596', 'executable': '/users/jrs596/scratch/python_environments/envs/torch5/bin/python', 'cpu_count': 48, 'cpu_count_logical': 48, 'cpu_freq': {'current': 2704.091229166667, 'min': 1500.0, 'max': 3630.809999999998}, 'cpu_freq_per_core': [{'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 3457.461, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 3616.507, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}], 'disk': {'/': {'total': 15.580928802490234, 'used': 9.968006134033203}}, 'gpu': 'NVIDIA H100 PCIe', 'gpu_count': 1, 'gpu_devices': [{'name': 'NVIDIA H100 PCIe', 'memory_total': 85520809984}], 'memory': {'total': 502.99877548217773}}
+2026-04-05 05:36:50,649 INFO    HandlerThread:2986882 [system_monitor.py:probe():224] Finished collecting system info
+2026-04-05 05:36:50,649 INFO    HandlerThread:2986882 [system_monitor.py:probe():227] Publishing system info
+2026-04-05 05:36:50,649 DEBUG   HandlerThread:2986882 [system_info.py:_save_conda():207] Saving list of conda packages installed into the current environment
+2026-04-05 05:36:51,519 INFO    Thread-12 :2986882 [dir_watcher.py:_on_file_created():271] file/dir created: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/conda-environment.yaml
+2026-04-05 05:36:53,441 DEBUG   HandlerThread:2986882 [system_info.py:_save_conda():219] Saving conda packages done
+2026-04-05 05:36:53,443 INFO    HandlerThread:2986882 [system_monitor.py:probe():229] Finished publishing system info
+2026-04-05 05:36:53,448 DEBUG   SenderThread:2986882 [sender.py:send():378] send: files
+2026-04-05 05:36:53,448 INFO    SenderThread:2986882 [sender.py:_save_file():1365] saving file wandb-metadata.json with policy now
+2026-04-05 05:36:53,519 INFO    Thread-12 :2986882 [dir_watcher.py:_on_file_modified():288] file/dir modified: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/conda-environment.yaml
+2026-04-05 05:36:53,519 INFO    Thread-12 :2986882 [dir_watcher.py:_on_file_created():271] file/dir created: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/wandb-metadata.json
+2026-04-05 05:36:53,554 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: python_packages
+2026-04-05 05:36:53,554 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: python_packages
+2026-04-05 05:36:53,554 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: stop_status
+2026-04-05 05:36:53,556 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: stop_status
+2026-04-05 05:36:53,557 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:36:53,758 DEBUG   SenderThread:2986882 [sender.py:send():378] send: telemetry
+2026-04-05 05:36:53,758 DEBUG   SenderThread:2986882 [sender.py:send():378] send: telemetry
+2026-04-05 05:36:53,758 DEBUG   SenderThread:2986882 [sender.py:send():378] send: files
+2026-04-05 05:36:53,758 INFO    SenderThread:2986882 [sender.py:_save_file():1365] saving file * with policy live
+2026-04-05 05:36:54,082 INFO    wandb-upload_0:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/tvh2w8im-wandb-metadata.json
+2026-04-05 05:36:54,262 INFO    wandb-upload_2:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/gt8ukkpy-Run_IR.sh
+2026-04-05 05:36:54,272 INFO    wandb-upload_1:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/st5bfpl5-slurm-31590965.out
+2026-04-05 05:36:54,278 INFO    wandb-upload_5:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/2cpsn17u-SweepConfig.yml
+2026-04-05 05:36:54,285 INFO    wandb-upload_6:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/hxm6yp8w-conda-environment.yaml
+2026-04-05 05:36:54,285 INFO    wandb-upload_8:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/e380b3dp-requirements.txt
+2026-04-05 05:36:54,293 INFO    wandb-upload_3:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/bj28fsal-config.yaml
+2026-04-05 05:36:54,293 INFO    wandb-upload_9:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/d3plw8nw-ReadMe.txt
+2026-04-05 05:36:54,327 INFO    wandb-upload_10:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/j9qjcqcd-PhytNet-Cocoa-config.yml
+2026-04-05 05:36:54,348 INFO    wandb-upload_7:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/haevoapu-slurm-31591047.out
+2026-04-05 05:36:54,367 INFO    wandb-upload_11:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/jk2lnfmo-Torch_Custom_CNNs2.2.1.py
+2026-04-05 05:36:54,379 INFO    wandb-upload_4:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/8ipawqxw-Evaluate_IR.py
+2026-04-05 05:36:54,585 INFO    wandb-upload_0:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/jgw1r4g2-wandb-metadata.json
+2026-04-05 05:36:55,776 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:00,777 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:05,777 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:08,554 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: stop_status
+2026-04-05 05:37:08,555 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: stop_status
+2026-04-05 05:37:08,557 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:37:11,750 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:16,751 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:21,754 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:23,555 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: stop_status
+2026-04-05 05:37:23,555 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: stop_status
+2026-04-05 05:37:23,595 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:37:27,827 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:32,827 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:37,828 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:38,555 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: stop_status
+2026-04-05 05:37:38,555 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: stop_status
+2026-04-05 05:37:38,595 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:37:43,749 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:48,749 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:50,598 DEBUG   SystemMonitor:2986882 [system_monitor.py:_start():172] Starting system metrics aggregation loop
+2026-04-05 05:37:50,599 DEBUG   SenderThread:2986882 [sender.py:send():378] send: stats
+2026-04-05 05:37:53,555 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: stop_status
+2026-04-05 05:37:53,555 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: stop_status
+2026-04-05 05:37:53,596 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:37:53,760 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:37:58,761 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:03,761 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:08,555 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: stop_status
+2026-04-05 05:38:08,556 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: stop_status
+2026-04-05 05:38:08,596 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:38:09,749 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:14,750 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:19,750 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:20,600 DEBUG   SenderThread:2986882 [sender.py:send():378] send: stats
+2026-04-05 05:38:23,555 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: stop_status
+2026-04-05 05:38:23,555 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: stop_status
+2026-04-05 05:38:23,596 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:38:24,767 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:29,768 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:34,769 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:36,446 DEBUG   SenderThread:2986882 [sender.py:send():378] send: exit
+2026-04-05 05:38:36,446 INFO    SenderThread:2986882 [sender.py:send_exit():585] handling exit code: 1
+2026-04-05 05:38:36,446 INFO    SenderThread:2986882 [sender.py:send_exit():587] handling runtime: 105
+2026-04-05 05:38:36,448 INFO    SenderThread:2986882 [sender.py:_save_file():1365] saving file wandb-summary.json with policy end
+2026-04-05 05:38:36,448 INFO    SenderThread:2986882 [sender.py:send_exit():593] send defer
+2026-04-05 05:38:36,448 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,448 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 0
+2026-04-05 05:38:36,448 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,449 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 0
+2026-04-05 05:38:36,449 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 1
+2026-04-05 05:38:36,449 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,449 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 1
+2026-04-05 05:38:36,449 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,449 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 1
+2026-04-05 05:38:36,449 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 2
+2026-04-05 05:38:36,449 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,449 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 2
+2026-04-05 05:38:36,449 INFO    HandlerThread:2986882 [system_monitor.py:finish():203] Stopping system monitor
+2026-04-05 05:38:36,450 INFO    HandlerThread:2986882 [interfaces.py:finish():202] Joined cpu monitor
+2026-04-05 05:38:36,450 DEBUG   SystemMonitor:2986882 [system_monitor.py:_start():179] Finished system metrics aggregation loop
+2026-04-05 05:38:36,450 DEBUG   SystemMonitor:2986882 [system_monitor.py:_start():183] Publishing last batch of metrics
+2026-04-05 05:38:36,451 INFO    HandlerThread:2986882 [interfaces.py:finish():202] Joined disk monitor
+2026-04-05 05:38:36,558 INFO    HandlerThread:2986882 [interfaces.py:finish():202] Joined gpu monitor
+2026-04-05 05:38:36,558 INFO    HandlerThread:2986882 [interfaces.py:finish():202] Joined memory monitor
+2026-04-05 05:38:36,559 INFO    HandlerThread:2986882 [interfaces.py:finish():202] Joined network monitor
+2026-04-05 05:38:36,559 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,559 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 2
+2026-04-05 05:38:36,559 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 3
+2026-04-05 05:38:36,559 DEBUG   SenderThread:2986882 [sender.py:send():378] send: stats
+2026-04-05 05:38:36,560 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,560 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 3
+2026-04-05 05:38:36,560 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,561 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 3
+2026-04-05 05:38:36,561 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 4
+2026-04-05 05:38:36,561 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,561 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 4
+2026-04-05 05:38:36,561 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,561 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 4
+2026-04-05 05:38:36,561 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 5
+2026-04-05 05:38:36,561 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,561 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 5
+2026-04-05 05:38:36,561 DEBUG   SenderThread:2986882 [sender.py:send():378] send: summary
+2026-04-05 05:38:36,563 INFO    SenderThread:2986882 [sender.py:_save_file():1365] saving file wandb-summary.json with policy end
+2026-04-05 05:38:36,563 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,563 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 5
+2026-04-05 05:38:36,563 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 6
+2026-04-05 05:38:36,563 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,563 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 6
+2026-04-05 05:38:36,563 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,563 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 6
+2026-04-05 05:38:36,564 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 7
+2026-04-05 05:38:36,564 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: status_report
+2026-04-05 05:38:36,564 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:36,564 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 7
+2026-04-05 05:38:36,564 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:36,564 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 7
+2026-04-05 05:38:37,446 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-05 05:38:38,410 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 8
+2026-04-05 05:38:38,410 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: poll_exit
+2026-04-05 05:38:38,410 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:38,410 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 8
+2026-04-05 05:38:38,410 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:38,410 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 8
+2026-04-05 05:38:38,411 INFO    SenderThread:2986882 [job_builder.py:build():298] Attempting to build job artifact
+2026-04-05 05:38:38,411 INFO    SenderThread:2986882 [job_builder.py:_get_source_type():428] is repo sourced job
+2026-04-05 05:38:38,436 INFO    SenderThread:2986882 [job_builder.py:build():404] adding wandb-job metadata file
+2026-04-05 05:38:38,443 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 9
+2026-04-05 05:38:38,443 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:38,443 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 9
+2026-04-05 05:38:38,443 DEBUG   SenderThread:2986882 [sender.py:send():378] send: artifact
+2026-04-05 05:38:38,446 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-05 05:38:39,443 INFO    SenderThread:2986882 [sender.py:send_artifact():1443] sent artifact job-git_github.com_jrsykes_CocoaReader.git_CocoaNet_PhytNet_Cocoa_FinalTrain_Torch_Custom_CNNs2.2.1.py - {'id': 'QXJ0aWZhY3Q6MjU2NDgwMTgxMA==', 'state': 'COMMITTED', 'artifactSequence': {'id': 'QXJ0aWZhY3RDb2xsZWN0aW9uOjkyOTY2NzUzNg==', 'latestArtifact': {'id': 'QXJ0aWZhY3Q6MjY1NDYzMTM1MA==', 'versionIndex': 1}}}
+2026-04-05 05:38:39,443 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:39,443 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 9
+2026-04-05 05:38:39,443 INFO    SenderThread:2986882 [dir_watcher.py:finish():358] shutting down directory watcher
+2026-04-05 05:38:40,280 INFO    SenderThread:2986882 [dir_watcher.py:finish():388] scan: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files
+2026-04-05 05:38:40,281 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/slurm-31590965.out slurm-31590965.out
+2026-04-05 05:38:40,281 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/Run_IR.sh Run_IR.sh
+2026-04-05 05:38:40,281 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/config.yaml config.yaml
+2026-04-05 05:38:40,281 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/Evaluate_IR.py Evaluate_IR.py
+2026-04-05 05:38:40,282 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/SweepConfig.yml SweepConfig.yml
+2026-04-05 05:38:40,282 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/conda-environment.yaml conda-environment.yaml
+2026-04-05 05:38:40,282 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/slurm-31591047.out slurm-31591047.out
+2026-04-05 05:38:40,282 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/wandb-summary.json wandb-summary.json
+2026-04-05 05:38:40,282 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/requirements.txt requirements.txt
+2026-04-05 05:38:40,282 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/output.log output.log
+2026-04-05 05:38:40,285 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/tmp.py tmp.py
+2026-04-05 05:38:40,285 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/ReadMe.txt ReadMe.txt
+2026-04-05 05:38:40,285 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/PhytNet-Cocoa-config.yml PhytNet-Cocoa-config.yml
+2026-04-05 05:38:40,286 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/wandb-metadata.json wandb-metadata.json
+2026-04-05 05:38:40,286 INFO    SenderThread:2986882 [dir_watcher.py:finish():402] scan save: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/Torch_Custom_CNNs2.2.1.py Torch_Custom_CNNs2.2.1.py
+2026-04-05 05:38:40,287 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 10
+2026-04-05 05:38:40,287 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: poll_exit
+2026-04-05 05:38:40,287 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:40,287 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 10
+2026-04-05 05:38:40,288 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:40,288 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 10
+2026-04-05 05:38:40,288 INFO    SenderThread:2986882 [file_pusher.py:finish():172] shutting down file pusher
+2026-04-05 05:38:40,447 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-05 05:38:40,448 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: poll_exit
+2026-04-05 05:38:40,711 INFO    wandb-upload_6:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/8cfrxfjz-output.log
+2026-04-05 05:38:40,713 INFO    wandb-upload_1:2986882 [upload_job.py:push():131] Uploaded file /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/files/wandb-summary.json
+2026-04-05 05:38:40,752 INFO    wandb-upload_2:2986882 [upload_job.py:push():131] Uploaded file /tmp/tmphlorfzxgwandb/b0k92li0-config.yaml
+2026-04-05 05:38:40,952 INFO    Thread-11 (_thread_body):2986882 [sender.py:transition_state():613] send defer: 11
+2026-04-05 05:38:40,953 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:40,953 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 11
+2026-04-05 05:38:40,953 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:40,953 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 11
+2026-04-05 05:38:40,954 INFO    SenderThread:2986882 [file_pusher.py:join():178] waiting for file pusher
+2026-04-05 05:38:40,954 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 12
+2026-04-05 05:38:40,954 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:40,954 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 12
+2026-04-05 05:38:40,954 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:40,954 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 12
+2026-04-05 05:38:40,954 INFO    SenderThread:2986882 [file_stream.py:finish():595] file stream finish called
+2026-04-05 05:38:41,449 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-05 05:38:41,605 INFO    SenderThread:2986882 [file_stream.py:finish():599] file stream finish is done
+2026-04-05 05:38:41,605 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 13
+2026-04-05 05:38:41,605 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: poll_exit
+2026-04-05 05:38:41,605 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:41,605 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 13
+2026-04-05 05:38:41,606 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:41,606 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 13
+2026-04-05 05:38:41,606 INFO    SenderThread:2986882 [sender.py:transition_state():613] send defer: 14
+2026-04-05 05:38:41,606 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: defer
+2026-04-05 05:38:41,607 INFO    HandlerThread:2986882 [handler.py:handle_request_defer():172] handle defer: 14
+2026-04-05 05:38:41,607 DEBUG   SenderThread:2986882 [sender.py:send():378] send: final
+2026-04-05 05:38:41,607 DEBUG   SenderThread:2986882 [sender.py:send():378] send: footer
+2026-04-05 05:38:41,607 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: defer
+2026-04-05 05:38:41,607 INFO    SenderThread:2986882 [sender.py:send_request_defer():609] handle sender defer: 14
+2026-04-05 05:38:41,608 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-05 05:38:41,608 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: poll_exit
+2026-04-05 05:38:41,608 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-05 05:38:41,609 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: poll_exit
+2026-04-05 05:38:41,609 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: server_info
+2026-04-05 05:38:41,609 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: server_info
+2026-04-05 05:38:41,610 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: get_summary
+2026-04-05 05:38:41,611 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: sampled_history
+2026-04-05 05:38:41,611 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-05 05:38:41,611 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: job_info
+2026-04-05 05:38:41,767 DEBUG   SenderThread:2986882 [sender.py:send_request():405] send_request: job_info
+2026-04-05 05:38:41,767 INFO    MainThread:2986882 [wandb_run.py:_footer_history_summary_info():3851] rendering history
+2026-04-05 05:38:41,768 INFO    MainThread:2986882 [wandb_run.py:_footer_history_summary_info():3883] rendering summary
+2026-04-05 05:38:41,768 INFO    MainThread:2986882 [wandb_run.py:_footer_sync_info():3810] logging synced files
+2026-04-05 05:38:41,768 DEBUG   HandlerThread:2986882 [handler.py:handle_request():146] handle_request: shutdown
+2026-04-05 05:38:41,768 INFO    HandlerThread:2986882 [handler.py:finish():869] shutting down handler
+2026-04-05 05:38:42,612 INFO    WriterThread:2986882 [datastore.py:close():296] close: /users/jrs596/scripts/CocoaReader/wandb/run-20260405_053650-nmnv0k5i/run-nmnv0k5i.wandb
+2026-04-05 05:38:42,767 INFO    SenderThread:2986882 [sender.py:finish():1521] shutting down sender
+2026-04-05 05:38:42,768 INFO    SenderThread:2986882 [file_pusher.py:finish():172] shutting down file pusher
+2026-04-05 05:38:42,768 INFO    SenderThread:2986882 [file_pusher.py:join():178] waiting for file pusher

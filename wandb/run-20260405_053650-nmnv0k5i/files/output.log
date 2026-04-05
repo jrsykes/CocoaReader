@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 323, in <module>
+    train()
+  File "/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py", line 222, in train
+    model = toolbox.build_model(arch=args.arch, num_classes=config['out_channels'], config=config).to(device)
+UnboundLocalError: local variable 'config' referenced before assignment

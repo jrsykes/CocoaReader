@@ -1,0 +1,133 @@
+2026-04-04 11:28:58,127 INFO    StreamThr :2135920 [internal.py:wandb_internal():86] W&B internal server running at pid: 2135920, started at: 2026-04-04 11:28:58.125999
+2026-04-04 11:28:58,128 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: status
+2026-04-04 11:28:58,129 INFO    WriterThread:2135920 [datastore.py:open_for_write():87] open: /users/jrs596/scripts/CocoaReader/wandb/offline-run-20260404_112858-20idy7xd/run-20idy7xd.wandb
+2026-04-04 11:28:58,181 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: run_start
+2026-04-04 11:28:58,200 DEBUG   HandlerThread:2135920 [system_info.py:__init__():26] System info init
+2026-04-04 11:28:58,200 DEBUG   HandlerThread:2135920 [system_info.py:__init__():41] System info init done
+2026-04-04 11:28:58,200 INFO    HandlerThread:2135920 [system_monitor.py:start():194] Starting system monitor
+2026-04-04 11:28:58,201 INFO    SystemMonitor:2135920 [system_monitor.py:_start():158] Starting system asset monitoring threads
+2026-04-04 11:28:58,201 INFO    HandlerThread:2135920 [system_monitor.py:probe():214] Collecting system info
+2026-04-04 11:28:58,201 INFO    SystemMonitor:2135920 [interfaces.py:start():190] Started cpu monitoring
+2026-04-04 11:28:58,202 INFO    SystemMonitor:2135920 [interfaces.py:start():190] Started disk monitoring
+2026-04-04 11:28:58,203 INFO    SystemMonitor:2135920 [interfaces.py:start():190] Started gpu monitoring
+2026-04-04 11:28:58,203 INFO    SystemMonitor:2135920 [interfaces.py:start():190] Started memory monitoring
+2026-04-04 11:28:58,204 INFO    SystemMonitor:2135920 [interfaces.py:start():190] Started network monitoring
+2026-04-04 11:28:58,234 DEBUG   HandlerThread:2135920 [system_info.py:probe():150] Probing system
+2026-04-04 11:28:58,237 DEBUG   HandlerThread:2135920 [system_info.py:_probe_git():135] Probing git
+2026-04-04 11:28:58,247 DEBUG   HandlerThread:2135920 [system_info.py:_probe_git():143] Probing git done
+2026-04-04 11:28:58,247 DEBUG   HandlerThread:2135920 [system_info.py:probe():198] Probing system done
+2026-04-04 11:28:58,247 DEBUG   HandlerThread:2135920 [system_monitor.py:probe():223] {'os': 'Linux-4.18.0-553.56.1.el8_10.x86_64-x86_64-with-glibc2.28', 'python': '3.10.13', 'heartbeatAt': '2026-04-04T10:28:58.234256', 'startedAt': '2026-04-04T10:28:58.113721', 'docker': None, 'cuda': None, 'args': ('--model_name', 'PhytNet-Cocoa-FullSupervised_redo', '--project_name', 'PhytNet-Cocoa-Final', '--root', '/users/jrs596/scratch', '--data_dir', 'dat/Ecuador/EcuadorWebImages_EasyDifUnsure_Combined_split', '--min_epochs', '15', '--max_epochs', '200', '--batch_size', '42', '--patience', '10', '--arch', 'PhytNetV0', '--GPU', '0', '--use_wandb', '--save'), 'state': 'running', 'program': '/users/jrs596/scripts/CocoaReader/CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'codePathLocal': 'CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'codePath': 'CocoaNet/PhytNet_Cocoa/FinalTrain/Torch_Custom_CNNs2.2.1.py', 'git': {'remote': 'git@github.com:jrsykes/CocoaReader.git', 'commit': 'a6f8fd0626a871906a092686ac1e18ac407e0c19'}, 'email': None, 'root': '/users/jrs596/scripts/CocoaReader', 'host': 'gpu21.viking2.yor.alces.network', 'username': 'jrs596', 'executable': '/users/jrs596/scratch/python_environments/envs/torch5/bin/python', 'cpu_count': 48, 'cpu_count_logical': 48, 'cpu_freq': {'current': 2690.2990208333335, 'min': 1500.0, 'max': 3630.809999999998}, 'cpu_freq_per_core': [{'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 3568.762, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 3389.626, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}, {'current': 2650.0, 'min': 1500.0, 'max': 3630.81}], 'disk': {'/': {'total': 15.580928802490234, 'used': 9.967670440673828}}, 'gpu': 'NVIDIA H100 PCIe', 'gpu_count': 1, 'gpu_devices': [{'name': 'NVIDIA H100 PCIe', 'memory_total': 85520809984}], 'memory': {'total': 502.99877548217773}}
+2026-04-04 11:28:58,247 INFO    HandlerThread:2135920 [system_monitor.py:probe():224] Finished collecting system info
+2026-04-04 11:28:58,247 INFO    HandlerThread:2135920 [system_monitor.py:probe():227] Publishing system info
+2026-04-04 11:28:58,247 DEBUG   HandlerThread:2135920 [system_info.py:_save_conda():207] Saving list of conda packages installed into the current environment
+2026-04-04 11:29:01,045 DEBUG   HandlerThread:2135920 [system_info.py:_save_conda():219] Saving conda packages done
+2026-04-04 11:29:01,047 INFO    HandlerThread:2135920 [system_monitor.py:probe():229] Finished publishing system info
+2026-04-04 11:29:01,153 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: python_packages
+2026-04-04 11:29:01,368 DEBUG   SenderThread:2135920 [sender.py:send():378] send: exit
+2026-04-04 11:29:01,369 INFO    SenderThread:2135920 [sender.py:send_exit():585] handling exit code: 1
+2026-04-04 11:29:01,369 INFO    SenderThread:2135920 [sender.py:send_exit():587] handling runtime: 3
+2026-04-04 11:29:01,370 INFO    SenderThread:2135920 [sender.py:_save_file():1365] saving file wandb-summary.json with policy end
+2026-04-04 11:29:01,370 INFO    SenderThread:2135920 [sender.py:send_exit():593] send defer
+2026-04-04 11:29:01,370 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,370 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 0
+2026-04-04 11:29:01,371 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,371 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 0
+2026-04-04 11:29:01,371 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 1
+2026-04-04 11:29:01,371 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,371 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 1
+2026-04-04 11:29:01,371 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,371 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 1
+2026-04-04 11:29:01,371 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 2
+2026-04-04 11:29:01,371 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,371 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 2
+2026-04-04 11:29:01,371 INFO    HandlerThread:2135920 [system_monitor.py:finish():203] Stopping system monitor
+2026-04-04 11:29:01,371 DEBUG   SystemMonitor:2135920 [system_monitor.py:_start():172] Starting system metrics aggregation loop
+2026-04-04 11:29:01,371 DEBUG   SystemMonitor:2135920 [system_monitor.py:_start():179] Finished system metrics aggregation loop
+2026-04-04 11:29:01,371 DEBUG   SystemMonitor:2135920 [system_monitor.py:_start():183] Publishing last batch of metrics
+2026-04-04 11:29:01,372 INFO    HandlerThread:2135920 [interfaces.py:finish():202] Joined cpu monitor
+2026-04-04 11:29:01,372 INFO    HandlerThread:2135920 [interfaces.py:finish():202] Joined disk monitor
+2026-04-04 11:29:01,478 INFO    HandlerThread:2135920 [interfaces.py:finish():202] Joined gpu monitor
+2026-04-04 11:29:01,478 INFO    HandlerThread:2135920 [interfaces.py:finish():202] Joined memory monitor
+2026-04-04 11:29:01,478 INFO    HandlerThread:2135920 [interfaces.py:finish():202] Joined network monitor
+2026-04-04 11:29:01,479 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 2
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 3
+2026-04-04 11:29:01,479 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,479 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 3
+2026-04-04 11:29:01,479 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 3
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 4
+2026-04-04 11:29:01,479 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,479 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 4
+2026-04-04 11:29:01,479 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 4
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 5
+2026-04-04 11:29:01,479 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,479 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 5
+2026-04-04 11:29:01,479 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 5
+2026-04-04 11:29:01,479 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 6
+2026-04-04 11:29:01,480 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,480 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 6
+2026-04-04 11:29:01,480 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 6
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 7
+2026-04-04 11:29:01,480 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: status_report
+2026-04-04 11:29:01,480 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,480 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 7
+2026-04-04 11:29:01,480 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: status_report
+2026-04-04 11:29:01,480 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 7
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 8
+2026-04-04 11:29:01,480 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,480 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 8
+2026-04-04 11:29:01,480 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 8
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 9
+2026-04-04 11:29:01,480 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,480 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 9
+2026-04-04 11:29:01,480 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 9
+2026-04-04 11:29:01,480 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 10
+2026-04-04 11:29:01,480 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,480 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 10
+2026-04-04 11:29:01,481 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 10
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 11
+2026-04-04 11:29:01,481 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,481 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 11
+2026-04-04 11:29:01,481 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 11
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 12
+2026-04-04 11:29:01,481 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,481 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 12
+2026-04-04 11:29:01,481 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 12
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 13
+2026-04-04 11:29:01,481 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,481 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 13
+2026-04-04 11:29:01,481 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 13
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:transition_state():613] send defer: 14
+2026-04-04 11:29:01,481 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: defer
+2026-04-04 11:29:01,481 INFO    HandlerThread:2135920 [handler.py:handle_request_defer():172] handle defer: 14
+2026-04-04 11:29:01,481 DEBUG   SenderThread:2135920 [sender.py:send():378] send: final
+2026-04-04 11:29:01,481 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: defer
+2026-04-04 11:29:01,481 INFO    SenderThread:2135920 [sender.py:send_request_defer():609] handle sender defer: 14
+2026-04-04 11:29:01,482 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-04 11:29:01,482 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: poll_exit
+2026-04-04 11:29:01,482 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: poll_exit
+2026-04-04 11:29:01,482 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: poll_exit
+2026-04-04 11:29:01,482 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: server_info
+2026-04-04 11:29:01,482 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: server_info
+2026-04-04 11:29:01,483 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: get_summary
+2026-04-04 11:29:01,483 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: sampled_history
+2026-04-04 11:29:01,483 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: internal_messages
+2026-04-04 11:29:01,483 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: job_info
+2026-04-04 11:29:01,483 DEBUG   SenderThread:2135920 [sender.py:send_request():405] send_request: job_info
+2026-04-04 11:29:01,484 INFO    MainThread:2135920 [wandb_run.py:_footer_history_summary_info():3851] rendering history
+2026-04-04 11:29:01,484 INFO    MainThread:2135920 [wandb_run.py:_footer_history_summary_info():3883] rendering summary
+2026-04-04 11:29:01,484 DEBUG   HandlerThread:2135920 [handler.py:handle_request():146] handle_request: shutdown
+2026-04-04 11:29:01,484 INFO    HandlerThread:2135920 [handler.py:finish():869] shutting down handler
+2026-04-04 11:29:02,484 INFO    WriterThread:2135920 [datastore.py:close():296] close: /users/jrs596/scripts/CocoaReader/wandb/offline-run-20260404_112858-20idy7xd/run-20idy7xd.wandb
+2026-04-04 11:29:02,484 INFO    SenderThread:2135920 [sender.py:finish():1521] shutting down sender
